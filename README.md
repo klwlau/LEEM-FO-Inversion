@@ -18,6 +18,11 @@ FO/CTF ratios, Jacobi–Anger), compiled from LaTeX:
 [docs/proofs/leemfo_proofs.pdf](docs/proofs/leemfo_proofs.pdf)
 ([source](docs/proofs/leemfo_proofs.tex)).
 
+The same identities as **literate Lean**, typeset by
+[Alectryon](https://github.com/cpitclaudel/alectryon):
+[docs/alectryon/leemfo_alectryon.pdf](docs/alectryon/leemfo_alectryon.pdf)
+([source](docs/alectryon/LeemFOProofs.lean)).
+
 ## Build
 
 Lean development requires [elan](https://github.com/leanprover/elan).
@@ -27,11 +32,17 @@ lake exe cache get   # download Mathlib oleans
 lake build
 ```
 
-To rebuild the proofs PDF (TeX Live with `latexmk`):
+To rebuild the handwritten proofs PDF (TeX Live with `latexmk`):
 
 ```bash
 cd docs/proofs
 latexmk -pdf leemfo_proofs.tex
+```
+
+To rebuild the Alectryon literate-Lean PDF (`uv` + LuaLaTeX):
+
+```bash
+make -C docs/alectryon pdf
 ```
 
 ## Layout
@@ -46,3 +57,4 @@ latexmk -pdf leemfo_proofs.tex
 | `LeemFO/CTF.lean` | \(q'=0\) recovery and hermiticity |
 | `LeemFO/Ratios.lean` | \(\Gamma_C,\Gamma_S\) |
 | `LeemFO/PhaseObject.lean` | Jacobi–Anger for \(\mathrm{e}^{\mathrm{i}\varphi\sin\theta}\) |
+| `docs/alectryon/LeemFOProofs.lean` | Alectryon literate note (scripts + prose) |

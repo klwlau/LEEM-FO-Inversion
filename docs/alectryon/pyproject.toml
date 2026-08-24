@@ -1,0 +1,8 @@
+[project]
+name = "leemfo-alectryon"
+version = "0.1.0"
+description = "Alectryon PDF build for the LeemFO proofs"
+requires-python = ">=3.10"
+dependencies = [
+  "alectryon>=2.0.0",
+]

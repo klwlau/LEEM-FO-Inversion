@@ -16,3 +16,8 @@ rev = "v4.33.1"
 
 [[lean_lib]]
 name = "LeemFO"
+
+# Literate Alectryon note; not in defaultTargets.
+[[lean_lib]]
+name = "LeemFOProofs"
+srcDir = "docs/alectryon"

@@ -4,6 +4,15 @@
 *.trace
 /lake-packages
 /Ultramicroscopy_200_160_(2019).pdf
+.venv/
+
+# Alectryon intermediates (the compiled PDF in docs/alectryon/ is tracked)
+docs/alectryon/.alectryon-cache/
+docs/alectryon/*.lua.tex
+docs/alectryon/*.lua.pdf
+docs/alectryon/*.egg-info/
+docs/alectryon/alectryon.sty
+docs/alectryon/pygments.sty
 
 # LaTeX auxiliaries (the compiled PDF in docs/proofs/ is tracked)
 *.aux
