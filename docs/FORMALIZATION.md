@@ -1,5 +1,9 @@
 # Formalization source: Yu, Lau, Altman, Ultramicroscopy 200 (2019) 160–168
 
+Typeset proofs of the identities below:
+[proofs/leemfo_proofs.pdf](proofs/leemfo_proofs.pdf)
+([TeX source](proofs/leemfo_proofs.tex)).
+
 Source of truth for a Lean formalization of Fourier-optics (FO) image formation in aberration-corrected LEEM. Reconstructed from §2.2 and Appendix A1–A2 of Yu *et al.* (2019). The PDF’s two-column OCR is unreliable; every displayed formula below is restored from (i) surrounding prose, (ii) the appendix integrals, and (iii) the same group’s FO/CTF formulae (Pang *et al.* 2009; Schramm *et al.*, Ultramicroscopy 115 (2012) 88; Yu *et al.*, Ultramicroscopy 183 (2017) 109; Tromp & Schramm, Ultramicroscopy 2012, χ-convention).
 
 **How to read this document**

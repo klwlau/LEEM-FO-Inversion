@@ -4,3 +4,14 @@
 *.trace
 /lake-packages
 /Ultramicroscopy_200_160_(2019).pdf
+
+# LaTeX auxiliaries (the compiled PDF in docs/proofs/ is tracked)
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg

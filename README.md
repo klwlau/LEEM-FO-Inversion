@@ -13,13 +13,25 @@ It does **not** prove experimental claims or simulation runtimes.
 
 Equation-by-equation mapping: [docs/FORMALIZATION.md](docs/FORMALIZATION.md).
 
+Written proofs of the appendix identities (Gaussian envelopes, polar form,
+FO/CTF ratios, Jacobi–Anger), compiled from LaTeX:
+[docs/proofs/leemfo_proofs.pdf](docs/proofs/leemfo_proofs.pdf)
+([source](docs/proofs/leemfo_proofs.tex)).
+
 ## Build
 
-Requires [elan](https://github.com/leanprover/elan).
+Lean development requires [elan](https://github.com/leanprover/elan).
 
 ```bash
 lake exe cache get   # download Mathlib oleans
 lake build
+```
+
+To rebuild the proofs PDF (TeX Live with `latexmk`):
+
+```bash
+cd docs/proofs
+latexmk -pdf leemfo_proofs.tex
 ```
 
 ## Layout
