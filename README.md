@@ -53,7 +53,14 @@ latexmk -pdf leemfo_proofs.tex
 Linearized multi-defocus Fourier-diagonal inverse (theorem list):
 [docs/LINEAR_INVERSE.md](docs/LINEAR_INVERSE.md).
 
-Written recommendation of the fastest still-correct inverse (Jacobi–Anger
-fitting for 1D ripples; Gauss–Newton FO for 2D general objects):
+Written inverse-method note (2D experimental focal series → object):
+multi-defocus Fourier-diagonal Tikhonov is the fastest method that still
+fills CTF zeros; optional Gauss–Newton on bilinear FO for strong phase;
+Jacobi–Anger fitting is the 1D-sinusoid special case.
 [docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
 ([source](docs/proofs/leemfo_inverse.tex)).
+
+```bash
+cd docs/proofs
+latexmk -pdf leemfo_inverse.tex
+```

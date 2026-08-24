@@ -7,7 +7,6 @@
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
-\usepackage{array}
 \usepackage{booktabs}
 \usepackage{enumitem}
 \usepackage[dvipsnames]{xcolor}
@@ -19,7 +18,7 @@
   linkcolor=blue!50!black,
   citecolor=blue!50!black,
   urlcolor=blue!50!black,
-  pdftitle={The fastest correct inverse for strong-phase LEEM},
+  pdftitle={Inverting a 2D LEEM focal series: the fastest still-correct object reconstruction},
   pdfauthor={Wilson Lau}
 }
 
@@ -38,6 +37,7 @@
 \newcommand{\dd}{\mathrm{d}}
 \newcommand{\ee}{\mathrm{e}}
 \newcommand{\ii}{\mathrm{i}}
+\newcommand{\conj}[1]{\overline{#1}}
 \newcommand{\abs}[1]{\lvert#1\rvert}
 \newcommand{\norm}[1]{\lVert#1\rVert}
 \newcommand{\qap}{q_{\mathrm{ap}}}
@@ -47,8 +47,8 @@
 \newcommand{\Nap}{N_{\mathrm{ap}}}
 \newcommand{\Nf}{N_{\mathrm{f}}}
 
-\title{The fastest correct inverse for strong-phase LEEM:\\
-discrete Jacobi--Anger fitting, not pixel Gauss--Newton}
+\title{Inverting a 2D LEEM focal series:\\
+the fastest still-correct object reconstruction}
 \author{Wilson Lau}
 \date{24 August 2026}
 
@@ -56,383 +56,472 @@ discrete Jacobi--Anger fitting, not pixel Gauss--Newton}
 \maketitle
 
 \begin{abstract}
-Linearized CTF inversion is biased for the kinematic LEEM phase object
-$\psi=\exp(\ii\varphi\sin(kx))$ once $\varphi=4\pi A/\lambda_0$ is no longer
-small. Among four candidate inverses---Gauss--Newton on bilinear Fourier
-optics (FO), Jacobi--Anger discrete-mode fitting, Gerchberg--Saxton with an
-FO projector, and phase-diversity / MAL---only the first two are
-well-posed for the Yu--Lau--Altman forward model, and only the second is
-cheap. For 1D periodic ripples the correct unknown is a handful of Bessel
-coefficients inside the contrast aperture, not the $\Nap$ aperture pixels.
-That reduces a bilinear solve of cost $O(\Nap^2)$ to an $O(M^2)$ evaluation
-with $M=2\lfloor\qap\Lambda\rfloor+1\ll\Nap$. For general 2D topography the
-same reduction is unavailable; the fastest still-correct method is then
-damped Gauss--Newton on bilinear FO, initialized by the linearized CTF.
-Gerchberg--Saxton is not a distinct correct algorithm under partial
-coherence, and MAL / phase diversity is the same Gauss--Newton residual
-stacked over extra defoci (needed only when aberrations are unknown or
-CTF zeros must be filled). We recommend a two-stage pipeline and a
-precise skip test for stage~2, and we identify the Lean theorems that
-make this inverse formalizable.
+Given an experimental through-focal stack of 2D LEEM intensities
+$I(\mathbf{r},\Dz_k)$, recover the object exit wave
+$\psi_0(\mathbf{r})=\sigma(\mathbf{r})\,\ee^{\ii\phi(\mathbf{r})}$.
+Yu, Lau and Altman~\cite{Yu2019} never invert: they forward-simulate
+the bilinear Fourier-optics (FO) kernel $\RFO$ and match contrast.
+Five inverses were compared. The unique published 2D LEEM exit-wave
+reconstruction is linear Schiske/Wiener restoration~\cite{Duden2014},
+which is $O(K N\log N)$ on $N$ pixels and $K$ defoci, fills contrast-transfer
+(CTF) zeros by stacking defoci, and is the Fr\'echet derivative of
+bilinear FO on the axes $\mathbf{q}'=\mathbf{0}$.
+It is biased for the strong-phase objects (graphene ripples, atomic steps)
+that make FO necessary in the first place.
+The recommended pipeline is therefore two-stage:
+\textbf{(1)~Fourier-diagonal multi-defocus Tikhonov} on the CTF slice
+$\RFO(\mathbf{q},0,\Dz)$ --- the asymptotically fastest method that still
+fills CTF zeros --- then \textbf{(2)~optional Gauss--Newton} on the full
+bilinear FO residual, skipped when that residual already sits at the
+noise floor ($\max\abs{\phi}\lesssim 0.3$).
+For Yu's 1D sinusoid the second stage collapses to Jacobi--Anger
+fitting of $M=2\lfloor \qap\Lambda\rfloor+1$ Bessel modes
+($O(M^2)$ per residual), which is the fastest still-correct method in
+that class.
+Lean~4 proves uniqueness, the bias--noise identity, the triangle error
+bound, aperture invisibility, gauge invariance, the quadratic remainder,
+and an $O(KN\log N)$ cost model, without claiming FFT existence.
 \end{abstract}
 
-\section{The inverse that the forward model actually poses}
+\tableofcontents
+\newpage
 
-Image intensity in the Yu--Lau--Altman FO model is the bilinear form
+\section{The inverse problem}
+\label{sec:problem}
+
+A LEEM experiment records a real, nonnegative intensity
+$I(\mathbf{r})$ in a $M=1$ image plane, typically as a through-focal
+series $I(\mathbf{r},\Dz_k)$, $k=1,\dots,K$.
+The object is the complex exit wave
+\begin{equation}
+\psi_0(\mathbf{r})=\sigma(\mathbf{r})\,\ee^{\ii\phi(\mathbf{r})},
+\qquad
+\boldsymbol{\Psi}=\mathcal{F}[\psi_0],
+\end{equation}
+with $\phi$ in radians.
+Yu, Lau and Altman~\cite{Yu2019} write the forward map as the bilinear
+form
 \begin{equation}
 \label{eq:I}
-I(\mathbf{r})
+I(\mathbf{r},\Dz)
 =\iint
 \boldsymbol{\Psi}(\mathbf{q})\,\boldsymbol{\Psi}^*(\mathbf{q}')
 \,\RFO(\mathbf{q},\mathbf{q}',\Dz)
 \,\ee^{2\pi\ii(\mathbf{q}-\mathbf{q}')\cdot\mathbf{r}}
 \,\dd^2q\,\dd^2q',
 \end{equation}
-with $\RFO$ supported on the contrast-aperture disk
-$\abs{\mathbf{q}},\abs{\mathbf{q}'}\le\qap$~\cite{Yu2019}.
-A separable CTF kernel $\RCTF$ agrees with $\RFO$ on the axes
-$\mathbf{q}=\mathbf{0}$ or $\mathbf{q}'=\mathbf{0}$
-(already a Lean theorem: \texttt{R\_FO\_eq\_R\_CTF\_axis}),
-and $\RCTF=\RFO\,\Gamma_C\Gamma_S$ off axis.
-Linearized (weak-phase) inversion uses only those axes: if
-$\psi=\sigma(1+\ii\phi)+O(\phi^2)$, the contrast at frequency $\mathbf{q}$
-is proportional to $\RFO(\mathbf{q},\mathbf{0})$, where $\Gamma_C\Gamma_S=1$.
-The linear inverse is therefore the correct first-order Fr\'echet derivative
-of~\eqref{eq:I} even under partial coherence.
+where $\RFO=R_0 E_S E_{C,\mathrm{tot}}$ is supported on the contrast
+aperture $\abs{\mathbf{q}},\abs{\mathbf{q}'}\le\qap$.
+The CTF kernel $\RCTF$ agrees with $\RFO$ on the axes
+$\mathbf{q}'=\mathbf{0}$ (Lean: \texttt{R\_FO\_eq\_R\_CTF\_axis}).
 
-It is biased as soon as quadratic products
-$\boldsymbol{\Psi}(\mathbf{q})\boldsymbol{\Psi}^*(\mathbf{q}')$ with
-\emph{both} $\mathbf{q},\mathbf{q}'\neq\mathbf{0}$ rise above noise.
-For a sinusoidal corrugation those products are not a perturbation: they
-are the image.
+\paragraph{What is not recoverable.}
+\begin{itemize}[leftmargin=*,itemsep=0.2em]
+\item Global phase: $I(\ee^{\ii\theta}\psi_0)=I(\psi_0)$
+(Lean: \texttt{ihat\_gauge}, \texttt{objectWave\_phase\_shift}).
+\item Modes $\abs{\mathbf{q}}>\qap$: $\RFO(\mathbf{q},0,\Dz)=0$ for every
+defocus, so the Tikhonov estimator of that bin is identically $0$
+(\texttt{R\_FO\_axis\_eq\_zero\_of\_outside},
+\texttt{tikhonovXhat\_outside\_aperture}).
+\item A single image of a general complex object: one complex linear
+measurement of the pair $\bigl(X(\mathbf{q}),X(-\mathbf{q})\bigr)$ always
+has a kernel (\texttt{one\_measurement\_not\_injective}).
+Need $K\ge 2$ defoci with independent CTF slices.
+\end{itemize}
 
-\section{Object classes, $\Nap$ and $M$}
+Yu~\emph{et al.}~\cite{Yu2017,Yu2019} \emph{do not invert}.
+They choose a trial object (step, sinusoid), run~\eqref{eq:I}, and
+overlay contrast versus $\Dz$ on an experimental series.
+The only demonstrated 2D experimental LEEM exit-wave reconstruction is
+Duden, Thust, Kumpf and Tautz~\cite{Duden2014}: linear Schiske restoration
+of a molecular monolayer, assuming a strong specular beam.
 
-\begin{definition}[Aperture degrees of freedom]
-Let $L$ be the field of view and $\Delta q=1/L$. Then
+\section{Five candidates}
+\label{sec:five}
+
+Write $N$ for the number of image pixels, $K$ for the number of
+defoci, and $\Nap$ for the number of Fourier samples inside the
+aperture ($\Nap\sim \pi(\qap L)^2$ in 2D).
+Typical LEEM numbers: $N=512^2$, $K=11$--$21$,
+$\Nap\sim 10^3$--$10^5$.
+
+\subsection*{1. Single-image Wiener / CTF deconvolution}
+One FFT, divide by $\RCTF(\mathbf{q},\Dz)$, Tikhonov at the zeros.
+Cost $O(N\log N)$.
+Scientifically inadequate: CTF zeros punch holes in the spectrum, and
+a general complex object is not identified by one plane
+(\cref{sec:problem}).
+Fastest, and the wrong inverse.
+
+\subsection*{2. Transport of intensity (TIE)}
+Two or three closely spaced defoci, FFT Poisson solve, cost
+$O(N\log N)$~\cite{Teague1983,Paganin}.
+Assumes paraxial coherent $\partial_z I=-(\lambda/2\pi)\nabla\cdot(I\nabla\phi)$.
+LEEM after $15\,\mathrm{kV}$ acceleration has $\lambda\sim 10\,\mathrm{pm}$,
+a hard aperture, $C_3/C_5$, and partial coherence.
+TIE ignores all of that; it is a low-pass phase map, not an FO inverse.
+Not used on experimental LEEM graphene/steps.
+
+\subsection*{3. Multi-defocus Fourier-diagonal Tikhonov (Schiske)}
+\label{sec:schiske}
+After $K$ FFTs, each spatial frequency $\mathbf{q}$ decouples.
+The linearized observations are
 \begin{equation}
-\label{eq:Nap}
-\Nap
-:=
-\#\{\text{sampled }\mathbf{q}:\abs{\mathbf{q}}\le\qap\}
+\label{eq:linear}
+\hat I_k(\mathbf{q})
+\approx
+h_k(\mathbf{q})\,X(\mathbf{q})
++
+g_k(\mathbf{q})\,\overline{X(-\mathbf{q})},
+\qquad
+h_k=\RFO(\mathbf{q},0,\Dz_k).
+\end{equation}
+The scalar Tikhonov estimator of a one-branch unknown
+(Lean: \texttt{tikhonovXhat}) is
+\begin{equation}
+\label{eq:xhat}
+\hat x
 =
-\begin{cases}
-2\lfloor \qap L\rfloor+1, & \text{1D lineout},\\[0.3em]
-\pi(\qap L)^2, & \text{2D circular aperture}.
-\end{cases}
+\frac{\sum_k \overline{h_k}\,y_k}{\alpha+\sum_k\abs{h_k}^2}.
 \end{equation}
-On a Nyquist grid $N=2\qap L$ one has $\Nap=\pi N^2/4$ in 2D
-and $\Nap=N$ in 1D.
-\end{definition}
+Cost: $K$ forward FFTs, $O(KN)$ bin arithmetic, one inverse FFT
+--- $O(KN\log N)$.
+This is Duden's algorithm with the FO/CTF envelopes of this library
+in place of a coherent probe.
+It is the Fr\'echet derivative of~\eqref{eq:I} at vacuum
+(\texttt{ihatJac\_vacuum}): one Gauss--Newton step from vacuum
+\emph{is}~\eqref{eq:xhat}.
 
-IBM-style parameters~\cite{Schramm2012,Yu2019}
-($E_0=10\,\mathrm{eV}$, $\lambda_0\simeq 0.388\,\mathrm{nm}$,
-column $\lambda\simeq 0.010\,\mathrm{nm}$, information limit
-$\sim 1$--$2\,\mathrm{nm}$) give $\qap\sim 0.5$--$1\,\mathrm{nm}^{-1}$.
-A $2\,\mu\mathrm{m}$ field of view then has
-$\Nap^{\mathrm{1D}}\sim 2\times 10^3$ and
-$\Nap^{\mathrm{2D}}\sim 3\times 10^6$
-(or $\Nap^{\mathrm{2D}}\sim 5\times 10^4$ on a $256^2$ Nyquist patch).
-Naive assembly of~\eqref{eq:I} is $O(\Nap^2)$: this is why FO is
-slow compared with a CTF FFT of cost $O(N\log N)$~\cite{Yu2017,Yu2019}.
+\subsection*{4. Gerchberg--Saxton / HIO / IWFR}
+Iterate modulus constraints between planes linked by a propagator.
+Cost $O(T K N\log N)$ with $T\sim 10$--$10^3$ iterations.
+Under partial coherence the intensity constraint is the quadratic set
+of~\eqref{eq:I}; the metric projector onto that set \emph{is} a
+Gauss--Newton step.
+Naive modulus replacement is the coherent CTF model and is biased
+when $\Gamma_C\Gamma_S\neq 1$ off axis~\cite{Yu2017}.
+Either incorrect, or a slower undamped rewrite of method~5.
 
-\begin{definition}[Bessel modes of a 1D ripple]
-\label{def:M}
-For $\psi(x)=\exp(\ii\varphi\sin(2\pi x/\Lambda))$ the Jacobi--Anger
-theorem (Lean: \texttt{jacobi\_anger}) gives
-\begin{equation}
-\label{eq:JA}
-\psi(x)=\sum_{n\in\Z}J_n(\varphi)\,\ee^{2\pi\ii n x/\Lambda},
-\qquad
-q_n=n/\Lambda.
-\end{equation}
-The aperture keeps only
-\begin{equation}
-\label{eq:M}
-M
-:=2n_{\mathrm{ap}}+1,
-\qquad
-n_{\mathrm{ap}}=\bigl\lfloor\min(\qap\Lambda,\,n_\ast(\varphi))\bigr\rfloor,
-\end{equation}
-where $n_\ast(\varphi)\simeq\abs{\varphi}+2\abs{\varphi}^{1/3}$ is the
-Olver turning point of $J_n(\varphi)$ (practically $\abs{\varphi}+3$).
-Bessel decay, not the pixel grid, sets $M$ once $\qap\Lambda>\abs{\varphi}$.
-\end{definition}
+\subsection*{5. Nonlinear least squares / Gauss--Newton on bilinear FO}
+Minimize $\sum_k\norm{I_{\mathrm{FO}}(\psi;\Dz_k)-I_k^{\mathrm{obs}}}^2$.
+Each residual is a difference-frequency accumulation of the TCC,
+$O(K\Nap^2+KN\log N)$ per iteration, $T\sim 5$--$20$ if initialized
+by method~3.
+This is the inverse of the kernel Yu actually uses, and the right
+estimator for strong-phase objects.
+It is not Fourier-diagonal about a generic background
+(\texttt{ihat\_add}), so it is not $O(KN\log N)$.
 
-Kinematic amplitude $\varphi=4\pi A/\lambda_0$ is large for ordinary
-LEEM topography: $A=0.2\,\mathrm{nm}$ already gives $\varphi\simeq 6.5$;
-a $1\,\mathrm{nm}$ wrinkle gives $\varphi\simeq 32$.
-Typical counts:
+\section{Verdict}
+\label{sec:verdict}
 
 \begin{center}
 \small
-\begin{tabular}{@{}lcccc@{}}
+\begin{tabular}{@{}lccc@{}}
 \toprule
-Object & $\Lambda$ & $\varphi$ & $M$ & $\Nap$ (1D, $L=2\,\mu\mathrm{m}$) \\
+Method & Cost & Fills CTF zeros & FO-faithful for $\phi\not\ll 1$ \\
 \midrule
-thermal graphene ripple & $10\,\mathrm{nm}$ & $\sim 2$ & $\sim 11$ & $\sim 2\times 10^3$ \\
-LEEM wrinkle / Yu test sinusoid & $100$--$500\,\mathrm{nm}$ & $10$--$10^2$ & $10^2$--$10^3$ & $\sim 2\times 10^3$ \\
-general 1D topography & --- & --- & $\Nap$ & $\sim 2\times 10^3$ \\
-general 2D topography, $256^2$ & --- & --- & $\Nap$ & $\Nap\sim 5\times 10^4$ \\
+1. Single-image Wiener & $O(N\log N)$ & no & no \\
+2. TIE & $O(N\log N)$ & n/a (wrong PDE) & no \\
+\textbf{3. Multi-defocus Tikhonov} & $\boldsymbol{O(KN\log N)}$ & \textbf{yes} ($K\ge 2$) & linearized only \\
+4. GS / HIO & $O(TKN\log N)$ & if $K\ge 2$ & only if the projector is FO \\
+5. Gauss--Newton on FO & $O(TK\Nap^2)$ & yes & \textbf{yes} \\
+Jacobi--Anger LS (1D sinusoid) & $O(M^2)$ & n/a (parametric) & \textbf{yes} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-The Yu sinusoidal object therefore lives in a subspace of dimension
-$M\sim 10$--$10^3$, not $\Nap$ and not the pixel count $N$.
+\paragraph{Fastest usable method for a general 2D experimental stack.}
+Method~3: multi-defocus Fourier-diagonal Tikhonov on the CTF slice.
+It is the cheapest algorithm that (i)~reads all $KN$ Fourier samples,
+(ii)~fills interior CTF zeros of $\sin(2\pi\chi_S)$ by stacking defoci,
+and (iii)~has a unique minimizer for every $\alpha>0$.
+Any method that uses the whole stack is $\Omega(KN)$ after the FFTs;
+dense bilinear apply is $\Theta(KN^2)$ and is already strictly slower
+at $N=128$ (Lean: \texttt{reconstructCost\_lt\_dense\_128}).
 
-\section{Four candidates}
+\paragraph{Best FO-faithful method.}
+Method~3 as initializer, then a few damped Gauss--Newton steps on
+method~5 (method~D / MAL~\cite{Coene1996} if aberrations are unknown).
+Skip Gauss--Newton when the FO residual of method~3 is at the noise
+floor --- equivalently $\max\abs{\phi}\lesssim 0.3$ at typical LEEM SNR,
+i.e.\ topography $A\lesssim 0.01\,\mathrm{nm}$ at $E_0=10\,\mathrm{eV}$.
 
-\subsection*{A. Nonlinear Gauss--Newton on bilinear FO}
+\paragraph{Fastest still-correct method for Yu's sinusoid.}
+Jacobi--Anger fitting of $\varphi$ on $M=2\lfloor\qap\Lambda\rfloor+1$
+modes, \cref{sec:bessel}.
+This is method~5 restricted to a one-parameter manifold, cost
+$O(M^2)$ with $M\ll\Nap$.
 
-Unknown: the aperture spectrum $\boldsymbol{\Psi}$ (or a real phase $\phi(\mathbf{r})$
-of length $\Nap$). Residual $I_{\mathrm{FO}}(\boldsymbol{\Psi})-I_{\mathrm{obs}}$.
-Each iteration evaluates~\eqref{eq:I} in $O(\Nap^2)$ (fill the
-difference-frequency histogram, then one FFT) and applies the adjoint
-of the bilinear map. A damped Gauss--Newton / Levenberg--Marquardt step
-with inner CG costs
+\section{Stage 1: the discrete algorithm}
+\label{sec:algo}
+
+\begin{enumerate}[leftmargin=*,itemsep=0.35em]
+\item Align the stack $I_k(\mathbf{r})$ (rigid shift; not formalized).
+\item Discrete Fourier transform each plane,
+$\hat I_k=\mathrm{DFT}[I_k-\langle I_k\rangle]$ (mean subtracted so
+the DC bin is handled separately: $\RFO(0,0)=1$ recovers total flux).
+\item For every frequency $\mathbf{q}$ with $\abs{\mathbf{q}}\le\qap$
+and every defocus $k$,
+$h_k(\mathbf{q})=\RFO(\mathbf{q},0,\Dz_k)$
+from the closed-form envelopes already proved in this library.
+\item Scalar (or $2\times 2$ conjugate-pair) Tikhonov~\eqref{eq:xhat}
+with $\alpha>0$.
+\item Set $\hat X(\mathbf{q})=0$ for $\abs{\mathbf{q}}>\qap$.
+\item Inverse DFT $\hat\psi=\mathrm{iDFT}[\hat X]$, then
+$\sigma=\abs{\hat\psi}$, $\phi=\arg(\hat\psi)$ in the vacuum gauge
+$\hat X(\mathbf{0})$ real and positive.
+\end{enumerate}
+
+\paragraph{Units.}
+$\RFO$ uses column wavelength $\lambda$ (after $U_a$), not $\lambda_0$.
+Object phase uses $\lambda_0$: $\phi=4\pi A/\lambda_0$ for a topographic
+height $A$ in reflection.
+
+\paragraph{Defocus sign.}
+This library uses $+\tfrac12\Dz\lambda q^2$ in $\chi_S$.
+Experimental lens current must be mapped onto that convention by one
+fitted affine transform; mixing the Yu GitHub minus-sign convention
+reverses overfocus and underfocus.
+
+\section{Error}
+\label{sec:error}
+
+All statements below are finite-dimensional, with defocus index in a
+finite type $\kappa$ (in Lean: any \texttt{Fintype}).
+Noise $n_k$ is a deterministic discrepancy (linearization remainder $+$
+instrument noise $+$ discretization), not a random variable.
+
+\begin{theorem}[Unique minimizer]
+\label{thm:unique}
+For $\alpha>0$ the energy
+$J(x)=\sum_k\norm{h_k x-y_k}^2+\alpha\norm{x}^2$
+has a unique global minimizer~\eqref{eq:xhat}.
+Completing the square:
+$J(x)=J(\hat x)+D\norm{x-\hat x}^2$ with $D=\alpha+\sum\abs{h_k}^2>0$.
+\end{theorem}
+Lean: \texttt{tikhonovJ\_min}, \texttt{tikhonov\_unique},
+\texttt{tikhonovJ\_eq\_shift}.
+The same identity gives uniqueness at $\alpha=0$ whenever
+$\sum\abs{h_k}^2>0$.
+
+\begin{theorem}[Bias--noise identity]
+\label{thm:error}
+If $y_k=h_k x^\star+n_k$ and $D\neq 0$, then
 \begin{equation}
-O\bigl(k\,n_{\mathrm{CG}}\,\Nap^2\bigr)
+\hat x-x^\star
+=
+\frac{\sum_k\overline{h_k}\,n_k-\alpha x^\star}{D}.
+\end{equation}
+\end{theorem}
+Lean: \texttt{tikhonov\_error}.
+Taking $\mathbb{E}[n]=0$ is informal (no probability space).
+
+\begin{theorem}[Triangle bound, sharp]
+\label{thm:bound}
+If $\alpha\ge 0$ and $D>0$,
+\begin{equation}
+\abs{\hat x-x^\star}
+\le
+\frac{\sum_k\abs{h_k}\,\abs{n_k}+\alpha\,\abs{x^\star}}{D}.
+\end{equation}
+Equality holds for one measurement, $h=n=1$, $x^\star=-1$, $\alpha=1$.
+\end{theorem}
+Lean: \texttt{tikhonov\_error\_bound},
+\texttt{tikhonov\_error\_bound\_sharp}.
+
+\begin{theorem}[Quadratic remainder of bilinear FO]
+\label{thm:quad}
+With vacuum spectrum $1_{\mathbf{q}=\mathbf{0}}$ and increment $\delta$,
+\begin{equation}
+\hat I(\mathrm{vac}+\delta)
+=
+\hat I(\mathrm{vac})
++DI_{\mathrm{vac}}[\delta]
++\hat I(\delta),
+\end{equation}
+where $DI_{\mathrm{vac}}[\delta](\xi)=\RFO(\xi,0)\,\delta(\xi)+\RFO(0,-\xi)\,\overline{\delta(-\xi)}$
+and $\abs{\hat I(\delta)(\xi)}\le\bigl(\sum\abs{\RFO}\bigr)\bigl(\sum\abs{\delta}\bigr)^2$.
+\end{theorem}
+Lean: \texttt{ihat\_add}, \texttt{ihatJac\_vacuum},
+\texttt{ihat\_quadratic\_remainder}, \texttt{ihat\_bound}.
+The dropped term is exactly bilinear: linearized inversion is biased by
+$O(\norm{\delta}^2)$, which is the whole image for a strong-phase
+sinusoid~\cite{Yu2017}.
+
+\begin{theorem}[Interior CTF zeros of a NAC column]
+\label{thm:ctfzero}
+$\sin(2\pi\chi_S)=0$ whenever $2\chi_S\in\Z$.
+For $C_3=C_5=0$, $\Dz\neq 0$, and a large enough aperture, there exists
+nonzero $q$ inside the disk with that vanishing
+(\texttt{exists\_interior\_weakPhase\_zero}).
+A single defocus is therefore blind at those rings; $K\ge 2$ with
+incommensurate $\Dz$ typically fills them.
+\end{theorem}
+
+The $2\times 2$ Gram determinant of the vacuum Jacobian is positive for
+$\alpha>0$ (\texttt{gramDet\_pos}), so the conjugate-pair normal
+equations are invertible even though one measurement is not
+(\cref{sec:problem}).
+
+\section{Complexity}
+\label{sec:cost}
+
+No FFT existence theorem is claimed.
+The cost model (Lean: \texttt{dftCost}, \texttt{reconstructCost}) is
+\begin{equation}
+\texttt{dftCost}(N):=N\log_2 N,
 \qquad
-(k\sim 5\text{--}20\text{ outer iterations if the linear init is in basin}).
+\texttt{reconstructCost}(K,N)
+=(K+1)\,N\log_2 N+N(8K+4).
 \end{equation}
-Initialized by linearized CTF this is \emph{locally} the correct
-maximum-likelihood estimator for Gaussian noise and known optics.
-It is not globally unique from a single defocus (CTF zeros; bilinear
-phase retrieval). For a sinusoid it is correct but spends $\Nap^2/M^2$
-useless work on empty Fourier bins.
+The $8K+4$ term is a scalar (or $2\times 2$) Gram/right-hand side.
 
-\subsection*{B. Jacobi--Anger discrete-mode fitting}
+\begin{theorem}[Modelled cost]
+\label{thm:cost}
+For $K\ge 1$ and $N\ge 2$,
+$\texttt{reconstructCost}(K,N)\le 14\,K\,N\log_2 N$.
+At $N=128$ this is strictly cheaper than a dense bilinear apply
+$KN^2$, for every $K\ge 1$.
+\end{theorem}
+Lean: \texttt{reconstructCost\_le},
+\texttt{reconstructCost\_lt\_dense\_128}.
+The constant $14$ is attained in the model at $K=1$, $N=2$.
 
-Substitute~\eqref{eq:JA} into~\eqref{eq:I} and drop modes with
-$\abs{n}>\qap\Lambda$:
+\paragraph{Wall-clock order of magnitude.}
+For $n=512$ ($N=n^2\approx 2.6\times 10^5$), $K=21$:
+about $22$ two-dimensional FFTs plus $O(KN)$ arithmetic ---
+milliseconds to a few tens of milliseconds on a laptop.
+Gauss--Newton at $\Nap\sim 4\times 10^3$ is $\sim 16\times 10^6$ pair
+evaluations per residual per defocus: seconds, not milliseconds.
+Gerchberg--Saxton at $T=100$ is two orders of magnitude above stage~1
+and does not improve the FO model.
+
+\section{Stage 2 and the 1D sinusoid}
+\label{sec:bessel}
+
+Kinematic LEEM phase on reflection is $\varphi=4\pi A/\lambda_0$.
+At $E_0=10\,\mathrm{eV}$, $\lambda_0\simeq 0.39\,\mathrm{nm}$, so
+$A=0.1\,\mathrm{nm}$ already gives $\varphi\sim 3$: not weak.
+Jacobi--Anger (Lean: \texttt{jacobi\_anger})
 \begin{equation}
-\label{eq:I-modes}
-I(x)
-=\sum_{n,m=-n_{\mathrm{ap}}}^{n_{\mathrm{ap}}}
-J_n(\varphi)\,J_m(\varphi)\,
-\RFO(q_n,q_m,\Dz)\,
-\ee^{2\pi\ii(q_n-q_m)x}.
+\ee^{\ii\varphi\sin(2\pi x/\Lambda)}
+=\sum_{n\in\Z}J_n(\varphi)\,\ee^{2\pi\ii n x/\Lambda}
 \end{equation}
+places intensity on off-axis pairs $(n,m)$ where $\Gamma_C\Gamma_S\neq 1$.
+That is why CTF matching fails for rippled graphene~\cite{Yu2017} and
+why stage~1 is biased.
+
 If the object is known to be a single sinusoid, the unknown is
-$(\varphi,x_0,\sigma)$ --- three real numbers --- or even $\varphi$
-alone once the period $\Lambda$ is read from the fundamental peak.
-Each residual costs $O(M^2)$, independently of $N$ after the
-$2n_{\mathrm{ap}}$ measured harmonics of $I$ have been extracted
-($O(N\log N)$ once).
-
-Unconstrained $\{c_n\}$ with $c_n=J_n(\varphi)$ \emph{not} imposed
-is a bilinear phase-retrieval problem of size $M$ and is the wrong
-encoding: the physics is a one-parameter Bessel curve, not $M$ free
-complex amplitudes. Least squares \emph{on} $J_n(\varphi)$ means the
-parametric map $\varphi\mapsto (J_n(\varphi))_n$.
-
-Sign of $\varphi$: $J_n(-\varphi)=(-1)^n J_n(\varphi)$, so odd
-intensity harmonics flip with $\mathrm{sign}(\varphi)$. Convex versus
-concave ripples are identifiable. Local uniqueness fails only at
-isolated Bessel extrema, which a 1D line search on $\varphi$ skips.
-
-This is exact for the object class that makes linearized CTF fail in
-Yu~\emph{et al.}~\cite{Yu2017,Yu2019}, and it is already half-formalized
-(\texttt{jacobi\_anger}, \texttt{besselJ\_bound}).
-
-\subsection*{C. Gerchberg--Saxton with an FO projector}
-
-Classical GS replaces moduli in two planes linked by a unitary FFT.
-Under partial coherence, $I$ is \emph{not} $\abs{\psi_{\mathrm{img}}}^2$
-of a single coherent wave: the correct intensity constraint is the
-quadratic set $\{\psi:\text{\eqref{eq:I}}=I_{\mathrm{obs}}\}$.
-The metric projector onto that set \emph{is} a Gauss--Newton step on
-the FO residual. So a correctly specified ``GS+FO projector'' is A
-with worse globalization (stagnation, no damping, no Gauss--Newton
-Hessian). A na\"ive modulus-replacement projector is the coherent CTF
-model and is biased precisely when $\Gamma_C\Gamma_S\neq 1$ off axis.
-GS is therefore either incorrect or a slower, less stable rewrite of A.
-It is a poor Lean target: no uniqueness theorem, no closed residual.
-
-\subsection*{D. Phase diversity / MAL}
-
-Phase diversity~\cite{Paxman1992} jointly estimates object and
-aberrations from $\Nf$ known-diversity images.
-MAL~\cite{Coene1996} (Coene--Thust maximum-likelihood, typically
-initialized by the paraboloid method PAM) is Gauss--Newton on the
-\emph{stacked} FO residual of a focal series.
-Cost
+$(\varphi,x_0)$ (period $\Lambda$ is read from the fundamental of $I$).
+The aperture keeps
 \begin{equation}
-O\bigl(\Nf\,k\,n_{\mathrm{CG}}\,\Nap^2\bigr).
+M=2n_{\mathrm{ap}}+1,
+\qquad
+n_{\mathrm{ap}}=\bigl\lfloor \qap\Lambda\bigr\rfloor
 \end{equation}
-Statistically efficient, fills CTF zeros, and is the right estimator
-when $\chi$ is unknown. When optics are known and the object is a
-1D sinusoid, extra defoci are unused degrees of freedom: one
-non-zero CTF sample at $q=1/\Lambda$ already identifies $\varphi$
-in~\eqref{eq:I-modes}. D is A with more data, not a faster inverse.
+modes (Lean: \texttt{nAperture}, \texttt{card\_modeSet}).
+The FO image is a double sum of $M^2$ terms
+(\texttt{sinusoidalFOImage}, \texttt{card\_modePairs}).
+Least squares on $\varphi$ with analytic Jacobian
+$J_n'=\tfrac12(J_{n-1}-J_{n+1})$ is $O(k M^2)$, $k\sim 5$--$20$.
+Dropped modes obey the $O(1/n^2)$ bound already proved
+(\texttt{besselJ\_bound}, \texttt{besselJ\_outside\_modeSet}).
 
-\section{Verdict: fastest still-correct}
+This reduction does \emph{not} apply to a general 2D micrograph:
+there is no Bessel ladder.
+Then stage~2 is Gauss--Newton in the aperture basis, initialized by
+stage~1.
+
+\paragraph{Skip test.}
+Compute the FO residual of the stage~1 reconstruction.
+If $r_1^2/\sigma^2$ is consistent with noise, quadratic products are
+undetectable and stage~2 cannot help.
+Do not skip merely because $\Gamma_C\Gamma_S\approx 1$ on the axes:
+the linear inverse never saw off-axis envelopes.
+
+\section{What is proved, and what is not}
+\label{sec:lean}
 
 \begin{center}
-\renewcommand{\arraystretch}{1.15}
 \small
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.28\textwidth}
-  >{\raggedright\arraybackslash}p{0.28\textwidth}
-  >{\raggedright\arraybackslash}p{0.36\textwidth}@{}}
+\begin{tabular}{@{}ll@{}}
 \toprule
-Class & Fastest correct & Why the others lose \\
+Claim & Lean \\
 \midrule
-1D periodic ripple
-  $\mathrm{e}^{\ii\varphi\sin(kx)}$
-  & \textbf{B} (Jacobi--Anger LS)
-  & A is the same residual on a wasteful pixel basis;
-    C is A or is misspecified;
-    D multiplies the cost by $\Nf$ for no new unknown. \\
-1D general $\phi(x)$
-  & A on $\Nap^{\mathrm{1D}}$ samples,
-    or B' (Fourier series of $\phi$ with $P\ll\Nap$ harmonics)
-  & still $M\sim 2P n_\ast\ll\Nap$ if $\phi$ is smooth. \\
-2D general $\phi(x,y)$
-  & \textbf{A}, linear CTF init;
-    D only if aberrations unknown or a single defocus
-    sits on a CTF zero
-  & B does not apply (no discrete Bessel ladder);
-    C as above. \\
+Tikhonov unique min, closed form & \texttt{LeemFO/Tikhonov.lean} \\
+Bias--noise identity and sharp triangle bound & same \\
+$O(KN\log N)$ cost model vs dense $KN^2$ & \texttt{reconstructCost\_*} \\
+Aperture support of $\RFO(\cdot,0)$ & \texttt{LeemFO/LinearInverse.lean} \\
+Gauge, vacuum Jacobian, quadratic remainder & same \\
+$K=1$ not injective; NAC CTF zeros & same \\
+Mode count $M=2\lfloor\qap\Lambda\rfloor+1$ & \texttt{LeemFO/Inverse.lean} \\
+Jacobi--Anger and Bessel decay & \texttt{LeemFO/PhaseObject.lean} \\
+\midrule
+FFT exists / equals the continuum FT & informal \\
+Gaussian/Poisson noise, Cram\'er--Rao & informal \\
+GN local quadratic convergence & informal \\
+Image alignment, current-to-defocus map & informal \\
+``Fastest among all conceivable algorithms'' & only DFT vs dense bilinear \\
 \bottomrule
 \end{tabular}
 \end{center}
-
-\noindent\textit{Pick for the Lean/PDF formalization of Yu's sinusoid:}
-\textbf{B}, with linearized CTF as the cheap initializer (stage~1)
-and with A recorded as the 2D generalisation.
-
-\section{Two-stage method}
-
-\paragraph{Stage 1 (always).}
-Linear CTF / Wiener inversion on the $q'=0$ slice, cost $O(N\log N)$
-or $O(n_{\mathrm{ap}})$ after extracting harmonics.
-For a sinusoid: read $\Lambda$ from the fundamental of $I$, divide the
-complex amplitude at $q=1/\Lambda$ by $\RFO(q,0,\Dz)$
-(equals $\RCTF(q,0,\Dz)$), obtain an apparent amplitude $\varphi_{\mathrm{lin}}$.
-This $\varphi_{\mathrm{lin}}$ tracks $2J_1(\varphi)$ rather than $\varphi$
-(standard weak-phase bias). Compute the FO residual
-$r_1=\norm{I_{\mathrm{FO}}(\varphi_{\mathrm{lin}})-I_{\mathrm{obs}}}$.
-
-\paragraph{Stage 2 (1D periodic).}
-Scalar (or 3-parameter) Gauss--Newton / golden-section search on
-\eqref{eq:I-modes}:
-\begin{equation}
-\min_{\varphi,x_0}
-\sum_{x}
-\Bigl\lvert
-I_{\mathrm{obs}}(x)
--I_{\mathrm{FO}}\bigl(\{J_n(\varphi)\}\bigr)
-\Bigr\rvert^2.
-\end{equation}
-Jacobian in $\varphi$ is analytic:
-$J_n'(\varphi)=\tfrac12(J_{n-1}(\varphi)-J_{n+1}(\varphi))$.
-Cost $O(k M^2)$ with $k\sim 5$--$20$. This is A \emph{restricted to the
-Jacobi--Anger manifold}, which is why it stays correct and becomes cheap.
-
-\paragraph{Stage 2 (2D general).}
-A few damped Gauss--Newton iterations on~\eqref{eq:I} in the pixel
-(or aperture) basis, initialized by stage~1. Optional: CTF Jacobian
-with FO residual (inexact GN). Use D / a focal series only if
-stage~1 hits a CTF zero or $\chi$ is part of the unknown.
-
-\paragraph{When stage 2 is unnecessary.}
-The linear term of~\eqref{eq:I} lives on the axes, where
-$\RFO=\RCTF$. Quadratic (and higher) Bessel products are the whole
-bias. Skip stage~2 when they sit below noise:
-
-\begin{enumerate}[leftmargin=*,itemsep=0.35em]
-\item \textbf{Weak phase.}
-$\max\abs{\varphi}\lesssim 0.3$
-(i.e.\ $A\lesssim 0.01\,\mathrm{nm}$ at $E_0=10\,\mathrm{eV}$).
-Then $J_1(\varphi)=\varphi/2+O(\varphi^3)$ and
-$\abs{J_2/J_1}\simeq\abs{\varphi}/4\lesssim 0.08$.
-\item \textbf{Aperture already kills higher orders, and $\varphi$ is still
-moderate.}
-If $\qap\Lambda<2$ then $M=3$ ($n=0,\pm 1$). The remaining nonlinearity
-is $J_0(\varphi)\approx 1-\varphi^2/4$ and $J_1(\varphi)\approx\varphi/2$.
-Skip only if that $\varphi^2$ error is below noise, not merely because
-$M=3$.
-\item \textbf{$\chi^2$ test on the FO residual of stage~1.}
-If $r_1^2/\sigma^2$ is consistent with the noise model, the quadratic
-terms are undetectable; stage~2 cannot improve the estimate.
-This is the operational skip, and it covers ``$\Gamma_C\Gamma_S\approx 1$
-on populated pairs'' automatically: those pairs only enter at quadratic
-order.
-\end{enumerate}
-
-Do \emph{not} skip stage~2 merely because $\Gamma_C\Gamma_S\approx 1$.
-On the axes $\Gamma=1$ always; the linear inverse never saw the
-off-axis envelopes. Strong-phase bias is a property of $J_n(\varphi)$,
-not of partial coherence. Partial coherence changes the \emph{weights}
-$\RFO(q_n,q_m)$ in~\eqref{eq:I-modes} and so must sit in the
-\emph{forward} model of stage~2, but it does not by itself decide
-whether stage~2 is needed.
-
-\section{What to encode in Lean (and what not)}
-
-Formalize the \emph{forward identity} of B and the linearization
-bias; do not formalize GS iterates or a MAL driver.
-
-\begin{enumerate}[leftmargin=*,itemsep=0.35em]
-\item Discrete spectrum of $\mathrm{e}^{\ii\varphi\sin(kx)}$
-(corollary of \texttt{jacobi\_anger}): support on $q_n=n/\Lambda$.
-\item Aperture section: $M=2\lfloor\qap\Lambda\rfloor+1$ modes;
-Bessel tail $\sum_{\abs{n}>N}\abs{J_n(\varphi)}\le 2(\abs{\varphi}+\varphi^2)/N$
-from \texttt{besselJ\_bound}.
-\item Finite bilinear image~\eqref{eq:I-modes} as a double sum of
-length $M^2$ (complexity theorem: \texttt{card\_modePairs}).
-\item Linearization: the Fr\'echet derivative of~\eqref{eq:I} at
-$\varphi=0$ is the axis operator $\RCTF=\RFO(\,\cdot\,,0)$
-(reuse \texttt{R\_FO\_eq\_R\_CTF\_axis}).
-\item Stage-2 skip: if $\sum_{\abs{n}\ge 2}\abs{J_n(\varphi)}^2<\varepsilon$
-then the linear inverse's relative error is $O(\varepsilon+\varphi^2)$.
-\end{enumerate}
-
-Items C and D are algorithms, not identities. A in 2D is local
-convergence of Gauss--Newton on a bilinear map --- true, but it does
-not use any LEEM-specific theorem beyond~\eqref{eq:I}. The
-LEEM-specific, already half-written content is B.
 
 \section{Conclusion}
+\label{sec:end}
 
-For the object that the FO/CTF papers actually use to exhibit
-linearization failure --- 1D sinusoidal / strong-phase ripples ---
-the fastest still-correct inverse is Jacobi--Anger discrete-mode
-fitting (B), not pixel Gauss--Newton, not GS, not MAL.
-Cost $O(M^2)$ with $M=2\lfloor\min(\qap\Lambda,\abs{\varphi}+3)\rfloor+1$,
-versus $O(\Nap^2)$ for A and $O(\Nf\Nap^2)$ for D.
-For 2D general objects B does not apply; use linearized CTF
-initialization plus a few Gauss--Newton steps on bilinear FO (A),
-and invoke phase diversity / MAL only when the optics are unknown
-or a single defocus is CTF-blind.
-Stage~2 of the two-stage pipeline is unnecessary when the FO residual
-of the linear reconstruction is at the noise floor, equivalently when
-$\max\abs{\varphi}\lesssim 0.3$ for typical LEEM SNR.
+For a 2D experimental LEEM focal series the fastest method that still
+reconstructs a scientifically usable object --- filling CTF zeros,
+using the FO/CTF slice already formalized in this repository, with a
+proved unique regularized inverse and a proved error identity --- is
+\textbf{multi-defocus Fourier-diagonal Tikhonov} (Schiske/Wiener,
+$O(KN\log N)$).
+That is stage~1.
+Stage~2, Gauss--Newton on bilinear FO, is the FO-faithful refinement
+for strong-phase topography and is unnecessary when the stage~1 FO
+residual is at the noise floor.
+For the 1D sinusoid that Yu~\emph{et al.}\ use to exhibit CTF failure,
+stage~2 collapses to Jacobi--Anger fitting and is then the fastest
+still-correct inverse of all.
+
+This is the inverse of the forward model in~\cite{Yu2019}, not a
+replacement for it: Yu forward-matches; Duden inverts linearly;
+the two-stage pipeline does both, with Lean certificates for the
+linear stage.
 
 \begin{thebibliography}{9}
 \bibitem{Yu2019}
 K.~M. Yu, K.~L.~W. Lau, M.~S. Altman,
-\emph{Fourier optics of image formation in aberration-corrected LEEM},
 Ultramicroscopy \textbf{200} (2019) 160--168.
 
 \bibitem{Yu2017}
 K.~M. Yu, A. Locatelli, M.~S. Altman,
-\emph{Comparing Fourier optics and contrast transfer function modeling
-of image formation in low energy electron microscopy},
 Ultramicroscopy \textbf{183} (2017) 109--116.
 
 \bibitem{Schramm2012}
 S.~M. Schramm, A.~B. Pang, M.~S. Altman, R.~M. Tromp,
 Ultramicroscopy \textbf{115} (2012) 88--108.
 
-\bibitem{Paxman1992}
-R.~G. Paxman, T.~J. Schulz, J.~R. Fienup,
-J.~Opt.\ Soc.\ Am.\ A \textbf{9} (1992) 1072--1085.
+\bibitem{Duden2014}
+T.~Duden, A.~Thust, C.~Kumpf, F.~S. Tautz,
+Microsc.\ Microanal.\ \textbf{20} (2014) 968--973.
 
 \bibitem{Coene1996}
-W.~M.~J. Coene, A. Thust, M. Op de Beeck, D. Van Dyck,
+W.~M.~J. Coene, A.~Thust, M.~Op de Beeck, D.~Van Dyck,
 Ultramicroscopy \textbf{64} (1996) 109--135.
+
+\bibitem{Teague1983}
+M.~R. Teague,
+J.\ Opt.\ Soc.\ Am.\ \textbf{73} (1983) 1434--1441.
+
+\bibitem{Paganin}
+D.~Paganin and K.~A. Nugent,
+Phys.\ Rev.\ Lett.\ \textbf{80} (1998) 2586--2589.
+
+\bibitem{Schiske1968}
+P.~Schiske,
+in \emph{Image Processing and Computer-Aided Design in Electron Optics},
+ed.\ P.~W. Hawkes (Academic Press, 1973); originally 1968.
 \end{thebibliography}
 
 \end{document}
