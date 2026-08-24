@@ -46,3 +46,9 @@ latexmk -pdf leemfo_proofs.tex
 | `LeemFO/CTF.lean` | \(q'=0\) recovery and hermiticity |
 | `LeemFO/Ratios.lean` | \(\Gamma_C,\Gamma_S\) |
 | `LeemFO/PhaseObject.lean` | Jacobi–Anger for \(\mathrm{e}^{\mathrm{i}\varphi\sin\theta}\) |
+| `LeemFO/Inverse.lean` | Aperture mode count \(M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1\) for discrete-mode inversion |
+
+Written recommendation of the fastest still-correct inverse (Jacobi–Anger
+fitting for 1D ripples; Gauss–Newton FO for 2D general objects):
+[docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
+([source](docs/proofs/leemfo_inverse.tex)).

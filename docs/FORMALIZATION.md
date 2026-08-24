@@ -987,6 +987,8 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | polar \(E_{CC}\) (Eq. (6b)) | Thm. | `ecc_polar`, `ecc_eq_polar` (\(y=4\pi b_2\sigma_E^2\)), `ecc_norm`, `arg_one_sub_I`. Combined A2 amplitude/phase \(A,\theta\) of \(E_{C,\mathrm{tot}}\) is not a separate definition. |
 | Jacobi–Anger | Thm. | `jacobi_anger`, `jacobi_anger_on_Ioc`, `besselJ` |
 | \(\varphi=4\pi A/\lambda_0\) | Def. | kinematics, outside FO |
+| Aperture modes \(M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1\) | Thm. | `nAperture`, `modeSet`, `card_modeSet`, `card_modePairs`, `mode_in_aperture` |
+| Discrete bilinear FO image | Def. | `discreteFOImage`, `besselCoeffs`, `sinusoidalFOImage` |
 
 ### 19.1 Module map
 
@@ -1000,6 +1002,9 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | `LeemFO/CTF.lean` | `q'=0` slice, `R0_hermitian`, `R_FO` vs `R_CTF` |
 | `LeemFO/Ratios.lean` | \(\Gamma_C,\Gamma_S\) identities |
 | `LeemFO/PhaseObject.lean` | Jacobi–Anger (no `LeemFO.Basic` import) |
+| `LeemFO/Inverse.lean` | Aperture-truncated Bessel modes for the discrete inverse (`nAperture`, `modeSet`, `sinusoidalFOImage`) |
+
+**Inverse (see [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf)).** Linearized CTF inversion is the Fréchet derivative of bilinear FO on the \(q'=0\) axis and is biased for \(\varphi=4\pi A/\lambda_0\not\ll 1\). The fastest still-correct inverse for the paper's 1D sinusoid is least squares on \(\{J_n(\varphi)\}_{|n|\le\lfloor q_{\mathrm{ap}}\Lambda\rfloor}\) (Jacobi–Anger discrete-mode fitting), cost \(O(M^2)\) with \(M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1\). For general 2D objects use Gauss–Newton on bilinear FO initialized by the linear CTF; Gerchberg–Saxton is either misspecified under partial coherence or a slower rewrite of Gauss–Newton; MAL/phase diversity is Gauss–Newton stacked over extra defoci and is needed only when aberrations are unknown or a single defocus sits on a CTF zero. Stage 2 of the two-stage pipeline may be skipped when the FO residual of the linear reconstruction is at the noise floor (\(\max|\varphi|\lesssim 0.3\) at typical SNR).
 
 **Do not encode from OCR of the two-column PDF.** Encode from the boxed formulae and from A1 integrals.
 
