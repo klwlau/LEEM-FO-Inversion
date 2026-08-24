@@ -1,0 +1,6 @@
+/.lake
+*.olean
+*.ilean
+*.trace
+/lake-packages
+/Ultramicroscopy_200_160_(2019).pdf
