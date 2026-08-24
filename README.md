@@ -47,6 +47,11 @@ latexmk -pdf leemfo_proofs.tex
 | `LeemFO/Ratios.lean` | \(\Gamma_C,\Gamma_S\) |
 | `LeemFO/PhaseObject.lean` | Jacobi–Anger for \(\mathrm{e}^{\mathrm{i}\varphi\sin\theta}\) |
 | `LeemFO/Inverse.lean` | Aperture mode count \(M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1\) for discrete-mode inversion |
+| `LeemFO/Tikhonov.lean` | Fourier-bin Tikhonov: unique min, bias–noise identity, \(O(KN\log N)\) cost model |
+| `LeemFO/LinearInverse.lean` | Aperture support of \(R_{\mathrm{FO}}(\cdot,0)\), gauge, vacuum Jacobian remainder, \(K\ge 2\) |
+
+Linearized multi-defocus Fourier-diagonal inverse (theorem list):
+[docs/LINEAR_INVERSE.md](docs/LINEAR_INVERSE.md).
 
 Written recommendation of the fastest still-correct inverse (Jacobi–Anger
 fitting for 1D ripples; Gauss–Newton FO for 2D general objects):
