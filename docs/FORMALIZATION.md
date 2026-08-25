@@ -1,6 +1,6 @@
 # Formalization source: Yu, Lau, Altman, Ultramicroscopy 200 (2019) 160–168
 
-Closed-form envelopes of the FO kernel (journal-style note):
+Lean encoding of the Yu 2019 FO envelopes (journal-style note):
 [proofs/leemfo_proofs.pdf](proofs/leemfo_proofs.pdf)
 ([TeX source](proofs/leemfo_proofs.tex)).
 

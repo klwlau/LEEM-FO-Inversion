@@ -17,7 +17,7 @@
   linkcolor=blue!50!black,
   citecolor=blue!50!black,
   urlcolor=blue!50!black,
-  pdftitle={Closed-form envelopes of the Fourier-optics kernel in aberration-corrected LEEM},
+  pdftitle={A Lean 4 encoding of the Fourier-optics envelope identities in aberration-corrected LEEM},
   pdfauthor={Wilson Lau}
 }
 
@@ -54,7 +54,7 @@
 \newcommand{\RCTF}{R_{\mathrm{CTF}}}
 \newcommand{\Rzero}{R_{0}}
 
-\title{Closed-form envelopes of the Fourier-optics kernel\\
+\title{A Lean~4 encoding of the Fourier-optics envelope identities\\
 in aberration-corrected LEEM}
 \author{Wilson Lau}
 \date{25 August 2026}
@@ -63,25 +63,24 @@ in aberration-corrected LEEM}
 \maketitle
 
 \begin{abstract}
-We present closed-form spatial and chromatic envelopes of the
-Fourier-optics (FO) kernel for image formation in aberration-corrected
-low-energy electron microscopy (ac-LEEM), following Yu, Lau and
-Altman~\cite{Yu2019}.
+We encode in Lean~4 the closed-form spatial and chromatic envelopes of
+the Fourier-optics (FO) kernel for image formation in
+aberration-corrected low-energy electron microscopy (ac-LEEM), as
+derived by Yu, Lau and Altman~\cite{Yu2019}.
 That work reduced the partially coherent ensemble integrals to
-Gaussian envelopes and compared FO with the contrast-transfer function
-(CTF); the closed forms were stated, not derived.
-After the first-order tilt, frozen-aperture and mixed tilt--energy
-truncations of their Eqs.~(3)--(4), the remaining Gaussian integrals
-are identities: they yield the spatial envelope, the chromatic
-envelopes including the polar form of the chromatic prefactor, the
-FO/CTF ratios, and the Jacobi--Anger expansion of a sinusoidal phase
-object.
-The formulae are machine-checked in Lean~4 against that kernel and
-are the forward map inverted in the companion
+Gaussian envelopes, compared FO with the contrast-transfer function
+(CTF), and evaluated the remaining integrals in an appendix after the
+first-order tilt, frozen-aperture and mixed tilt--energy truncations
+of their Eqs.~(3)--(4).
+Those identities---the spatial envelope, the chromatic envelopes
+including the polar form of the chromatic prefactor, the FO/CTF
+ratios, and the Jacobi--Anger expansion of a sinusoidal phase
+object---are recorded here as the specification of the Lean modules
+and machine-checked against Mathlib.
+They are the forward map inverted in the companion
 reconstruction~\cite{Lau2026inverse}.
-This work places FO/CTF disagreement on identities of the same kernel
-used to predict a focal series and to recover the object that produced
-it.
+This work supplies a machine-checked encoding of that kernel, not new
+FO identities.
 \end{abstract}
 
 \section{Introduction}
@@ -112,20 +111,20 @@ an integral of a coherent kernel against a Gaussian source density and
 a Gaussian energy density, extending Pang~\emph{et al.}~\cite{Pang2009}
 to aberration-corrected columns ($C_5$, $C_{CC}$, $C_{3C}$ in place of
 $C_3$, $C_C$).
-Closed-form envelopes---their Eq.~(5), Eqs.~(6a)--(6b), the polar form
-of the chromatic prefactor, and the FO/CTF ratios $\Gamma_S$ and
-$\Gamma_C$---are stated in an appendix.
-They enter every FO intensity used to interpret a focal series, and
-they are the forward kernel of the companion through-focal
+Appendix~A1--A2 of that work already evaluate the Gaussian source and
+energy integrals: their Eq.~(5), Eqs.~(6a)--(6b), the polar form of
+the chromatic prefactor, and the FO/CTF ratios $\Gamma_S$ and
+$\Gamma_C$.
+Those identities enter every FO intensity used to interpret a focal
+series, and they are the forward kernel of the companion through-focal
 inversion~\cite{Lau2026inverse}.
-They were not derived.
-Here those integrals are evaluated.
-After the truncations of paper Eqs.~(3)--(4) they are identities;
-the truncations themselves are modelling hypotheses.
-Selected identities are machine-checked in Lean~4~\cite{deMoura2021,mathlib2020}
-against that kernel (\cref{app:formal}).
-Experimental claims and the numerical accuracy of Table~1
-in~\cite{Yu2019} are not claimed.
+This note records them as the specification of the Lean modules
+and machine-checks them against Mathlib~\cite{deMoura2021,mathlib2020}
+(\cref{app:formal}).
+The truncations of paper Eqs.~(3)--(4) remain modelling hypotheses of
+\cite{Yu2019}, not Lean theorems.
+No new FO identities are claimed, nor are experimental claims or the
+numerical accuracy of Table~1 in~\cite{Yu2019}.
 
 \section{Image formation}
 \label{sec:formation}
@@ -218,7 +217,7 @@ The coherent kernel is paper Eq.~(2)~\cite{Yu2019},
 \,W_S(\mathbf{q},\Dz)\,W_S^*(\mathbf{q}',\Dz)
 \,W_C(\mathbf{q},\varepsilon)\,W_C^*(\mathbf{q}',\varepsilon),
 \end{equation}
-and the ensemble-averaged kernel is paper Eq.~(1),
+and the ensemble-averaged kernel is paper Eq.~(1)~\cite{Yu2019},
 \begin{equation}
 \label{eq:R}
 R(\mathbf{q},\mathbf{q}',\Dz)
@@ -278,7 +277,7 @@ under nac, $C_{CC}=C_{3C}=0$, so $b_2=0$.
 \begin{approximation}[First-order tilt, no mixed $k\varepsilon$]
 \label{approx:taylor}
 Expand the path functions to first order in $\mathbf{k}$ and drop mixed
-tilt--energy terms (paper Eq.~(3)):
+tilt--energy terms (paper Eq.~(3)~\cite{Yu2019}):
 \begin{equation}
 \label{eq:paper3}
 \chi_S(\mathbf{q}+\mathbf{k},\Dz)+\chi_C(\mathbf{q}+\mathbf{k},\varepsilon)
@@ -339,7 +338,8 @@ and the two-dimensional source factors, so
 \end{equation}
 (\cref{lem:cgaussian,thm:char}).
 If $\qill>0$ and $\kappa=\pi^2\qill^2/(4\ln 2)$, the FWHM conversion
-$\sill^2=\qill^2/(8\ln 2)$ rewrites~\eqref{eq:char2d} as paper Eq.~(5),
+$\sill^2=\qill^2/(8\ln 2)$ rewrites~\eqref{eq:char2d} as Eq.~(5)
+of~\cite{Yu2019},
 \begin{equation}
 \label{eq:paper5}
 \EStot(\mathbf{q},\mathbf{q}',\Dz)
@@ -398,8 +398,8 @@ If $\sE>0$ then $\ReOp(B)=-1/(2\sE^2)<0$, independently of $b_2$:
 Gaussian decay comes only from the real energy density.
 Writing $z:=1-4\pi\ii b_2\sE^2$ one has $\ReOp(z)=1>0$ and
 $B=-z/(2\sE^2)$.
-Evaluating~\cref{lem:cgaussian} on the principal branch
-(\cref{thm:EC}) produces paper Eqs.~(6a)--(6b),
+The closed forms of~\cite[Eqs.~(6a)--(6b)]{Yu2019} follow from
+\cref{lem:cgaussian} on the principal branch (\cref{thm:EC}),
 \begin{equation}
 \label{eq:paper6b}
 \ECC(\mathbf{q},\mathbf{q}')
@@ -446,7 +446,7 @@ $\ECC=(1-\ii y)^{-1/2}$.
 For $y\in\R$, $\abs{1-\ii y}=\sqrt{1+y^2}$ and
 $\Arg(1-\ii y)=-\arctan y$: the real part is identically $1$, so the
 argument never jumps.
-On the principal branch,
+On the principal branch, Appendix~A2 of~\cite{Yu2019} writes
 \begin{equation}
 \label{eq:ECC-polar}
 (1-\ii y)^{-1/2}
@@ -487,7 +487,7 @@ exponential:
 \end{aligned}
 \end{equation}
 Writing $\ECtot=A\ee^{\ii\theta}$ with $A\ge 0$, moduli multiply and
-arguments add:
+arguments add, which is the polar decomposition of~\cite{Yu2019}:
 \begin{equation}
 \label{eq:A-theta}
 \begin{aligned}
@@ -536,7 +536,7 @@ In the polar form of~\cref{sec:polar},
 Let $\mathbf{u}=\nabla\chi_S(\mathbf{q},\Dz)$ and
 $\mathbf{v}=\nabla\chi_S(\mathbf{q}',\Dz)$.
 Then $\EStot=\ee^{-\kappa\abs{\mathbf{u}-\mathbf{v}}^2}$ and the
-quadratic terms cancel, leaving
+quadratic terms cancel, leaving the identity of~\cite{Yu2019}
 \begin{equation}
 \label{eq:gammaS}
 \Gamma_S=\exp(-2\kappa\,\mathbf{u}\cdot\mathbf{v}).
@@ -580,7 +580,7 @@ where the last two chromatic factors are not conjugated, matching
 printed~(7a).
 Neither envelope vanishes ($\EStot$ is an exponential;
 $\ECC=z^{-1/2}$ with $\ReOp(z)=1$), so multiplying~\eqref{eq:RFO} by
-\eqref{eq:paper7} yields the comparison identity
+\eqref{eq:paper7} yields the comparison identity of~\cite{Yu2019}
 \begin{equation}
 \label{eq:R-gamma}
 \RCTF=\RFO\,\Gamma_C\,\Gamma_S.
@@ -617,7 +617,7 @@ J_n(\varphi)
 \int_{(0,2\pi]}
 \exp(\ii\varphi\sin\theta)\,\ee^{-\ii n\theta}\,\dd\theta,
 \end{equation}
-and Jacobi--Anger supplies the expansion
+and Jacobi--Anger~\cite{Yu2017,Yu2019} supplies the expansion
 \begin{equation}
 \label{eq:jacobi}
 \exp(\ii\varphi\sin\theta)
@@ -637,33 +637,36 @@ companion reconstruction~\cite{Lau2026inverse}.
 \section{Conclusions}
 \label{sec:end}
 
-We evaluate the closed-form spatial and chromatic envelopes of the FO
-kernel of Yu, Lau and Altman~\cite{Yu2019}.
+We encode in Lean~4 the closed-form spatial and chromatic envelopes
+derived by Yu, Lau and Altman~\cite{Yu2019}.
 After the truncations of their Eqs.~(3)--(4) those envelopes are
-identities: the spatial envelope is the characteristic function of a
-Gaussian source, and the chromatic envelopes follow from a complex
-Gaussian integral, including the polar form of the chromatic
+identities of that paper: the spatial envelope is the characteristic
+function of a Gaussian source, and the chromatic envelopes follow from
+a complex Gaussian integral, including the polar form of the chromatic
 prefactor.
-The comparison $\RCTF=\RFO\,\Gamma_C\Gamma_S$ isolates the off-axis
-pairs at which FO and CTF disagree; the two agree on the axes, at
-perfect coherence, and for weak-phase objects that sample those axes.
+The comparison $\RCTF=\RFO\,\Gamma_C\Gamma_S$ of~\cite{Yu2019}
+isolates the off-axis pairs at which FO and CTF disagree; the two
+agree on the axes, at perfect coherence, and for weak-phase objects
+that sample those axes.
 Jacobi--Anger places a sinusoidal object on the frequency ladder where
 that distinction matters.
-These identities are the forward kernel inverted in the companion
-through-focal reconstruction, with selected claims machine-checked in
-Lean~4 against that kernel.
-FO/CTF disagreement is therefore an identity of the same kernel used
-to predict a focal series and to recover the object that produced it.
+This work machine-checks those identities against Mathlib and supplies
+the same kernel to the companion through-focal reconstruction; it does
+not derive them.
+FO/CTF disagreement is therefore encoded as an identity of the kernel
+used to predict a focal series and to recover the object that produced
+it.
 
 \appendix
 \section{Formal claims}
 \label{app:formal}
 
-The statements below are the analytic identities used in the main
-text.
+The statements below are the identities of Yu, Lau and
+Altman~\cite{Yu2019} encoded in Lean; the analytic content is that of
+their Appendix~A1--A2, not of this note.
 \Cref{approx:aperture,approx:taylor} are not theorems: the working
 kernel $\RFO$ is defined as the factorised expression after those
-truncations.
+truncations of~\cite{Yu2019}.
 Wavelength is the field \texttt{lam} (Lean reserves $\lambda$).
 No experimental claim or Table~1 numerical accuracy is asserted.
 
@@ -678,7 +681,7 @@ Let $B,C,D\in\C$ with $\ReOp(B)<0$. Then
 \end{equation}
 using the principal square root.
 \end{lemma}
-\begin{proof}
+\begin{proof}[Lean argument, following~\cite{Yu2019}, A1]
 Complete the square:
 $Bx^2+Cx+D=B\bigl(x+C/(2B)\bigr)^2+D-C^2/(4B)$.
 The hypothesis $\ReOp(B)<0$ gives Gaussian decay in a neighbourhood of
@@ -696,7 +699,7 @@ If $f(\pm\Delta/2)=\tfrac12 f(0)$, then
 $\Delta=2\sqrt{2\ln 2}\,\sigma$ and
 $\sigma^2=\Delta^2/(8\ln 2)$.
 \end{lemma}
-\begin{proof}
+\begin{proof}[Lean argument]
 $f(0)=1$, so $\exp\bigl(-(\Delta/2)^2/(2\sigma^2)\bigr)=1/2$.
 Taking $-\log$ yields $\Delta^2/(8\sigma^2)=\ln 2$.
 \end{proof}
@@ -707,7 +710,7 @@ For $\sigma>0$ and $a\in\R$,
 \eqref{eq:char1d} holds; for $\mathbf{a}\in\R^2$,
 \eqref{eq:char2d} holds with $s$ as in~\eqref{eq:cs}.
 \end{theorem}
-\begin{proof}
+\begin{proof}[Lean argument, following~\cite{Yu2019}, A1]
 The one-dimensional integrand is a constant times $\exp(Bk^2+Ck)$ with
 $B=-1/(2\sigma^2)$ and $C=2\pi\ii a$.
 \Cref{lem:cgaussian} cancels the Gaussian normalisation (positive
@@ -733,12 +736,10 @@ $+1$.
 If $\sE>0$, then~\eqref{eq:paper6b}--\eqref{eq:paper6a} hold on the
 principal branch.
 \end{theorem}
-\begin{proof}
-\Cref{lem:cgaussian} produces the prefactor
-$(1/(\sE\sqrt{2\pi}))(\pi/(-B))^{1/2}$.
-Then $\pi/(-B)=2\pi\sE^2/z$.
-\Cref{lem:sqrt-div} cancels the Gaussian normalisation, leaving
-$z^{-1/2}=\ECC$.
+\begin{proof}[Lean argument, following~\cite{Yu2019}, A1]
+\Cref{lem:cgaussian} supplies the Gaussian-integral prefactor, which
+cancels against the normalisation of $c$ once $\pi/(-B)=2\pi\sE^2/z$
+and~\cref{lem:sqrt-div} are used, leaving $z^{-1/2}=\ECC$.
 At $b_2=0$, $z=1$ and $1^{-1/2}=1$ (not $-1$).
 The exponent is $-C^2/(4B)$ with $C=2\pi\ii b_1$, hence
 $C^2=-4\pi^2 b_1^2$ and $-C^2/(4B)=-2\pi^2\sE^2 b_1^2/z$.
@@ -751,7 +752,7 @@ Since $\ECC^2=z^{-1}$ this is $-2\pi^2\sE^2 b_1^2\,\ECC^2$.
 For all real $\varphi,\theta$, \eqref{eq:jacobi} converges absolutely
 and uniformly on $\R$.
 \end{theorem}
-\begin{proof}
+\begin{proof}[Lean argument, following~\cite{Yu2019}, \S3.2]
 The map $\theta\mapsto\exp(\ii\varphi\sin\theta)$ is continuous,
 $2\pi$-periodic and unimodular; its second derivative is bounded by
 $\abs{\varphi}+\varphi^2$.
@@ -765,7 +766,7 @@ real $\theta$.
 \end{proof}
 
 \paragraph{Lean correspondence.}
-The identities above are encoded without $\mathtt{sorry}$ in this
+The identities of~\cite{Yu2019} are encoded without $\mathtt{sorry}$ in this
 repository, using Mathlib's Gaussian and complex-power lemmas.
 
 \begin{center}

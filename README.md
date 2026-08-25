@@ -8,9 +8,9 @@ wave $\psi_0=\sigma\mathrm{e}^{\mathrm{i}\phi}$ using the Fourier-optics
 > *Fourier optics of image formation in aberration-corrected LEEM*,
 > Ultramicroscopy **200** (2019) 160–168.
 
-The forward kernel is first encoded in Lean 4 and its appendix
-identities are proved; the discrete inverse is then stated and
-machine-checked against that same kernel. The project does **not**
+The forward kernel of Yu *et al.* (2019) is encoded in Lean 4 and
+machine-checked; the discrete inverse is then stated against that
+same kernel. The project does **not**
 prove experimental claims or simulation runtimes.
 
 ## 1. Forward model
@@ -25,7 +25,7 @@ expansion of a sinusoidal phase object.
 Equation-by-equation mapping:
 [docs/FORMALIZATION.md](docs/FORMALIZATION.md).
 
-Closed-form envelopes of the FO kernel (journal-style note):
+Lean encoding of the Yu 2019 FO envelopes (journal-style note):
 [docs/proofs/leemfo_proofs.pdf](docs/proofs/leemfo_proofs.pdf)
 ([source](docs/proofs/leemfo_proofs.tex)).
 
