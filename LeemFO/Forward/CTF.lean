@@ -3,11 +3,11 @@ Copyright (c) 2026 The leem-fo-proof authors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wilson
 -/
-import LeemFO.Basic
-import LeemFO.Gaussian
-import LeemFO.Aberration
-import LeemFO.EnvelopeSpatial
-import LeemFO.EnvelopeChromatic
+import LeemFO.Forward.Basic
+import LeemFO.Forward.Gaussian
+import LeemFO.Forward.Aberration
+import LeemFO.Forward.EnvelopeSpatial
+import LeemFO.Forward.EnvelopeChromatic
 
 /-!
 # CTF as the FO envelopes at `q' = 0`, and hermiticity of `R₀`

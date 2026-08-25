@@ -18,7 +18,7 @@ machine-checks every proof.
 - `lake exe cache get` — download prebuilt Mathlib `.olean`s. The startup update script
   already runs this. **Always run it before building**; skipping it forces a from-source
   Mathlib compile that takes hours instead of seconds.
-- `lake build` — machine-checks all 11 `LeemFO/*` modules (~20s with a warm cache). This
+- `lake build` — machine-checks the `LeemFO/Forward/*` and `LeemFO/Inverse/*` modules (~20s with a warm cache). This
   is simultaneously the build, the test, and the lint (Mathlib linters run via
   `weak.linter.mathlibStandardSet` in `lakefile.toml`).
 - There is no separate unit-test suite. To confirm proofs are genuine, scan for

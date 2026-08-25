@@ -3,9 +3,9 @@ Copyright (c) 2026 The leem-fo-proof authors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wilson
 -/
-import LeemFO.Basic
-import LeemFO.Gaussian
-import LeemFO.Aberration
+import LeemFO.Forward.Basic
+import LeemFO.Forward.Gaussian
+import LeemFO.Forward.Aberration
 import Mathlib.Analysis.SpecialFunctions.Complex.Arg
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
 import Mathlib.Analysis.SpecialFunctions.Pow.Complex

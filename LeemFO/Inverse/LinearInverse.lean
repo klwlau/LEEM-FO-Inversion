@@ -3,9 +3,9 @@ Copyright (c) 2026 The leem-fo-proof authors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wilson
 -/
-import LeemFO.CTF
-import LeemFO.Ratios
-import LeemFO.Tikhonov
+import LeemFO.Forward.CTF
+import LeemFO.Forward.Ratios
+import LeemFO.Inverse.Tikhonov
 import Mathlib.Algebra.BigOperators.Ring.Finset
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Tactic.Linarith

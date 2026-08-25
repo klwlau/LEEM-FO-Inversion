@@ -3,7 +3,7 @@ Copyright (c) 2026 The leem-fo-proof authors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wilson
 -/
-import LeemFO.Basic
+import LeemFO.Forward.Basic
 import Mathlib.Analysis.Calculus.Deriv.Pow
 import Mathlib.Analysis.Calculus.Deriv.Add
 import Mathlib.Analysis.Calculus.Deriv.Mul
