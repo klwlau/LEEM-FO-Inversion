@@ -1,0 +1,215 @@
+% Pasteable draft for two tutorial sections.
+% Light markup only: sectioning, enumerate, math. No Lean syntax.
+% Cite keys: deMoura2021, mathlib2020, Avigad2014 (Avigad--Harrison).
+% Intended audience: materials scientists who have never heard of Lean.
+
+\section{What Lean is and why it is here}
+\label{sec:what-lean-is}
+
+A proof assistant is a computer program that checks a mathematical
+argument the way a compiler checks types: every inference must follow
+from stated definitions and previously accepted lemmas, or the file is
+rejected.
+Lean~4 is such a system~\cite{deMoura2021}.
+Its companion library Mathlib is a large, continuously checked corpus
+of algebra, analysis, and special functions~\cite{mathlib2020}.
+Together they let us write the Fourier-optics identities of Yu, Lau and
+Altman~\cite{Yu2019} so that the hypotheses cannot silently drift.
+That is a different activity from writing a Python script.
+A script evaluates numbers: it can plot a through-focal series, invert
+a matrix, or report a residual.
+It does not, by itself, certify that the kernel on the screen is the
+kernel in the paper, that the regularized inverse is the unique
+minimizer of the energy we wrote down, or that an error bound is sharp
+rather than a lucky numerical observation.
+Surveys of this distinction, and of why machine-checked proofs matter
+in scientific computing, are given by Avigad and
+Harrison~\cite{Avigad2014}.
+
+The LEEM inverse is exactly the setting in which that distinction
+bites.
+The published forward model is bilinear Fourier optics (FO): intensity
+is assembled from a kernel $R_{\mathrm{FO}}(\mathbf{q},\mathbf{q}',\Delta z)$
+that does not factor under partial coherence.
+A Python reconstruction that divides by a multiplicative
+contrast-transfer function (CTF) is therefore solving a different
+problem as soon as the object samples off-axis pairs
+$(\mathbf{q},\mathbf{q}')$.
+Even if one stays on the CTF slice $\mathbf{q}'=\mathbf{0}$, five
+conventions are easy to get wrong and hard to notice in a plot.
+The optics kernel uses the column wavelength $\lambda$ after
+acceleration; the kinematic object phase $\phi=4\pi A/\lambda_0$ uses
+the wavelength $\lambda_0$ at the sample.
+The wave aberration $\chi$ is in waves, so the transfer factor is
+$\mathrm{e}^{2\pi\mathrm{i}\chi}$, not $\mathrm{e}^{\mathrm{i}\chi}$ with
+$\chi$ already in radians.
+The CTF picture and the FO picture agree on the axes and disagree off
+them; using one as if it were the other is the error Yu and
+coworkers documented for rippled graphene.
+Defocus has a sign: this work takes
+$+\tfrac12\Delta z\,\lambda q^2$ in $\chi_S$, so that positive
+$\Delta z$ adds optical path for off-axis rays; mixing a minus-sign
+convention reverses overfocus and underfocus without changing a single
+plot label.
+
+What, then, does it mean to say that a ``numerical proof is good''?
+It does not mean that a reconstruction looks plausible, or that a
+residual is small on one dataset.
+It means three things that a script can illustrate but cannot settle.
+First, the regularized estimator is unique: for every frequency bin and
+every Tikhonov parameter $\alpha>0$ there is exactly one minimizer,
+given by a closed formula.
+Second, the error of that estimator is an identity, not a fitted slope:
+the difference between the estimate and the true bin amplitude is
+exactly a projected discrepancy minus a bias term, over a positive
+denominator.
+Third, the method has physical blind spots that no amount of
+regularization removes---modes outside the contrast aperture are
+identically invisible; a global phase of the exit wave never appears
+in the intensity; a single defocus cannot identify a general complex
+object; and the weak-phase CTF has zeros inside a large enough
+aperture.
+Those are the claims Lean is here to lock down.
+The numerical method remains the method; Lean is the certificate that
+we are running the method we think we are running.
+
+\section{What Lean certifies so the numerical method is trustworthy}
+\label{sec:what-lean-certifies}
+
+The discrete linear stage is trustworthy because the following
+statements have been checked, not because a reconstruction on one stack
+looked clean.
+They are listed in the order a microscopist meets them.
+
+\begin{enumerate}
+\item
+  \textbf{Same forward model $R_{\mathrm{FO}}$ and CTF slice.}
+  The reconstruction uses the bilinear kernel of Yu~\emph{et al.}
+  and the same CTF slice: $R_{\mathrm{FO}}$ and $R_{\mathrm{CTF}}$
+  coincide when one frequency argument is zero.
+  Stage~1 inverts that slice, not a substitute propagator.
+
+\item
+  \textbf{Unique regularized minimizer per frequency bin.}
+  After a discrete Fourier transform, each spatial frequency decouples.
+  For $\alpha>0$ the Tikhonov energy has a unique global minimizer,
+  given in closed form by a weighted inner product of the measurements
+  against the slice multipliers, divided by $\alpha$ plus the sum of
+  their squared moduli.
+  No other regularized solution exists for that energy.
+
+\item
+  \textbf{Exact error formula.}
+  If the data equal the linear model plus a discrepancy $n$
+  (instrument noise, discretization, and the quadratic FO remainder
+  lumped together), the estimation error is exactly
+  $\bigl(\sum_k \overline{h_k}\,n_k-\alpha x^\star\bigr)/D$ with
+  $D=\alpha+\sum_k\lvert h_k\rvert^2$.
+  This is an algebraic identity.
+  It is not a statistical noise theorem: $n$ need not be random,
+  Gaussian, or zero-mean.
+
+\item
+  \textbf{Triangle bound, sharp.}
+  The modulus of that error is at most
+  $\bigl(\sum_k \lvert h_k\rvert\,\lvert n_k\rvert
+  +\alpha\lvert x^\star\rvert\bigr)/D$.
+  The constant one in front of the bound cannot be improved uniformly;
+  equality is attained on an explicit one-measurement example.
+
+\item
+  \textbf{Physical limits (aperture, gauge, $K=1$, CTF zeros).}
+  Frequencies outside the contrast aperture have vanishing slice
+  multipliers at every defocus, so those bins reconstruct as zero.
+  Intensity is unchanged if the exit wave is multiplied by a global
+  phase; the linear inverse around vacuum therefore chooses a gauge
+  rather than recovering an absolute phase.
+  One image never identifies a general complex pair
+  $\bigl(X(\mathbf{q}),X(-\mathbf{q})\bigr)$.
+  The weak-phase factor $\sin(2\pi\chi_S)$ vanishes on rings inside a
+  large enough aperture of a defocused, non-aberration-corrected
+  column; those holes are why one stacks at least two independent
+  defoci.
+
+\item
+  \textbf{The linear method is first-order; the quadratic remainder
+  licenses stage~2.}
+  The multi-defocus slice map is exactly the derivative of bilinear FO
+  at vacuum.
+  The neglected term is the FO image of the increment itself,
+  homogeneous of degree two.
+  When that remainder sits above the noise, Gauss--Newton on the full
+  bilinear residual is the consistent next step; when it does not,
+  stage~2 cannot help.
+
+\item
+  \textbf{Cost model, not a benchmark.}
+  Counting a modelled discrete Fourier transform as
+  $N\log_2 N$ operations and a per-bin Gram solve as a few tens of
+  arithmetic operations, the linear stage is $O(KN\log N)$ and,
+  already at a $128$-pixel grid, strictly cheaper than a dense
+  bilinear apply.
+  Existence of a fast Fourier transform, wall-clock times, and cache
+  behaviour are not proved.
+
+\item
+  \textbf{Explicitly not proved.}
+  Alignment of the experimental stack, the map from lens current to
+  $\Delta z$, equality of the array transform with the continuum
+  Fourier transform of the paper, Gaussian or Poisson statistics and
+  Cram\'er--Rao bounds, local quadratic convergence of nonlinear
+  Gauss--Newton, and any claim to be fastest among all conceivable
+  algorithms, remain informal.
+\end{enumerate}
+
+\paragraph{Stage~1 recipe.}
+\begin{enumerate}
+\item
+  Align the through-focal stack by rigid shifts; this is
+  preprocessing, not part of the certificate.
+\item
+  Subtract the spatial mean of each plane and take a discrete Fourier
+  transform, so that the zero-frequency bin, which carries total flux,
+  is handled separately.
+\item
+  For every frequency inside the aperture and every recorded defocus,
+  evaluate the closed-form slice
+  $h_k(\mathbf{q})=R_{\mathrm{FO}}(\mathbf{q},0,\Delta z_k)$ from the
+  Yu~2019 envelopes, using column $\lambda$, $\chi$ in waves, and the
+  $+\tfrac12\Delta z\,\lambda q^2$ sign.
+\item
+  Solve the scalar, or conjugate-pair $2\times 2$, Tikhonov problem at
+  that bin with a fixed $\alpha>0$, and set the reconstruction to zero
+  outside the aperture.
+\item
+  Inverse-transform the assembled spectrum and read amplitude and phase
+  in the vacuum gauge, with the zero-frequency component real and
+  positive.
+\item
+  Evaluate the bilinear FO residual of this reconstruction against the
+  stack: if it is consistent with the noise floor, stop, because the
+  quadratic remainder is undetectable; if not, the same residual
+  licenses a few Gauss--Newton steps on full FO (stage~2), or, for the
+  one-dimensional sinusoid of Yu~\emph{et al.}, a Jacobi--Anger fit of
+  the Bessel ladder.
+\end{enumerate}
+
+The discrete linear stage is recommended because, under the Yu~2019
+forward model, it is well-posed: unique for every $\alpha>0$, equipped
+with an exact error identity and a sharp bound, honest about aperture,
+gauge, single-image, and CTF-zero blindness, and first-order consistent
+with bilinear FO.
+Lean is the certificate of those statements.
+The numerical method is what one runs; the certificate is why one may
+trust that the method is the one the optics requires.
+
+% Suggested bibliography entries (author--year keys as requested):
+%
+% [deMoura2021] L. de Moura, S. Ullrich, The Lean 4 Theorem Prover and
+%   Programming Language, CADE 28, LNCS 12699 (2021) 625--635.
+% [mathlib2020] The mathlib Community, The Lean mathematical library,
+%   CPP 2020, ACM (2020) 367--381.
+% [Avigad2014] J. Avigad, J. Harrison, Formally verified mathematics,
+%   Commun. ACM 57 (4) (2014) 66--75.
+% [Yu2019] K. M. Yu, K. L. W. Lau, M. S. Altman, Ultramicroscopy 200
+%   (2019) 160--168.
