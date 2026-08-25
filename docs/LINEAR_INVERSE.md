@@ -1,7 +1,8 @@
 # Linearized multi-defocus FO/CTF inverse: theorem list
 
-Reader-facing inverse note (scientific journal style):
-[proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf).
+This is stage 2 of the project: after the Yu 2019 FO kernel is encoded,
+the discrete inverse is stated against that kernel.
+The inverse note is [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf).
 
 This is the Lean-ready statement list for the **Fourier-diagonal Tikhonov
 estimator** of the linearized FO/CTF slice (optionally one Gauss–Newton

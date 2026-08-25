@@ -1,22 +1,50 @@
-# Lean proofs of ac-LEEM Fourier optics
+# Through-focal inversion of LEEM Fourier optics
 
-Formalization of the extended Fourier Optics (FO) model in
+We invert a through-focal LEEM intensity series for the object exit
+wave \(\psi_0=\sigma\mathrm{e}^{\mathrm{i}\phi}\) using the Fourier-optics
+(FO) kernel of
 
 > K. M. Yu, K. L. W. Lau, M. S. Altman,
 > *Fourier optics of image formation in aberration-corrected LEEM*,
 > Ultramicroscopy **200** (2019) 160–168.
 
-This project encodes the proposed functions and proves the appendix
-derivations (Gaussian integrals → envelopes, CTF as the \(q'=0\) slice,
-perfect-coherence identities, Jacobi–Anger for the sinusoidal object).
-It does **not** prove experimental claims or simulation runtimes.
+The forward kernel is first encoded in Lean 4 and its appendix
+identities are proved; the discrete inverse is then stated and
+machine-checked against that same kernel. The project does **not**
+prove experimental claims or simulation runtimes.
 
-Equation-by-equation mapping: [docs/FORMALIZATION.md](docs/FORMALIZATION.md).
+## 1. Forward model
 
-Written proofs of the appendix identities (Gaussian envelopes, polar form,
-FO/CTF ratios, Jacobi–Anger), compiled from LaTeX:
+We encode the wave aberration \(\chi\) (in waves,
+\(W=\mathrm{e}^{2\pi\mathrm{i}\chi}\)), the coherent kernel \(R_0\), the
+spatial and chromatic envelopes \(E_S\) and \(E_{C,\mathrm{tot}}\), the
+identity that the contrast-transfer function is the slice
+\(R_{\mathrm{FO}}(\mathbf{q},0)=R_{\mathrm{CTF}}\), and the Jacobi–Anger
+expansion of a sinusoidal phase object.
+
+Equation-by-equation mapping:
+[docs/FORMALIZATION.md](docs/FORMALIZATION.md).
+
+Written proofs of the appendix identities:
 [docs/proofs/leemfo_proofs.pdf](docs/proofs/leemfo_proofs.pdf)
 ([source](docs/proofs/leemfo_proofs.tex)).
+
+## 2. Inverse
+
+Given a 2D through-focal stack we recover \(\psi_0\) in two stages:
+regularized multi-defocus inversion on the CTF slice (Schiske/Wiener),
+which fills CTF zeros; optional Gauss–Newton iteration on the full
+bilinear FO residual for strong-phase objects; Jacobi–Anger fitting
+for the 1D sinusoid of Yu *et al.* Selected algebraic claims for the
+discrete linear estimator (unique minimizer, bias–noise identity) are
+machine-checked in Lean 4.
+
+Inverse note:
+[docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
+([source](docs/proofs/leemfo_inverse.tex)).
+
+Theorem list:
+[docs/LINEAR_INVERSE.md](docs/LINEAR_INVERSE.md).
 
 ## Build
 
@@ -27,14 +55,17 @@ lake exe cache get   # download Mathlib oleans
 lake build
 ```
 
-To rebuild the proofs PDF (TeX Live with `latexmk`):
+To rebuild the PDFs (TeX Live with `latexmk`):
 
 ```bash
 cd docs/proofs
 latexmk -pdf leemfo_proofs.tex
+latexmk -pdf leemfo_inverse.tex
 ```
 
 ## Layout
+
+### Forward
 
 | File | Content |
 |---|---|
@@ -46,23 +77,11 @@ latexmk -pdf leemfo_proofs.tex
 | `LeemFO/CTF.lean` | \(q'=0\) recovery and hermiticity |
 | `LeemFO/Ratios.lean` | \(\Gamma_C,\Gamma_S\) |
 | `LeemFO/PhaseObject.lean` | Jacobi–Anger for \(\mathrm{e}^{\mathrm{i}\varphi\sin\theta}\) |
+
+### Inverse
+
+| File | Content |
+|---|---|
 | `LeemFO/Inverse.lean` | Aperture mode count \(M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1\) for discrete-mode inversion |
 | `LeemFO/Tikhonov.lean` | Fourier-bin Tikhonov: unique min, bias–noise identity, \(O(KN\log N)\) cost model |
 | `LeemFO/LinearInverse.lean` | Aperture support of \(R_{\mathrm{FO}}(\cdot,0)\), gauge, vacuum Jacobian remainder, \(K\ge 2\) |
-
-Linearized multi-defocus Fourier-diagonal inverse (theorem list):
-[docs/LINEAR_INVERSE.md](docs/LINEAR_INVERSE.md).
-
-Journal-style inverse note (2D experimental focal series → object):
-multi-defocus regularized inversion (Schiske/Wiener) is the fastest method
-that still fills CTF zeros; optional Gauss–Newton on bilinear FO for
-strong phase; Jacobi–Anger fitting is the 1D-sinusoid special case.
-Selected algebraic claims for the discrete linear estimator are
-machine-checked in Lean 4.
-[docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
-([source](docs/proofs/leemfo_inverse.tex)).
-
-```bash
-cd docs/proofs
-latexmk -pdf leemfo_inverse.tex
-```
