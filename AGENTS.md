@@ -29,3 +29,8 @@ machine-checks every proof.
 ### Docs / PDFs
 - Rebuilding the PDFs in `docs/proofs/` needs TeX Live with `latexmk` (not installed by
   default and not required for proof checking). See `README.md` for those commands.
+- GitHub Markdown math: inline formulas use dollar-backtick delimiters so `_`
+  is not parsed as emphasis, e.g. `` $`E_{C,\mathrm{tot}}`$ ``. Display formulas
+  use fenced `math` blocks. Do not wrap LaTeX in ordinary backticks (that shows
+  the source). Keep Lean identifiers in backticks. In math, write absolute values
+  as `\lvert...\rvert` so GFM tables do not split on `|`.
