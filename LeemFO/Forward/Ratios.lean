@@ -129,16 +129,6 @@ theorem gammaS_axis_q (q' Δz : ℝ) : p.gammaS 0 q' Δz = 1 := by
     one_mul, div_self]
   exact Complex.exp_ne_zero _
 
-/-- Axes: `q = 0` implies `Γ_C` has modulus 1 after swapping
-`b₁,b₂` signs; the printed product equals 1 on `q' = 0` (`gammaC_axis`). -/
-lemma b1_swap (q q' : ℝ) : p.b1 q q' = -p.b1 q' q := by
-  simp [b1]
-  ring
-
-lemma b2_swap (q q' : ℝ) : p.b2 q q' = -p.b2 q' q := by
-  simp [b2]
-  ring
-
 /-- Axes: `q = 0` implies `|Γ_C| = 1`. -/
 theorem gammaC_norm_axis_q (h : 0 < p.ΔE) (q' : ℝ) :
     ‖p.gammaC 0 q'‖ = 1 := by

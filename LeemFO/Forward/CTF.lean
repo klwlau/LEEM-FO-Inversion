@@ -118,4 +118,53 @@ theorem chromaticCTF_at_zero :
     p.chromaticCTF 0 = chromaticEnvelopeClosed p.sigmaE 0 0 := by
   simp [chromaticCTF, p.b1_zero_diag, p.b2_zero_diag]
 
+/-- Spatial envelope is real and symmetric, hence Hermitian. -/
+theorem spatialEnvelopeClosed_conj (q q' Δz : ℝ) :
+    conj (p.spatialEnvelopeClosed q q' Δz) = p.spatialEnvelopeClosed q' q Δz := by
+  rw [Complex.conj_eq_iff_im.mpr (p.spatialEnvelopeClosed_real q q' Δz),
+    p.spatialEnvelopeClosed_symm]
+
+/-- Closed-form chromatic envelope is Hermitian in `(b₁,b₂)` for `σ_E ≥ 0`. -/
+theorem chromaticEnvelopeClosed_conj {σ b1 b2 : ℝ} (hσ : 0 ≤ σ) :
+    conj (chromaticEnvelopeClosed σ b1 b2)
+      = chromaticEnvelopeClosed σ (-b1) (-b2) := by
+  by_cases h : 0 < σ
+  · exact (chromaticEnvelopeClosed_neg h).symm
+  · have h0 : σ = 0 := le_antisymm (le_of_not_gt h) hσ
+    subst h0
+    rw [chromaticEnvelopeClosed_of_sigma_zero, chromaticEnvelopeClosed_of_sigma_zero,
+      map_one]
+
+/-- Working FO kernel is Hermitian when `σ_E ≥ 0`. -/
+theorem R_FO_hermitian {q q' Δz : ℝ} (hσ : 0 ≤ p.sigmaE) :
+    conj (p.R_FO q q' Δz) = p.R_FO q' q Δz := by
+  unfold R_FO
+  rw [map_mul, map_mul, p.R0_hermitian, p.spatialEnvelopeClosed_conj,
+    chromaticEnvelopeClosed_conj hσ, p.b1_swap, p.b2_swap]
+  simp
+
+/-- The kernel vanishes unless both frequencies lie in the contrast aperture. -/
+theorem R_FO_eq_zero_of_outside {q q' Δz : ℝ}
+    (h : p.qAp < |q| ∨ p.qAp < |q'|) : p.R_FO q q' Δz = 0 := by
+  unfold R_FO
+  rcases h with hq | hq'
+  · have : p.aperture q = 0 := p.aperture_of_gt hq
+    simp [R0, this]
+  · have : p.aperture q' = 0 := p.aperture_of_gt hq'
+    simp [R0, this]
+
+lemma waveS_zero (Δz : ℝ) : p.waveS 0 Δz = 1 := by
+  simp [waveS, chiS]
+
+/-- DC bin of the working kernel is `1` on a physical aperture. -/
+theorem R_FO_dc {Δz : ℝ} (h0 : 0 ≤ p.qAp) : p.R_FO 0 0 Δz = 1 := by
+  have hap : p.aperture 0 = 1 := p.aperture_of_le (by simpa using h0)
+  have hχ : p.spatialEnvelopeClosed 0 0 Δz = 1 := p.spatialEnvelopeClosed_diag 0 Δz
+  have hC : chromaticEnvelopeClosed p.sigmaE (p.b1 0 0) (p.b2 0 0) = 1 := by
+    rw [p.b1_zero_diag, p.b2_zero_diag, chromaticEnvelopeClosed_nac]
+    simp
+  unfold R_FO
+  rw [p.R0_at_zero_energy, hap, hχ, hC, p.waveS_zero]
+  simp
+
 end LEEM

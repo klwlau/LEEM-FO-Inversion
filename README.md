@@ -85,6 +85,7 @@ Forward proofs live in `LeemFO/Forward/`; inverse proofs live in `LeemFO/Inverse
 
 | File | Content |
 |---|---|
-| `LeemFO/Inverse/Modes.lean` | Aperture mode count $`M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1`$ for discrete-mode inversion |
-| `LeemFO/Inverse/Tikhonov.lean` | Fourier-bin Tikhonov: unique min, bias–noise identity, $`O(KN\log N)`$ cost model |
+| `LeemFO/Inverse/Modes.lean` | Aperture mode count $`M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1`$, `rFO` sampling, `sinusoidJ` |
+| `LeemFO/Inverse/Tikhonov.lean` | Fourier-bin Tikhonov: unique min, bias–noise identity, $`2\times 2`$ closed form, $`O(KN\log N)`$ cost model |
 | `LeemFO/Inverse/LinearInverse.lean` | Aperture support of $`R_{\mathrm{FO}}(\cdot,0)`$, gauge, vacuum Jacobian remainder, $`K\ge 2`$ |
+| `LeemFO/Inverse/Pipeline.lean` | Stage-1 map `stage1Scalar`/`stage1Pair`, vacuum GN glue, algebraic `stage2Skip` |
