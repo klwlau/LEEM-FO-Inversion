@@ -40,13 +40,17 @@ The working kernel is the already-encoded `R_FO` (CTF-slice identity
 ### T1. Unique minimizer (`α > 0`)
 
 **Statement.** For `α > 0` the energy
-$$
+
+```math
 J(x)=\sum_{k\in\kappa}\|h_k x-y_k\|^2+\alpha\|x\|^2
-$$
+```
+
 has a unique global minimizer
-$$
+
+```math
 \hat x=\frac{\sum_k \overline{h_k}\,y_k}{\alpha+\sum_k|h_k|^2}.
-$$
+```
+
 **Lean.** `tikhonovJ_min`, `tikhonov_unique`, closed form `tikhonovXhat`.
 Proof: completing the square (`tikhonovJ_eq_completed` / `tikhonovJ_eq_shift`). The same identity
 gives uniqueness at `α = 0` whenever `∑ |h_k|² > 0`
@@ -58,10 +62,12 @@ regularization yields a uniform unique-minimizer theorem for arbitrary `h`.
 ### T2. Bias–noise identity
 
 **Statement.** If $y_k = h_k x^\star + n_k$ and $D := \alpha+\sum|h_k|^2 \neq 0$, then
-$$
+
+```math
 \hat x-x^\star
 =\frac{\sum_k \overline{h_k}\,n_k-\alpha x^\star}{D}.
-$$
+```
+
 **Lean.** `tikhonov_error`.
 
 This is an algebraic identity. It is **not** a statistical noise theorem:
@@ -72,11 +78,13 @@ probability space, not used here).
 ### T3. Triangle bound
 
 **Statement.** If `α ≥ 0` and `D > 0`, then
-$$
+
+```math
 |\hat x-x^\star|
 \le
 \frac{\sum_k |h_k|\,|n_k|+\alpha\,|x^\star|}{D}.
-$$
+```
+
 **Lean.** `tikhonov_error_bound`.
 
 **Tightness.** Equality is attained (`tikhonov_error_bound_sharp`): one
@@ -102,9 +110,11 @@ aperture-blocked modes. It is **not** the same as a CTF *zero of
 ### T5. Gauge: $I(e^{i\theta}\psi)=I(\psi)$
 
 **Statement (spectrum).** For any bilinear kernel `R` and any real `θ`,
-$$
+
+```math
 \hat I\bigl(e^{iθ}Ψ\bigr)=\hat I(Ψ).
-$$
+```
+
 **Statement (real space).** `objectWave σ (φ+θ) = e^{iθ} objectWave σ φ`.
 
 **Lean.** `ihat_gauge`, `cexp_I_mul_conj`, `objectWave_phase_shift`.
@@ -116,24 +126,30 @@ background does **not** restore global-phase invariance of the unknown.
 ### T6. Quadratic remainder of bilinear FO vs vacuum linearization
 
 **Statement.** With vacuum spectrum `vacuum = 1_{q=0}` and increment `δ`,
-$$
+
+```math
 \hat I(\mathrm{vac}+δ)
 =
 \hat I(\mathrm{vac})
 + DI_{\mathrm{vac}}[δ]
 + \hat I(δ),
-$$
+```
+
 where
-$$
+
+```math
 DI_{\mathrm{vac}}[δ](ξ)
 = R(ξ,0)\,δ(ξ)+R(0,-ξ)\,\overline{δ(-ξ)}.
-$$
+```
+
 The dropped term is exactly bilinear in `δ`. In particular
-$$
+
+```math
 \bigl|\hat I(δ)(ξ)\bigr|
 \le
 \Bigl(\sum_{q,q'}|R(q,q')|\Bigr)\Bigl(\sum_q|δ(q)|\Bigr)^2.
-$$
+```
+
 **Lean.** `ihat_add`, `ihatJac_vacuum`, `ihat_quadratic_remainder`,
 `ihat_bound`.
 
@@ -150,13 +166,17 @@ generic `x_0` uses `ihatJac R x0`, which is **not** Fourier-diagonal.
 `dftCost N := N log₂ N` (modelled Cooley–Tukey cost) and
 `binSolveCost K := 8K+4` (Gram/right-hand side for a scalar or 2×2 solve).
 Then
-$$
+
+```math
 \texttt{reconstructCost}(K,N)=(K+1)\,N\log_2 N+N(8K+4).
-$$
+```
+
 For `K≥1`, `N≥2`,
-$$
+
+```math
 \texttt{reconstructCost}(K,N)\le 14\,K\,N\log_2 N.
-$$
+```
+
 At `N=128` this is already strictly cheaper than a dense bilinear apply
 `K N²`, for every `K≥1`.
 
