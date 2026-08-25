@@ -495,14 +495,14 @@ The constant $14$ is attained in the model at $K=1$, $N=2$.
 \toprule
 Claim & Lean \\
 \midrule
-Tikhonov unique min, closed form & \texttt{LeemFO/Tikhonov.lean} \\
+Tikhonov unique min, closed form & \texttt{LeemFO/Inverse/Tikhonov.lean} \\
 Bias--noise identity and sharp triangle bound & same \\
 Cost model versus dense $KN^2$ & \texttt{reconstructCost\_*} \\
-Aperture support of $\RFO(\cdot,0)$ & \texttt{LeemFO/LinearInverse.lean} \\
+Aperture support of $\RFO(\cdot,0)$ & \texttt{LeemFO/Inverse/LinearInverse.lean} \\
 Gauge, vacuum Jacobian, quadratic remainder & same \\
 $K=1$ not injective; pure-defocus CTF zeros & same \\
-Mode count $M=2\lfloor\qap\Lambda\rfloor+1$ & \texttt{LeemFO/Inverse.lean} \\
-Jacobi--Anger and Bessel decay & \texttt{LeemFO/PhaseObject.lean} \\
+Mode count $M=2\lfloor\qap\Lambda\rfloor+1$ & \texttt{LeemFO/Inverse/Modes.lean} \\
+Jacobi--Anger and Bessel decay & \texttt{LeemFO/Forward/PhaseObject.lean} \\
 \midrule
 FFT exists / equals the continuum FT & informal \\
 Gaussian/Poisson noise, Cram\'er--Rao & informal \\

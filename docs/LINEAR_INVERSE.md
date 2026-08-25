@@ -6,7 +6,7 @@ The inverse note is [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf).
 
 This is the Lean-ready statement list for the **Fourier-diagonal Tikhonov
 estimator** of the linearized FO/CTF slice (optionally one Gauss–Newton
-step). Encoding: `LeemFO/Tikhonov.lean`, `LeemFO/LinearInverse.lean`.
+step). Encoding: `LeemFO/Inverse/Tikhonov.lean`, `LeemFO/Inverse/LinearInverse.lean`.
 
 The object is finite-dimensional throughout. After a formal discrete Fourier
 transform, each spatial-frequency bin is a map `κ → ℂ` of defocus

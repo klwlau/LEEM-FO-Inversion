@@ -1024,7 +1024,7 @@ $$
 =\sum_{n\in\mathbb{Z}}J_n(\varphi)\,\mathrm{e}^{\mathrm{i}nkx}.
 $$
 
-**Lean** (`LeemFO/PhaseObject.lean`, does not import `LeemFO.Basic`): `phaseFun`, `phaseFun_periodic`, `besselJ` (Fourier coefficient of `phaseFun` on `(0,2\pi]`), `besselJ_bound`, `summable_besselJ`, `jacobi_anger_on_Ioc` (`HasSum` for $\theta\in(0,2\pi]$), `jacobi_anger` (all real $\theta$, via `toIocMod`).
+**Lean** (`LeemFO/Forward/PhaseObject.lean`, does not import `LeemFO.Forward.Basic`): `phaseFun`, `phaseFun_periodic`, `besselJ` (Fourier coefficient of `phaseFun` on `(0,2\pi]`), `besselJ_bound`, `summable_besselJ`, `jacobi_anger_on_Ioc` (`HasSum` for $\theta\in(0,2\pi]$), `jacobi_anger` (all real $\theta$, via `toIocMod`).
 
 **Corollary** (Fourier representation, this paper’s $2\pi$ convention).  
 $\mathrm{e}^{\mathrm{i}n k x}=\mathrm{e}^{2\pi\mathrm{i}\,(nk/(2\pi))\,x}$, so the object is a discrete spectrum at spatial frequencies
@@ -1068,7 +1068,7 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | Item | Status | Lean name |
 |---|---|---|
 | $\psi_0=\sigma\mathrm{e}^{\mathrm{i}\phi}$ | Def. | `LEEM.objectWave` |
-| $\mathbf{q}=\boldsymbol{\alpha}/\lambda$ | Def. | comments in `LeemFO/Basic.lean` |
+| $\mathbf{q}=\boldsymbol{\alpha}/\lambda$ | Def. | comments in `LeemFO/Forward/Basic.lean` |
 | FT pair with $\mathrm{e}^{\pm 2\pi\mathrm{i}\mathbf{q}\cdot\mathbf{r}}$ | Def. | image kernel convention only |
 | $M$ disk | Def. | `aperture`, `aperture_eq_zero_or_one` |
 | $M(\mathbf{q}+\mathbf{k})\approx M(\mathbf{q})$ | Approx. | not a theorem |
@@ -1111,17 +1111,17 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 
 | File | Role |
 |---|---|
-| `LeemFO/Basic.lean` | `LEEM`, `chiS`/`chiC`, `aperture`, `waveS`/`waveC`, `R0`, `b1`/`b2`/`aS`, nac/ac |
-| `LeemFO/Gaussian.lean` | FWHM, `charFun_source1D`, `charFun_source2D` |
-| `LeemFO/Aberration.lean` | `hasDerivAt_chiS`, `chiS_taylor`, `chiC_sub`, `hasGradientAt_chiS2` |
-| `LeemFO/EnvelopeSpatial.lean` | `spatialEnvelopeIntegral` = closed = FWHM |
-| `LeemFO/EnvelopeChromatic.lean` | quadratic-phase integral, `ecc`, polar form, `chromaticEnvelopeClosed_neg` |
-| `LeemFO/CTF.lean` | `q'=0` slice, `R0_hermitian`, `R_FO` vs `R_CTF` |
-| `LeemFO/Ratios.lean` | $\Gamma_C,\Gamma_S$ identities |
-| `LeemFO/PhaseObject.lean` | Jacobi–Anger (no `LeemFO.Basic` import) |
-| `LeemFO/Inverse.lean` | Aperture-truncated Bessel modes for the discrete inverse (`nAperture`, `modeSet`, `sinusoidalFOImage`) |
-| `LeemFO/Tikhonov.lean` | Scalar/2×2 Fourier-bin Tikhonov (`tikhonovJ`, `tikhonov_error`, `reconstructCost`) |
-| `LeemFO/LinearInverse.lean` | Linearized slice identifiability (`R_FO_axis_eq_zero_iff`, `ihat_gauge`, `ihatJac_vacuum`) |
+| `LeemFO/Forward/Basic.lean` | `LEEM`, `chiS`/`chiC`, `aperture`, `waveS`/`waveC`, `R0`, `b1`/`b2`/`aS`, nac/ac |
+| `LeemFO/Forward/Gaussian.lean` | FWHM, `charFun_source1D`, `charFun_source2D` |
+| `LeemFO/Forward/Aberration.lean` | `hasDerivAt_chiS`, `chiS_taylor`, `chiC_sub`, `hasGradientAt_chiS2` |
+| `LeemFO/Forward/EnvelopeSpatial.lean` | `spatialEnvelopeIntegral` = closed = FWHM |
+| `LeemFO/Forward/EnvelopeChromatic.lean` | quadratic-phase integral, `ecc`, polar form, `chromaticEnvelopeClosed_neg` |
+| `LeemFO/Forward/CTF.lean` | `q'=0` slice, `R0_hermitian`, `R_FO` vs `R_CTF` |
+| `LeemFO/Forward/Ratios.lean` | $\Gamma_C,\Gamma_S$ identities |
+| `LeemFO/Forward/PhaseObject.lean` | Jacobi–Anger (no `LeemFO.Forward.Basic` import) |
+| `LeemFO/Inverse/Modes.lean` | Aperture-truncated Bessel modes for the discrete inverse (`nAperture`, `modeSet`, `sinusoidalFOImage`) |
+| `LeemFO/Inverse/Tikhonov.lean` | Scalar/2×2 Fourier-bin Tikhonov (`tikhonovJ`, `tikhonov_error`, `reconstructCost`) |
+| `LeemFO/Inverse/LinearInverse.lean` | Linearized slice identifiability (`R_FO_axis_eq_zero_iff`, `ihat_gauge`, `ihatJac_vacuum`) |
 
 **Linearized Fourier-diagonal inverse (see [LINEAR_INVERSE.md](LINEAR_INVERSE.md)).** Multi-defocus Tikhonov on the CTF slice $R_{\mathrm{FO}}(q,0,\Delta z)$ has a unique minimizer for $\alpha>0$, the exact bias–noise identity $\hat x-x^\star=(\sum \overline h n-\alpha x^\star)/D$, and the sharp triangle bound. Modes with $|q|>q_{\mathrm{ap}}$ are identically invisible. Bilinear FO is phase-gauge invariant; its vacuum linearization has an exact quadratic remainder (one Gauss–Newton step from vacuum *is* the diagonal Tikhonov solve). Cost is modelled as $O(KN\log N)$ DFTs plus $O(KN)$ bin solves, without proving FFT existence. $K=1$ cannot identify a general complex $(X(q),X(-q))$ pair; weak-phase CTF zeros of $\sin(2\pi\chi_S)$ sit inside a large enough aperture. Statistical noise models remain informal.
 
