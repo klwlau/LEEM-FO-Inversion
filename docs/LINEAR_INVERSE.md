@@ -1,5 +1,8 @@
 # Linearized multi-defocus FO/CTF inverse: theorem list
 
+Reader-facing tutorial (no Fourier-optics, numerics, or Lean assumed):
+[proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf).
+
 This is the Lean-ready statement list for the **Fourier-diagonal Tikhonov
 estimator** of the linearized FO/CTF slice (optionally one Gauss–Newton
 step). Encoding: `LeemFO/Tikhonov.lean`, `LeemFO/LinearInverse.lean`.
