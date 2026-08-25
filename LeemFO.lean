@@ -6,3 +6,6 @@ import LeemFO.EnvelopeChromatic
 import LeemFO.CTF
 import LeemFO.Ratios
 import LeemFO.PhaseObject
+import LeemFO.Inverse
+import LeemFO.Tikhonov
+import LeemFO.LinearInverse

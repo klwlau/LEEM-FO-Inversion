@@ -4,7 +4,7 @@ Typeset proofs of the identities below:
 [proofs/leemfo_proofs.pdf](proofs/leemfo_proofs.pdf)
 ([TeX source](proofs/leemfo_proofs.tex)).
 
-Source of truth for a Lean formalization of Fourier-optics (FO) image formation in aberration-corrected LEEM. Reconstructed from §2.2 and Appendix A1–A2 of Yu *et al.* (2019). The PDF’s two-column OCR is unreliable; every displayed formula below is restored from (i) surrounding prose, (ii) the appendix integrals, and (iii) the same group’s FO/CTF formulae (Pang *et al.* 2009; Schramm *et al.*, Ultramicroscopy 115 (2012) 88; Yu *et al.*, Ultramicroscopy 183 (2017) 109; Tromp & Schramm, Ultramicroscopy 2012, χ-convention).
+Source of truth for the Fourier-optics (FO) kernel that the inverse uses. The Lean encoding covers image formation in aberration-corrected LEEM, reconstructed from §2.2 and Appendix A1–A2 of Yu *et al.* (2019); the discrete inverse is checked against this kernel. The PDF’s two-column OCR is unreliable; every displayed formula below is restored from (i) surrounding prose, (ii) the appendix integrals, and (iii) the same group’s FO/CTF formulae (Pang *et al.* 2009; Schramm *et al.*, Ultramicroscopy 115 (2012) 88; Yu *et al.*, Ultramicroscopy 183 (2017) 109; Tromp & Schramm, Ultramicroscopy 2012, χ-convention).
 
 **How to read this document**
 
@@ -987,6 +987,8 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | polar \(E_{CC}\) (Eq. (6b)) | Thm. | `ecc_polar`, `ecc_eq_polar` (\(y=4\pi b_2\sigma_E^2\)), `ecc_norm`, `arg_one_sub_I`. Combined A2 amplitude/phase \(A,\theta\) of \(E_{C,\mathrm{tot}}\) is not a separate definition. |
 | Jacobi–Anger | Thm. | `jacobi_anger`, `jacobi_anger_on_Ioc`, `besselJ` |
 | \(\varphi=4\pi A/\lambda_0\) | Def. | kinematics, outside FO |
+| Aperture modes \(M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1\) | Thm. | `nAperture`, `modeSet`, `card_modeSet`, `card_modePairs`, `mode_in_aperture` |
+| Discrete bilinear FO image | Def. | `discreteFOImage`, `besselCoeffs`, `sinusoidalFOImage` |
 
 ### 19.1 Module map
 
@@ -1000,6 +1002,13 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | `LeemFO/CTF.lean` | `q'=0` slice, `R0_hermitian`, `R_FO` vs `R_CTF` |
 | `LeemFO/Ratios.lean` | \(\Gamma_C,\Gamma_S\) identities |
 | `LeemFO/PhaseObject.lean` | Jacobi–Anger (no `LeemFO.Basic` import) |
+| `LeemFO/Inverse.lean` | Aperture-truncated Bessel modes for the discrete inverse (`nAperture`, `modeSet`, `sinusoidalFOImage`) |
+| `LeemFO/Tikhonov.lean` | Scalar/2×2 Fourier-bin Tikhonov (`tikhonovJ`, `tikhonov_error`, `reconstructCost`) |
+| `LeemFO/LinearInverse.lean` | Linearized slice identifiability (`R_FO_axis_eq_zero_iff`, `ihat_gauge`, `ihatJac_vacuum`) |
+
+**Linearized Fourier-diagonal inverse (see [LINEAR_INVERSE.md](LINEAR_INVERSE.md)).** Multi-defocus Tikhonov on the CTF slice \(R_{\mathrm{FO}}(q,0,\Delta z)\) has a unique minimizer for \(\alpha>0\), the exact bias–noise identity \(\hat x-x^\star=(\sum \overline h n-\alpha x^\star)/D\), and the sharp triangle bound. Modes with \(|q|>q_{\mathrm{ap}}\) are identically invisible. Bilinear FO is phase-gauge invariant; its vacuum linearization has an exact quadratic remainder (one Gauss–Newton step from vacuum *is* the diagonal Tikhonov solve). Cost is modelled as \(O(KN\log N)\) DFTs plus \(O(KN)\) bin solves, without proving FFT existence. \(K=1\) cannot identify a general complex \((X(q),X(-q))\) pair; weak-phase CTF zeros of \(\sin(2\pi\chi_S)\) sit inside a large enough aperture. Statistical noise models remain informal.
+
+**Inverse (journal-style note: [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf)).** Lean details stay in [LINEAR_INVERSE.md](LINEAR_INVERSE.md). Scientific verdict: for a 2D experimental through-focal stack the fastest inverse that still fills CTF zeros is Fourier-diagonal multi-defocus Tikhonov on the slice \(R_{\mathrm{FO}}(q,0,\Delta z)\) (Schiske/Wiener), cost \(O(KN\log N)\). That map is the Fréchet derivative of bilinear FO at vacuum and is biased for \(\varphi=4\pi A/\lambda_0\not\ll 1\). Optional stage 2 is Gauss--Newton on bilinear FO, skipped when the stage-1 FO residual is at the noise floor (\(\max|\varphi|\lesssim 0.3\)). For the paper's 1D sinusoid, stage 2 collapses to Jacobi--Anger least squares on \(\{J_n(\varphi)\}_{|n|\le\lfloor q_{\mathrm{ap}}\Lambda\rfloor}\), cost \(O(M^2)\) with \(M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1\). Gerchberg--Saxton is either misspecified under partial coherence or a slower rewrite of Gauss--Newton. MAL/phase diversity is Gauss--Newton stacked over extra defoci, needed only when aberrations are unknown. Uniqueness of the regularized Fourier-diagonal estimator and its bias–noise identity are machine-checked in Lean 4.
 
 **Do not encode from OCR of the two-column PDF.** Encode from the boxed formulae and from A1 integrals.
 

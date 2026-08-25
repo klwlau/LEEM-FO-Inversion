@@ -1,0 +1,671 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{microtype}
+\emergencystretch=3em
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{hyperref}
+\usepackage[nameinlink,capitalize]{cleveref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black,
+  pdftitle={Through-focal inversion of LEEM intensities with the Fourier-optics kernel},
+  pdfauthor={Wilson Lau}
+}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\ee}{\mathrm{e}}
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\conj}[1]{\overline{#1}}
+\newcommand{\abs}[1]{\lvert#1\rvert}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+\newcommand{\qap}{q_{\mathrm{ap}}}
+\newcommand{\Dz}{\Delta z}
+\newcommand{\RFO}{R_{\mathrm{FO}}}
+\newcommand{\RCTF}{R_{\mathrm{CTF}}}
+
+\title{Through-focal inversion of LEEM intensities\\
+with the Fourier-optics kernel}
+\author{Wilson Lau}
+\date{25 August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present a through-focal inversion of low-energy electron microscopy
+(LEEM) intensities for the object exit wave
+$\psi_0=\sigma\,\ee^{\ii\phi}$, based on the Fourier-optics (FO) kernel
+of Yu, Lau and Altman~\cite{Yu2019}.
+Prior FO studies compared predicted and measured contrast for prescribed
+objects; they did not recover $\psi_0$.
+We invert that map in two stages: regularized multi-defocus inversion
+on the contrast-transfer slice $\RFO(\mathbf{q},0,\Dz)$, which fills
+zeros of a single-defocus contrast-transfer function (CTF), followed
+by optional Gauss--Newton iteration on the full bilinear kernel,
+omitted when the linearized residual lies at the noise floor
+($\max\abs{\phi}\lesssim 0.3$).
+A one-dimensional sinusoid reduces the second stage to Jacobi--Anger
+fitting of the aperture-truncated Bessel ladder.
+Uniqueness of the regularized Fourier-diagonal estimator and its
+bias--noise identity are machine-checked in Lean~4 against that kernel.
+This work extends quantitative evaluation of LEEM contrast from forward
+matching of a focal series to recovery of the object that produced it.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Image interpretation in LEEM~\cite{Bauer1994,Bauer2014,Tromp2000,Altman2010}
+requires a quantitative account of how the cathode lens, contrast
+aperture, source size and energy spread map the object exit wave to
+the recorded intensity.
+Aberration-corrected instruments~\cite{Tromp2010,Tromp2013} make that
+map sharper, but they do not remove the distinction between two
+standard calculations.
+The contrast-transfer function (CTF) evaluates the inverse transforms
+of $\boldsymbol{\Psi}H$ and $\boldsymbol{\Psi}^*H^*$ separately and is computationally
+efficient~\cite{Schramm2012,Tromp2012}.
+Fourier optics (FO) retains inseparable mixing of spatial-frequency
+pairs $(\mathbf{q},\mathbf{q}')$ under partial
+coherence~\cite{Pang2009,Yu2017,Yu2019}.
+The mathematically rigorous FO calculation gains an advantage under
+conditions, particularly defocus, in which partial coherence
+compromises the validity of the CTF intensity~\cite{Yu2019}.
+Yu, Locatelli and Altman~\cite{Yu2017} showed that this distinction is
+not academic: CTF modelling fails for strongly rippled graphene,
+whereas FO reproduces the measured through-focal contrast.
+
+Those studies prescribe an object, evaluate the forward map, and
+compare predicted and measured contrast versus defocus.
+They do not invert.
+The only demonstrated 2D experimental LEEM exit-wave reconstruction is
+the linear focal-series restoration of Duden~\emph{et
+al.}~\cite{Duden2014}, in the tradition of
+Schiske~\cite{Schiske1968,Schiske1973}, assuming a strong specular beam
+and a CTF-style model.
+Here the same FO forward map is inverted: given a through-focal
+intensity series $I(\mathbf{r},\Dz_k)$, $k=1,\dots,K$, we recover
+$\psi_0$ within the aperture cutoff, up to a global phase.
+The Lean identities of the companion note~\cite{Lau2026proofs} are the
+prerequisite: the discrete inverse is checked against that kernel,
+not against a substitute propagator.
+
+A single defocus underdetermines a general complex object.
+The CTF factor may vanish on interior rings; the contrast aperture
+discards $\abs{\mathbf{q}}>\qap$; intensity is invariant under a global
+phase; and one complex measurement cannot identify the conjugate pair
+$\bigl(X(\mathbf{q}),X(-\mathbf{q})\bigr)$.
+A focal series with non-coincident zeros restores those modes that the
+aperture admits.
+We compare five inverses and recommend a two-stage estimator that
+uses the Yu~2019 kernel on the CTF slice
+$\RFO(\mathbf{q},0,\Dz)$ and, when required, the full bilinear
+residual.
+Selected algebraic properties of the discrete linear stage are
+machine-checked in Lean~4~\cite{deMoura2021} against that kernel
+(\cref{sec:lean,app:formal}).
+
+\section{Image formation}
+\label{sec:formation}
+
+The object is the complex exit wave
+\begin{equation}
+\label{eq:psi0}
+\psi_0(\mathbf{r})=\sigma(\mathbf{r})\,\ee^{\ii\phi(\mathbf{r})},
+\end{equation}
+with $\phi$ in radians.
+For a topographic height $A$ in reflection the kinematic phase is
+\begin{equation}
+\label{eq:phiA}
+\phi=\frac{4\pi A}{\lambda_0},
+\end{equation}
+where $\lambda_0$ is the wavelength at the sample.
+At $E_0=10\,\mathrm{eV}$, $\lambda_0\simeq 0.39\,\mathrm{nm}$, so
+$A=0.1\,\mathrm{nm}$ already gives $\phi\sim 3$, outside the
+weak-phase regime occupied by graphene ripples and atomic
+steps~\cite{Yu2017}.
+Lens optics use the wavelength $\lambda$ after acceleration to column
+energy $E$ (typically $15\,\mathrm{kV}$): spatial frequency is
+$\mathbf{q}=\boldsymbol{\alpha}/\lambda$~\cite{Tromp2012,Schramm2012}.
+The reconstruction kernel below is written in $\lambda$; conversion of
+reconstructed phase to height uses $\lambda_0$.
+
+With $\boldsymbol{\Psi}=\mathcal{F}[\psi_0]$, the FO intensity is bilinear
+in the object spectrum~\cite{Goodman2005,Pang2009,Yu2019},
+\begin{equation}
+\label{eq:I}
+I(\mathbf{r},\Dz)
+=\iint
+\boldsymbol{\Psi}(\mathbf{q})\,\boldsymbol{\Psi}^*(\mathbf{q}')
+\,\RFO(\mathbf{q},\mathbf{q}',\Dz)
+\,\ee^{2\pi\ii(\mathbf{q}-\mathbf{q}')\cdot\mathbf{r}}
+\,\dd^2q\,\dd^2q'.
+\end{equation}
+The kernel is supported on the contrast aperture
+$\abs{\mathbf{q}},\abs{\mathbf{q}'}\le\qap$ and factors as
+$\RFO=R_0 E_S E_{C,\mathrm{tot}}$, with closed-form spatial and
+chromatic envelopes derived in~\cite{Yu2019} and proved
+in~\cite{Lau2026proofs}.
+The CTF kernel agrees with $\RFO$ on the slice
+$\mathbf{q}'=\mathbf{0}$,
+\begin{equation}
+\label{eq:slice}
+\RFO(\mathbf{q},0,\Dz)=\RCTF(\mathbf{q},\Dz).
+\end{equation}
+The axis $\mathbf{q}=\mathbf{0}$ is the conjugate branch
+$\RFO(0,-\mathbf{q})$, not the CTF.
+Wave aberration $\chi$ is measured in waves, with transfer factor
+$W=\ee^{2\pi\ii\chi}$~\cite{Tromp2012}.
+Defocus enters $\chi_S$ as $+\tfrac12\Dz\lambda q^2$ in the convention
+of this work; mixing the opposite sign used in some simulators
+interchanges overfocus and underfocus.
+
+Intensity is invariant under $\psi_0\mapsto\ee^{\ii\theta}\psi_0$.
+Modes with $\abs{\mathbf{q}}>\qap$ are identically invisible in every
+defocus.
+The linearization of~\eqref{eq:I} about a strong specular beam
+therefore recovers $\psi_0$ only up to a global phase (fixed here by
+taking the zero-frequency component real and positive) and only inside
+the aperture.
+
+\section{Through-focal inversion}
+\label{sec:inverse}
+
+Let $N$ denote the number of image pixels and $K$ the number of
+defoci; a typical stack is $N=512^2$ and $K\sim 11$--$21$.
+Regularization of an ill-posed filter follows
+Tikhonov~\cite{Tikhonov1963} and Wiener~\cite{Wiener1949}: a positive
+floor $\alpha$ in the denominator prevents division by a vanished CTF
+at the price of a bias of order $\alpha$.
+
+\subsection{Candidate methods}
+\label{sec:five}
+
+Single-image Wiener deconvolution applies one Fourier transform and
+divides by $\RCTF(\mathbf{q},\Dz)$.
+Interior CTF zeros leave undetermined modes, and one plane does not
+identify a general complex object.
+
+Transport of intensity~\cite{Teague1983,Paganin1998} recovers phase
+from two or three closely spaced defoci under a paraxial continuity
+equation.
+After acceleration, LEEM has $\lambda\sim 10\,\mathrm{pm}$, a hard
+aperture, spherical aberration and partial coherence.
+That PDE is not an inverse of~\eqref{eq:I} and has not been the
+method used on experimental LEEM graphene or steps.
+
+Multi-defocus Schiske restoration~\cite{Schiske1968,Duden2014}
+transforms each plane and treats spatial frequencies independently.
+The slice multipliers are
+\begin{equation}
+\label{eq:linear}
+h_k(\mathbf{q})=\RFO(\mathbf{q},0,\Dz_k).
+\end{equation}
+For a single unknown amplitude $X(\mathbf{q})$ the regularized
+estimator is
+\begin{equation}
+\label{eq:xhat}
+\hat x
+=
+\frac{\sum_k \overline{h_k}\,y_k}{\alpha+\sum_k\abs{h_k}^2}.
+\end{equation}
+Linearization about vacuum couples $X(\mathbf{q})$ with
+$X(-\mathbf{q})$; the corresponding $2\times 2$ regularized system
+uses the same $\alpha$ and is not~\eqref{eq:xhat}.
+If one defocus has $h_k=0$, the remaining planes can still determine
+the bin.
+The cost is $K{+}1$ discrete Fourier transforms plus $O(KN)$ arithmetic.
+This is Duden's algorithm with the Yu~2019 envelopes, and it coincides
+with one Gauss--Newton step from vacuum on~\eqref{eq:I}.
+
+Gerchberg--Saxton iteration~\cite{GerchbergSaxton1972} and hybrid
+input--output~\cite{Fienup1982} replace the computed modulus by the
+measured intensity and propagate with a coherent lens model.
+Under partial coherence the intensity constraint is the quadratic set
+of~\eqref{eq:I}.
+Naive modulus replacement is therefore the coherent CTF model and is
+biased when FO and CTF disagree off axis~\cite{Yu2017}.
+Projection onto the FO intensity is a slower, undamped rewrite of
+nonlinear least squares.
+
+Nonlinear least squares minimizes the bilinear FO residual of the
+stack.
+Each Gauss--Newton step uses the pair kernel, so it sees the mixing
+dropped by~\eqref{eq:xhat}.
+That estimator is FO-faithful for $\phi\not\ll 1$, at the cost of
+pair accumulations rather than a Fourier-diagonal solve.
+If the aberrations themselves are unknown, the same idea stacked over
+extra defoci is the maximum-likelihood (MAL) reconstruction of Coene,
+Thust, Op de Beeck and Van Dyck~\cite{Coene1996}.
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lp{2.6cm}p{2.6cm}p{2.8cm}@{}}
+\toprule
+Method & Typical cost & Fills CTF zeros & Faithful for large $\phi$ \\
+\midrule
+Single-image Wiener & one transform & no & no \\
+Transport of intensity & one transform & n/a (wrong PDE) & no \\
+\textbf{Multi-defocus regularized} & \textbf{$K{+}1$ transforms} & \textbf{yes} ($K\ge 2$) & linearized only \\
+Gerchberg--Saxton / HIO & many transforms & if $K\ge 2$ & only if the projector is FO \\
+Nonlinear least squares on FO & pair sums & yes & \textbf{yes} \\
+Jacobi--Anger fit (1D sinusoid) & $O(M^2)$ & n/a (parametric) & \textbf{yes} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Recommended estimator}
+\label{sec:verdict}
+
+For a general 2D experimental stack the fastest method that still
+fills CTF zeros is multi-defocus regularized inversion on
+the slice~\eqref{eq:slice}.
+It reads all $KN$ Fourier samples, fills interior zeros of
+$\sin(2\pi\chi_S)$ by stacking defoci, and has a unique minimizer for
+every $\alpha>0$ (\cref{thm:unique}).
+
+The FO-faithful estimator initializes that reconstruction and applies
+a few damped Gauss--Newton steps on the bilinear residual (MAL if
+aberrations are unknown).
+The nonlinear stage is omitted when the FO residual of the linear
+reconstruction already lies at the noise floor, equivalently
+$\max\abs{\phi}\lesssim 0.3$ at typical LEEM signal-to-noise
+($A\lesssim 0.01\,\mathrm{nm}$ at $E_0=10\,\mathrm{eV}$).
+The linearization never sees off-axis pairs
+$(\mathbf{q},\mathbf{q}')$ at which FO and CTF disagree; that omitted
+term is the quadratic remainder of~\eqref{eq:I} about vacuum
+(\cref{thm:quad}) and is the whole image for a strong-phase
+sinusoid~\cite{Yu2017}.
+Agreement of the slice~\eqref{eq:slice} with a CTF calculation is
+therefore not a sufficient skip criterion.
+
+For the one-dimensional sinusoid of period $\Lambda$ used
+in~\cite{Yu2017,Yu2019} to exhibit CTF failure, the unknown reduces to
+an amplitude $\varphi$ and a shift.
+The aperture retains
+$M=2\lfloor\qap\Lambda\rfloor+1$ modes.
+The FO image is then a double sum of $M^2$ Jacobi--Anger terms,
+\begin{equation}
+\label{eq:JA}
+\ee^{\ii\varphi\sin(2\pi x/\Lambda)}
+=\sum_{n\in\Z}J_n(\varphi)\,\ee^{2\pi\ii n x/\Lambda},
+\end{equation}
+and least squares on $\varphi$ with
+$J_n'=\tfrac12(J_{n-1}-J_{n+1})$ is $O(M^2)$.
+A general 2D micrograph has no Bessel ladder; the nonlinear stage
+remains Gauss--Newton in the aperture basis.
+
+\subsection{Discrete procedure}
+\label{sec:algo}
+
+The linear stage is the unique minimizer of \cref{thm:unique}.
+After rigid alignment, each plane is mean-subtracted and
+discrete-Fourier transformed; the zero-frequency bin, which carries
+total flux ($\RFO(0,0)=1$), is treated separately.
+For every $\abs{\mathbf{q}}\le\qap$ and every recorded defocus the
+slice~\eqref{eq:linear} is evaluated from the Yu~2019 envelopes.
+The scalar estimator~\eqref{eq:xhat} or the conjugate-pair
+$2\times 2$ system is solved at that bin with fixed $\alpha>0$;
+coefficients with $\abs{\mathbf{q}}>\qap$ are set to zero.
+An inverse transform yields $\sigma=\abs{\hat\psi}$ and
+$\phi=\arg(\hat\psi)$ in the vacuum gauge.
+Experimental lens current is mapped onto the defocus convention of
+\cref{sec:formation} by one fitted affine transform.
+
+\section{Machine-checked properties of the discrete estimator}
+\label{sec:lean}
+
+Selected algebraic claims for the discrete linear estimator are
+machine-checked in Lean~4~\cite{deMoura2021,mathlib2020} against the
+FO kernel encoded from Yu~\emph{et al.}~\cite{Yu2019,Lau2026proofs}.
+The statements are finite-dimensional (finite defoci and a finite
+frequency grid).
+The discrepancy $n_k$ that enters the error identity is deterministic
+(linearization remainder, instrument noise and discretization); no
+probability space is introduced.
+Full statements are collected in \cref{app:formal}.
+
+The reconstruction uses~\eqref{eq:slice}, not a substitute
+propagator.
+For $\alpha>0$ the regularized energy at each frequency bin has a
+unique global minimizer~\eqref{eq:xhat} (\cref{thm:unique}).
+If $y_k=h_k x^\star+n_k$, the estimation error is exactly
+$(\sum_k\overline{h_k}\,n_k-\alpha x^\star)/D$ with
+$D=\alpha+\sum_k\abs{h_k}^2$ (\cref{thm:error}); a sharp triangle
+bound follows (\cref{thm:bound}).
+Frequencies outside the aperture reconstruct as zero at every
+defocus; a global phase is invisible; one measurement does not
+identify $\bigl(X(\mathbf{q}),X(-\mathbf{q})\bigr)$; and
+$\sin(2\pi\chi_S)$ vanishes on interior rings of a pure-defocus
+column ($C_3=C_5=0$, $\Dz\neq 0$, large enough aperture), which is
+why $K\ge 2$ is required (\cref{thm:ctfzero}).
+The multi-defocus slice map is the derivative of bilinear FO at
+vacuum; the neglected term is homogeneous of degree two
+(\cref{thm:quad}).
+When that remainder lies above the noise, the nonlinear stage is
+the consistent next estimator; the numerical skip criterion
+$\max\abs{\phi}\lesssim 0.3$ is not part of the machine-checked
+fragment.
+
+A modelled operation count, treating a discrete Fourier transform as
+$N\log_2 N$ operations, shows that the linear stage is cheaper than a
+dense pair apply already at $N=128$.
+Existence of a fast Fourier transform, wall-clock times, Gaussian or
+Poisson statistics, Cram\'er--Rao bounds, Gauss--Newton convergence,
+image alignment and the current-to-defocus map are not claimed.
+
+\section{Conclusions}
+\label{sec:end}
+
+We invert the FO image-formation map of Yu, Lau and
+Altman~\cite{Yu2019} for a 2D through-focal intensity series.
+Regularized multi-defocus inversion on the CTF slice fills the zeros
+of a single defocus, is unique for every positive regularization, and
+is first-order consistent with bilinear FO.
+Gauss--Newton iteration on the full kernel is reserved for
+strong-phase objects whose linearized residual exceeds the noise;
+for the one-dimensional sinusoid that exhibits CTF failure it
+collapses to a Bessel fit.
+These results broaden quantitative LEEM contrast analysis from
+forward matching of a focal series to recovery of the object, with
+the discrete linear stage verified against the same kernel used to
+predict the images.
+
+\appendix
+\section{Formal claims}
+\label{app:formal}
+
+The statements below are finite-dimensional.
+No existence theorem for the fast Fourier transform is claimed.
+
+\begin{theorem}[Unique minimizer]
+\label{thm:unique}
+For $\alpha>0$ the energy
+$J(x)=\sum_k\norm{h_k x-y_k}^2+\alpha\norm{x}^2$
+has a unique global minimizer~\eqref{eq:xhat}.
+Completing the square:
+$J(x)=J(\hat x)+D\norm{x-\hat x}^2$ with $D=\alpha+\sum\abs{h_k}^2>0$.
+\end{theorem}
+Lean: \texttt{tikhonovJ\_min}, \texttt{tikhonov\_unique},
+\texttt{tikhonovJ\_eq\_shift}.
+The same identity gives uniqueness at $\alpha=0$ whenever
+$\sum\abs{h_k}^2>0$.
+
+\begin{theorem}[Bias--noise identity]
+\label{thm:error}
+If $y_k=h_k x^\star+n_k$ and $D\neq 0$, then
+\begin{equation}
+\hat x-x^\star
+=
+\frac{\sum_k\overline{h_k}\,n_k-\alpha x^\star}{D}.
+\end{equation}
+\end{theorem}
+Lean: \texttt{tikhonov\_error}.
+Taking $\mathbb{E}[n]=0$ is informal (no probability space).
+
+\begin{theorem}[Triangle bound, sharp]
+\label{thm:bound}
+If $\alpha\ge 0$ and $D>0$,
+\begin{equation}
+\abs{\hat x-x^\star}
+\le
+\frac{\sum_k\abs{h_k}\,\abs{n_k}+\alpha\,\abs{x^\star}}{D}.
+\end{equation}
+Equality holds for one measurement, $h=n=1$, $x^\star=-1$, $\alpha=1$.
+\end{theorem}
+Lean: \texttt{tikhonov\_error\_bound},
+\texttt{tikhonov\_error\_bound\_sharp}.
+
+\begin{theorem}[Quadratic remainder of bilinear FO]
+\label{thm:quad}
+With vacuum spectrum $1_{\mathbf{q}=\mathbf{0}}$ and increment $\delta$,
+\begin{equation}
+\hat I(\mathrm{vac}+\delta)
+=
+\hat I(\mathrm{vac})
++DI_{\mathrm{vac}}[\delta]
++\hat I(\delta),
+\end{equation}
+where $DI_{\mathrm{vac}}[\delta](\xi)=\RFO(\xi,0)\,\delta(\xi)+\RFO(0,-\xi)\,\overline{\delta(-\xi)}$
+and $\abs{\hat I(\delta)(\xi)}\le\bigl(\sum\abs{\RFO}\bigr)\bigl(\sum\abs{\delta}\bigr)^2$.
+\end{theorem}
+Lean: \texttt{ihat\_add}, \texttt{ihatJac\_vacuum},
+\texttt{ihat\_quadratic\_remainder}, \texttt{ihat\_bound}.
+The dropped term is exactly bilinear: linearized inversion is biased by
+$O(\norm{\delta}^2)$, which is the whole image for a strong-phase
+sinusoid~\cite{Yu2017}.
+
+\begin{theorem}[Interior CTF zeros of a pure-defocus column]
+\label{thm:ctfzero}
+$\sin(2\pi\chi_S)=0$ whenever $2\chi_S\in\Z$.
+For $C_3=C_5=0$, $\Dz\neq 0$, and a large enough aperture, there exists
+nonzero $q$ inside the disk with that vanishing
+(\texttt{exists\_interior\_weakPhase\_zero}).
+A single defocus is therefore blind at those rings; $K\ge 2$ with
+incommensurate $\Dz$ typically fills them.
+This is a pure-defocus hypothesis, not a column that still has
+spherical aberration.
+\end{theorem}
+
+The $2\times 2$ Gram determinant of the vacuum Jacobian is positive for
+$\alpha>0$ (\texttt{gramDet\_pos}), so the conjugate-pair normal
+equations are invertible even though one measurement is not
+(\cref{sec:intro}).
+
+\paragraph{Modelled cost.}
+Set $\mathrm{dftCost}(N):=N\log_2 N$ and
+\begin{equation}
+\mathrm{reconstructCost}(K,N)
+=(K+1)\,N\log_2 N+N(8K+4).
+\end{equation}
+For $K\ge 1$ and $N\ge 2$,
+$\mathrm{reconstructCost}(K,N)\le 14\,K\,N\log_2 N$.
+At $N=128$ this is strictly cheaper than a dense bilinear apply
+$KN^2$, for every $K\ge 1$
+(\texttt{reconstructCost\_le},
+\texttt{reconstructCost\_lt\_dense\_128}).
+The constant $14$ is attained in the model at $K=1$, $N=2$.
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Claim & Lean \\
+\midrule
+Tikhonov unique min, closed form & \texttt{LeemFO/Tikhonov.lean} \\
+Bias--noise identity and sharp triangle bound & same \\
+Cost model versus dense $KN^2$ & \texttt{reconstructCost\_*} \\
+Aperture support of $\RFO(\cdot,0)$ & \texttt{LeemFO/LinearInverse.lean} \\
+Gauge, vacuum Jacobian, quadratic remainder & same \\
+$K=1$ not injective; pure-defocus CTF zeros & same \\
+Mode count $M=2\lfloor\qap\Lambda\rfloor+1$ & \texttt{LeemFO/Inverse.lean} \\
+Jacobi--Anger and Bessel decay & \texttt{LeemFO/PhaseObject.lean} \\
+\midrule
+FFT exists / equals the continuum FT & informal \\
+Gaussian/Poisson noise, Cram\'er--Rao & informal \\
+Gauss--Newton local quadratic convergence & informal \\
+Image alignment, current-to-defocus map & informal \\
+``Fastest among all conceivable algorithms'' & only DFT versus dense bilinear \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{thebibliography}{99}
+
+\bibitem{Bauer1994}
+E.~Bauer,
+\emph{Low energy electron microscopy},
+Rep.\ Prog.\ Phys.\ \textbf{57} (1994) 895--938.
+
+\bibitem{Bauer2014}
+E.~Bauer,
+\emph{Surface Microscopy with Low Energy Electrons}
+(Springer, New York, 2014).
+
+\bibitem{Tromp2000}
+R.~M. Tromp,
+\emph{Low-energy electron microscopy},
+IBM J.\ Res.\ Dev.\ \textbf{44} (2000) 503--516.
+
+\bibitem{Altman2010}
+M.~S. Altman,
+\emph{Trends in low energy electron microscopy},
+J.\ Phys.: Condens.\ Matter \textbf{22} (2010) 084017.
+
+\bibitem{Tromp2010}
+R.~M. Tromp, J.~B. Hannon, A.~W. Ellis, W.~Wan, A.~Berghaus, O.~Schaff,
+\emph{A new aberration-corrected, energy-filtered LEEM/PEEM instrument.
+I.\ Principles and design},
+Ultramicroscopy \textbf{110} (2010) 852--861.
+
+\bibitem{Tromp2013}
+R.~M. Tromp, J.~B. Hannon, W.~Wan, A.~Berghaus, O.~Schaff,
+\emph{A new aberration-corrected, energy-filtered LEEM/PEEM instrument
+II.\ Operation and results},
+Ultramicroscopy \textbf{127} (2013) 25--39.
+
+\bibitem{Pang2009}
+A.~B. Pang, Th.~M\"uller, M.~S. Altman, E.~Bauer,
+\emph{Fourier optics of image formation in LEEM},
+J.\ Phys.: Condens.\ Matter \textbf{21} (2009) 314006.
+
+\bibitem{Schramm2012}
+S.~M. Schramm, A.~B. Pang, M.~S. Altman, R.~M. Tromp,
+\emph{A contrast transfer function approach for image calculations
+in standard and aberration-corrected LEEM and PEEM},
+Ultramicroscopy \textbf{115} (2012) 88--108.
+
+\bibitem{Tromp2012}
+R.~M. Tromp, S.~M. Schramm,
+\emph{Optimization and stability of the contrast transfer function
+in aberration-corrected electron microscopy},
+Ultramicroscopy \textbf{125} (2013) 72--80.
+
+\bibitem{Yu2017}
+K.~M. Yu, A.~Locatelli, M.~S. Altman,
+\emph{Comparing Fourier optics and contrast transfer function modeling
+of image formation in low energy electron microscopy},
+Ultramicroscopy \textbf{183} (2017) 109--116.
+
+\bibitem{Yu2019}
+K.~M. Yu, K.~L.~W. Lau, M.~S. Altman,
+\emph{Fourier optics of image formation in aberration-corrected LEEM},
+Ultramicroscopy \textbf{200} (2019) 160--168.
+
+\bibitem{Duden2014}
+T.~Duden, A.~Thust, C.~Kumpf, F.~S. Tautz,
+\emph{Focal-series reconstruction in low-energy electron microscopy},
+Microsc.\ Microanal.\ \textbf{20} (2014) 968--973.
+
+\bibitem{Goodman2005}
+J.~W. Goodman,
+\emph{Introduction to Fourier Optics}, 3rd~ed.
+(Roberts and Company, Englewood, CO, 2005).
+
+\bibitem{Schiske1968}
+P.~Schiske,
+\emph{Zur Frage der Bildrekonstruktion durch Fokusreihen},
+in \emph{Electron Microscopy 1968} (Proc.\ 4th European Regional
+Conference, Rome), ed.\ D.~S. Bocciarelli, vol.~1
+(Tipografia Poliglotta Vaticana, Rome, 1968), pp.~145--146.
+
+\bibitem{Schiske1973}
+P.~Schiske,
+\emph{Image processing using additional statistical information
+about the object},
+in \emph{Image Processing and Computer-Aided Design in Electron
+Optics}, ed.\ P.~W. Hawkes (Academic Press, London, 1973), pp.~82--90.
+
+\bibitem{Coene1996}
+W.~M.~J. Coene, A.~Thust, M.~Op de Beeck, D.~Van Dyck,
+\emph{Maximum-likelihood method for focus-variation image
+reconstruction in high resolution transmission electron microscopy},
+Ultramicroscopy \textbf{64} (1996) 109--135.
+
+\bibitem{Tikhonov1963}
+A.~N. Tikhonov,
+\emph{Solution of incorrectly formulated problems and the
+regularization method},
+Sov.\ Math.\ Dokl.\ \textbf{4} (1963) 1035--1038.
+
+\bibitem{Wiener1949}
+N.~Wiener,
+\emph{Extrapolation, Interpolation, and Smoothing of Stationary
+Time Series}
+(MIT Press and Wiley, New York, 1949).
+
+\bibitem{GerchbergSaxton1972}
+R.~W. Gerchberg, W.~O. Saxton,
+\emph{A practical algorithm for the determination of the phase
+from image and diffraction plane pictures},
+Optik \textbf{35} (1972) 237--246.
+
+\bibitem{Fienup1982}
+J.~R. Fienup,
+\emph{Phase retrieval algorithms: a comparison},
+Appl.\ Opt.\ \textbf{21} (1982) 2758--2769.
+
+\bibitem{Teague1983}
+M.~R. Teague,
+\emph{Deterministic phase retrieval: a Green's function solution},
+J.\ Opt.\ Soc.\ Am.\ \textbf{73} (1983) 1434--1441.
+
+\bibitem{Paganin1998}
+D.~Paganin, K.~A. Nugent,
+\emph{Noninterferometric phase imaging with partially coherent light},
+Phys.\ Rev.\ Lett.\ \textbf{80} (1998) 2586--2589.
+
+\bibitem{deMoura2021}
+L.~de~Moura, S.~Ullrich,
+\emph{The Lean 4 theorem prover and programming language},
+in \emph{Automated Deduction -- CADE 28},
+LNCS \textbf{12699} (Springer, Cham, 2021), pp.~625--635.
+
+\bibitem{mathlib2020}
+The mathlib Community,
+\emph{The Lean mathematical library},
+in \emph{Proc.\ 9th ACM SIGPLAN International Conference on
+Certified Programs and Proofs} (ACM, New York, 2020), pp.~367--381.
+
+\bibitem{Harrison2008}
+J.~Harrison,
+\emph{Formal proof---theory and practice},
+Notices Amer.\ Math.\ Soc.\ \textbf{55} (2008) 1395--1406.
+
+\bibitem{AvigadHarrison2014}
+J.~Avigad, J.~Harrison,
+\emph{Formally verified mathematics},
+Commun.\ ACM \textbf{57}(4) (2014) 66--75.
+
+\bibitem{Lau2026proofs}
+W.~Lau,
+\emph{Proofs of the Fourier-optics envelope identities in
+aberration-corrected LEEM},
+unpublished (2026).
+
+\end{thebibliography}
+
+\end{document}
