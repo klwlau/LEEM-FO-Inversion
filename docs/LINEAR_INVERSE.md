@@ -1,6 +1,6 @@
 # Linearized multi-defocus FO/CTF inverse: theorem list
 
-Reader-facing tutorial (no Fourier-optics, numerics, or Lean assumed):
+Reader-facing inverse note (scientific journal style):
 [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf).
 
 This is the Lean-ready statement list for the **Fourier-diagonal Tikhonov

@@ -53,13 +53,12 @@ latexmk -pdf leemfo_proofs.tex
 Linearized multi-defocus Fourier-diagonal inverse (theorem list):
 [docs/LINEAR_INVERSE.md](docs/LINEAR_INVERSE.md).
 
-Tutorial inverse note (2D experimental focal series → object), written
-for readers who have not met Fourier optics, numerical inverse methods,
-or Lean: what a LEEM records, why one image is not the sample, what Lean
-certifies about the discrete reconstruction, then the two-stage recipe.
-Multi-defocus regularized inversion (Schiske/Wiener) is the fastest method
+Journal-style inverse note (2D experimental focal series → object):
+multi-defocus regularized inversion (Schiske/Wiener) is the fastest method
 that still fills CTF zeros; optional Gauss–Newton on bilinear FO for
 strong phase; Jacobi–Anger fitting is the 1D-sinusoid special case.
+Selected algebraic claims for the discrete linear estimator are
+machine-checked in Lean 4.
 [docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
 ([source](docs/proofs/leemfo_inverse.tex)).
 
