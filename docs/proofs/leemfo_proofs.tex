@@ -8,7 +8,6 @@
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
 \usepackage{booktabs}
-\usepackage{enumitem}
 \usepackage[dvipsnames]{xcolor}
 \usepackage{hyperref}
 \usepackage[nameinlink,capitalize]{cleveref}
@@ -18,24 +17,21 @@
   linkcolor=blue!50!black,
   citecolor=blue!50!black,
   urlcolor=blue!50!black,
-  pdftitle={Proofs of Fourier-optics envelope identities in aberration-corrected LEEM},
+  pdftitle={Closed-form envelopes of the Fourier-optics kernel in aberration-corrected LEEM},
   pdfauthor={Wilson Lau}
 }
 
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
-\newtheorem{proposition}[theorem]{Proposition}
-\newtheorem{corollary}[theorem]{Corollary}
 \theoremstyle{definition}
-\newtheorem{definition}[theorem]{Definition}
 \newtheorem{approximation}[theorem]{Approximation}
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
+\crefname{approximation}{Approximation}{Approximations}
+\Crefname{approximation}{Approximation}{Approximations}
 
 \DeclareMathOperator{\ReOp}{Re}
-\DeclareMathOperator{\ImOp}{Im}
 \DeclareMathOperator{\Arg}{Arg}
-\DeclareMathOperator{\diag}{diag}
 
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\C}{\mathbb{C}}
@@ -45,7 +41,6 @@
 \newcommand{\ii}{\mathrm{i}}
 \newcommand{\conj}[1]{\overline{#1}}
 \newcommand{\abs}[1]{\lvert#1\rvert}
-\newcommand{\norm}[1]{\lVert#1\rVert}
 \newcommand{\qap}{q_{\mathrm{ap}}}
 \newcommand{\qill}{q_{\mathrm{ill}}}
 \newcommand{\sill}{\sigma_{\mathrm{ill}}}
@@ -59,108 +54,115 @@
 \newcommand{\RCTF}{R_{\mathrm{CTF}}}
 \newcommand{\Rzero}{R_{0}}
 
-\title{Proofs of the Fourier-optics envelope identities\\
+\title{Closed-form envelopes of the Fourier-optics kernel\\
 in aberration-corrected LEEM}
 \author{Wilson Lau}
-\date{24 August 2026}
+\date{25 August 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-We give complete analytic proofs of the appendix identities of
-Yu, Lau and Altman,
-\emph{Ultramicroscopy} \textbf{200} (2019) 160--168,
-for Fourier-optics (FO) image formation in aberration-corrected
-low-energy electron microscopy (ac-LEEM).
-After recording the modelling approximations that factor the bilinear
-kernel, we prove: the Gaussian characteristic functions that produce the
-spatial envelope~\eqref{eq:paper5};
-the complex Gaussian integral that produces the chromatic
-envelope~\eqref{eq:paper6a}--\eqref{eq:paper6b};
-the polar form of the chromatic prefactor;
-the Gaussian algebra of the FO/CTF ratios~\eqref{eq:paper7};
-and the Jacobi--Anger expansion of a sinusoidal phase object.
-All statements are identities under the hypotheses named in the text.
-The first-order tilt truncation, the dropping of mixed tilt--energy terms,
-and the frozen-aperture approximation are \emph{not} identities and are
-labelled as such.
-These proofs match the Lean~4 formalization in this repository.
+We present closed-form spatial and chromatic envelopes of the
+Fourier-optics (FO) kernel for image formation in aberration-corrected
+low-energy electron microscopy (ac-LEEM), following Yu, Lau and
+Altman~\cite{Yu2019}.
+That work reduced the partially coherent ensemble integrals to
+Gaussian envelopes and compared FO with the contrast-transfer function
+(CTF); the closed forms were stated, not derived.
+After the first-order tilt, frozen-aperture and mixed tilt--energy
+truncations of their Eqs.~(3)--(4), the remaining Gaussian integrals
+are identities: they yield the spatial envelope, the chromatic
+envelopes including the polar form of the chromatic prefactor, the
+FO/CTF ratios, and the Jacobi--Anger expansion of a sinusoidal phase
+object.
+The formulae are machine-checked in Lean~4 against that kernel and
+are the forward map inverted in the companion
+reconstruction~\cite{Lau2026inverse}.
+This work places FO/CTF disagreement on identities of the same kernel
+used to predict a focal series and to recover the object that produced
+it.
 \end{abstract}
-
-\tableofcontents
-\newpage
 
 \section{Introduction}
 \label{sec:intro}
 
-Image formation in LEEM is bilinear in the object spectrum:
-partially coherent illumination mixes spatial frequencies
-$(\mathbf{q},\mathbf{q}')$ rather than multiplying a single contrast
-transfer function (CTF).
-Yu, Lau and Altman~\cite{Yu2019} write the ensemble-averaged kernel as an
-integral of a coherent kernel against a Gaussian source density and a
-Gaussian energy density, then evaluate those integrals in Appendix~A1.
+Image interpretation in LEEM~\cite{Bauer1994,Bauer2014,Tromp2000,Altman2010}
+requires a quantitative account of how the cathode lens, contrast
+aperture, source size and energy spread map the object exit wave to
+the recorded intensity.
+Aberration-corrected instruments~\cite{Tromp2010,Tromp2013} make that
+map sharper, but they do not remove the distinction between two
+standard calculations.
+The contrast-transfer function (CTF) evaluates the inverse transforms
+of $\boldsymbol{\Psi}H$ and $\boldsymbol{\Psi}^*H^*$ separately and is computationally
+efficient~\cite{Schramm2012,Tromp2012}.
+Fourier optics (FO) retains inseparable mixing of spatial-frequency
+pairs $(\mathbf{q},\mathbf{q}')$ under partial
+coherence~\cite{Pang2009,Yu2017,Yu2019}.
+The mathematically rigorous FO calculation gains an advantage under
+conditions, particularly defocus, in which partial coherence
+compromises the validity of the CTF intensity~\cite{Yu2019}.
+That distinction is observed for strongly rippled graphene, where CTF
+modelling fails and FO reproduces the measured through-focal
+contrast~\cite{Yu2017}.
 
-This note proves every closed form used in that appendix and in the
-subsequent FO/CTF comparison, with the spatial-frequency convention of
-Tromp--Schramm~\cite{Tromp2012,Schramm2012}:
-the wave aberration $\chi$ is measured in \emph{waves}, the transfer
-factor is $W=\ee^{2\pi\ii\chi}$, and $\lambda$ is restored so that $q$ is a
-true spatial frequency.
-Object phase is in radians and is independent of that $2\pi$ convention.
-These identities are the forward kernel required to invert a
-through-focal intensity series for the exit wave; the inverse against
-this kernel is treated in a companion note.
+Yu, Lau and Altman~\cite{Yu2019} write the ensemble-averaged kernel as
+an integral of a coherent kernel against a Gaussian source density and
+a Gaussian energy density, extending Pang~\emph{et al.}~\cite{Pang2009}
+to aberration-corrected columns ($C_5$, $C_{CC}$, $C_{3C}$ in place of
+$C_3$, $C_C$).
+Closed-form envelopes---their Eq.~(5), Eqs.~(6a)--(6b), the polar form
+of the chromatic prefactor, and the FO/CTF ratios $\Gamma_S$ and
+$\Gamma_C$---are stated in an appendix.
+They enter every FO intensity used to interpret a focal series, and
+they are the forward kernel of the companion through-focal
+inversion~\cite{Lau2026inverse}.
+They were not derived.
+Here those integrals are evaluated.
+After the truncations of paper Eqs.~(3)--(4) they are identities;
+the truncations themselves are modelling hypotheses.
+Selected identities are machine-checked in Lean~4~\cite{deMoura2021,mathlib2020}
+against that kernel (\cref{app:formal}).
+Experimental claims and the numerical accuracy of Table~1
+in~\cite{Yu2019} are not claimed.
 
-\paragraph{What is proved.}
-Gaussian Fourier transforms; FWHM--variance conversion; the gradient of
-$\chi_S$; the exact splitting $\Delta\chi_C=b_1\varepsilon+b_2\varepsilon^2$;
-closed forms of $E_S$ and $\ECtot$; polar form of $\ECC$;
-$\Gamma_S=\ee^{-2\kappa\,u v}$; axis and perfect-coherence identities;
-$\RCTF=\RFO\,\Gamma_C\Gamma_S$; Jacobi--Anger.
+\section{Image formation}
+\label{sec:formation}
 
-\paragraph{What is not proved.}
-Experimental claims, numerical accuracy of Table~1 parameters, and the
-modelling truncations of~\cite[Eqs.~(3)--(4)]{Yu2019}.
-
-\section{Notation and standing conventions}
-\label{sec:notation}
-
-Vectors are bold; $q=\abs{\mathbf{q}}$.
-In one dimension, $q,q',k$ are \emph{signed} scalars, so $qq'$ is a product
-of signed reals.
+The object is the complex exit wave
+$\psi_0(\mathbf{r})=\sigma(\mathbf{r})\,\ee^{\ii\phi(\mathbf{r})}$,
+with $\phi$ in radians.
+Spatial frequency is $\mathbf{q}=\boldsymbol{\alpha}/\lambda$, where
+$\boldsymbol{\alpha}$ is the emission-angle vector from the virtual object
+and $\lambda$ is the wavelength after acceleration to column energy
+$E$~\cite{Tromp2012,Schramm2012}.
+Vectors are bold and $q=\abs{\mathbf{q}}$; in one dimension $q,q',k$
+are signed scalars, so $qq'$ is a product of signed reals.
 The Fourier kernel is the unitary $2\pi$-in-the-exponent convention
-\[
-  \ee^{2\pi\ii\,\mathbf{q}\cdot\mathbf{r}},\qquad
-  \dd^2q=\dd q_x\,\dd q_y.
-\]
+$\ee^{2\pi\ii\,\mathbf{q}\cdot\mathbf{r}}$, with
+$\dd^2q=\dd q_x\,\dd q_y$.
+Wave aberration $\chi$ is measured in waves, with transfer factor
+$W=\ee^{2\pi\ii\chi}$.
+Object phase is independent of that $2\pi$ convention.
 The principal branch of the complex logarithm has argument in
 $(-\pi,\pi]$, and $z^{1/2}=\exp(\tfrac12\mathrm{Log}\,z)$ with
 $z^{1/2}>0$ for $z>0$ real.
-The same branch defines $z^{-1/2}$.
 
-\begin{definition}[Object wave]
-\label{def:object}
-$\psi_0(\mathbf{r})=\sigma(\mathbf{r})\,\ee^{\ii\phi(\mathbf{r})}$,
-with $\phi$ in radians.
-\end{definition}
-
-\begin{definition}[Spatial frequency]
-\label{def:q}
-$\mathbf{q}=\boldsymbol{\alpha}/\lambda$, where $\boldsymbol{\alpha}$ is the emission-angle
-vector from the virtual object and $\lambda$ is the wavelength after
-acceleration to column energy $E$.
-\end{definition}
-
-\begin{definition}[Aperture]
-\label{def:aperture}
-For a circular contrast aperture of cutoff $\qap=\alpha_{\mathrm{ap}}/\lambda$,
-\[
-  M(\mathbf{q})=\mathbf{1}_{\{\abs{\mathbf{q}}\le\qap\}}.
-\]
-In particular $M$ is real, so $M^*(\mathbf{q}')=M(\mathbf{q}')$.
-\end{definition}
+With $\boldsymbol{\Psi}=\mathcal{F}[\psi_0]$, the FO intensity is bilinear
+in the object spectrum~\cite{Goodman2005,Pang2009,Yu2019},
+\begin{equation}
+\label{eq:I}
+I(\mathbf{r},\Dz)
+=\iint
+\boldsymbol{\Psi}(\mathbf{q})\,\boldsymbol{\Psi}^*(\mathbf{q}')
+\,R(\mathbf{q},\mathbf{q}',\Dz)
+\,\ee^{2\pi\ii(\mathbf{q}-\mathbf{q}')\cdot\mathbf{r}}
+\,\dd^2q\,\dd^2q'.
+\end{equation}
+A circular contrast aperture of cutoff $\qap=\alpha_{\mathrm{ap}}/\lambda$
+is the indicator $M(\mathbf{q})=\mathbf{1}_{\{\abs{\mathbf{q}}\le\qap\}}$,
+which is real.
 
 \begin{approximation}[Frozen aperture]
 \label{approx:aperture}
@@ -168,9 +170,7 @@ For a small source, $M(\mathbf{q}+\mathbf{k})\approx M(\mathbf{q})$.
 This is a modelling hypothesis, not an identity.
 \end{approximation}
 
-\begin{definition}[Spherical and defocus aberration]
-\label{def:chiS}
-In waves,
+Spherical aberration and defocus enter as
 \begin{equation}
 \label{eq:chiS}
 \chi_S(\mathbf{q},\Dz)
@@ -178,16 +178,14 @@ In waves,
 +\tfrac16 C_5\lambda^5 q^6
 +\tfrac12\Dz\,\lambda\,q^2,
 \end{equation}
-and $W_S=\ee^{2\pi\ii\chi_S}$.
+with $W_S=\ee^{2\pi\ii\chi_S}$.
 The sign of $\Dz$ is the Tromp--Schramm convention: $\Dz>0$ adds
-positive optical path for off-axis rays.
+positive optical path for off-axis rays~\cite{Tromp2012}.
+Mixing the opposite sign used in some simulators interchanges
+overfocus and underfocus.
 Non-corrected (nac) LEEM keeps $C_3$ and drops $C_5$;
 aberration-corrected (ac) LEEM sets $C_3=0$ and keeps $C_5$.
-In one dimension replace $q^{2n}$ by the even power of the signed scalar.
-\end{definition}
-
-\begin{definition}[Chromatic aberration]
-\label{def:chiC}
+Chromatic aberration is
 \begin{equation}
 \label{eq:chiC}
 \chi_C(\mathbf{q},\varepsilon)
@@ -195,37 +193,32 @@ In one dimension replace $q^{2n}$ by the even power of the signed scalar.
 +\tfrac12 C_{CC}\lambda\Bigl(\frac{\varepsilon}{E}\Bigr)^2 q^2
 +\tfrac14 C_{3C}\lambda^3\Bigl(\frac{\varepsilon}{E}\Bigr)q^4,
 \end{equation}
-and $W_C=\ee^{2\pi\ii\chi_C}$.
-Nac keeps $C_C$ and drops $C_{CC},C_{3C}$;
-ac sets $C_C=0$ and keeps $C_{CC},C_{3C}$.
-\end{definition}
+with $W_C=\ee^{2\pi\ii\chi_C}$.
+Nac keeps $C_C$ and drops $C_{CC},C_{3C}$; ac sets $C_C=0$ and keeps
+$C_{CC},C_{3C}$.
+If $\chi$ is real then
+$W(\mathbf{q})W^*(\mathbf{q}')=\ee^{2\pi\ii(\chi(\mathbf{q})-\chi(\mathbf{q}'))}$;
+at $\varepsilon=0$, $\chi_C(\cdot,0)=0$ and $W_C(\cdot,0)=1$.
 
-\begin{definition}[Coherent kernel]
-\label{def:R0}
-Paper Eq.~(2):
+Viewing~\eqref{eq:chiS} as a radial function on $\R^2$,
+\begin{equation}
+\label{eq:grad}
+\nabla_{\mathbf{q}}\chi_S(\mathbf{q},\Dz)
+=\bigl(C_3\lambda^3 q^2+C_5\lambda^5 q^4+\Dz\,\lambda\bigr)\,\mathbf{q}.
+\end{equation}
+In one dimension,
+$\partial_q\chi_S=C_3\lambda^3 q^3+C_5\lambda^5 q^5+\Dz\,\lambda\,q$,
+so odd powers keep the sign of $q$.
+
+The coherent kernel is paper Eq.~(2)~\cite{Yu2019},
 \begin{equation}
 \label{eq:R0}
 \Rzero(\mathbf{q},\mathbf{q}',\Dz,\varepsilon)
 =M(\mathbf{q})M(\mathbf{q}')
 \,W_S(\mathbf{q},\Dz)\,W_S^*(\mathbf{q}',\Dz)
-\,W_C(\mathbf{q},\varepsilon)\,W_C^*(\mathbf{q}',\varepsilon).
+\,W_C(\mathbf{q},\varepsilon)\,W_C^*(\mathbf{q}',\varepsilon),
 \end{equation}
-\end{definition}
-
-\begin{lemma}[Unitary transfer]
-\label{lem:WW}
-If $\chi$ is real then
-$W(\mathbf{q})W^*(\mathbf{q}')=\ee^{2\pi\ii(\chi(\mathbf{q})-\chi(\mathbf{q}'))}$.
-At $\varepsilon=0$, $\chi_C(\cdot,0)=0$, so $W_C(\cdot,0)=1$.
-\end{lemma}
-\begin{proof}
-$W=\ee^{2\pi\ii\chi}$ lies on the unit circle, hence $W^{-1}=W^*$.
-The second claim is $\chi_C(\mathbf{q},0)=0$ by~\eqref{eq:chiC}.
-\end{proof}
-
-\begin{definition}[Ensemble kernel]
-\label{def:R}
-Paper Eq.~(1):
+and the ensemble-averaged kernel is paper Eq.~(1),
 \begin{equation}
 \label{eq:R}
 R(\mathbf{q},\mathbf{q}',\Dz)
@@ -233,243 +226,39 @@ R(\mathbf{q},\mathbf{q}',\Dz)
 s(\mathbf{k})\,c(\varepsilon)\,
 \Rzero(\mathbf{q}+\mathbf{k},\mathbf{q}'+\mathbf{k},\Dz,\varepsilon).
 \end{equation}
-\end{definition}
-
-\begin{approximation}[First-order tilt, no mixed $k\varepsilon$]
-\label{approx:taylor}
-Expand $\chi_S(\mathbf{q}+\mathbf{k})$ to first order in $\mathbf{k}$ and
-drop mixed tilt--energy terms in $\chi_C(\mathbf{q}+\mathbf{k},\varepsilon)$.
-Together with~\cref{approx:aperture} this is paper Eq.~(4):
+The source and energy densities are normalised Gaussians of widths
+$\sill>0$ and $\sE>0$,
 \begin{equation}
-\label{eq:R0approx}
+\label{eq:cs}
 \begin{aligned}
-\Rzero(\mathbf{q}+\mathbf{k},\mathbf{q}'+\mathbf{k},\Dz,\varepsilon)
-&\approx
-\Rzero(\mathbf{q},\mathbf{q}',\Dz,0)
-\,\ee^{2\pi\ii\,\mathbf{a}\cdot\mathbf{k}}
-\,\ee^{2\pi\ii(b_1\varepsilon+b_2\varepsilon^2)},
-\end{aligned}
-\end{equation}
-with $\mathbf{a}$, $b_1$, $b_2$ as in~\cref{sec:aberration}.
-The $(\mathbf{k},\varepsilon)$ integral then factors as
-$\EStot\,\ECtot$.
-The remainder of this note evaluates those two integrals exactly.
-\end{approximation}
-
-\section{Gaussian calculus}
-\label{sec:gaussian}
-
-\begin{definition}[Normalised Gaussians]
-\label{def:gaussians}
-For any width $\sigma>0$ write
-\[
-g_\sigma(x)
-=\frac{1}{\sigma\sqrt{2\pi}}
-\exp\Bigl(-\frac{x^2}{2\sigma^2}\Bigr).
-\]
-The energy and source densities of the paper are
-\begin{align}
 c(\varepsilon)
-&=g_{\sE}(\varepsilon),
-\label{eq:c}\\
+&=\frac{1}{\sE\sqrt{2\pi}}
+\exp\Bigl(-\frac{\varepsilon^2}{2\sE^2}\Bigr),\\
 s_{1\mathrm{D}}(k)
-&=g_{\sill}(k),
+&=\frac{1}{\sill\sqrt{2\pi}}
+\exp\Bigl(-\frac{k^2}{2\sill^2}\Bigr),
 \qquad
 s(\mathbf{k})
-=g_{\sill}(k_x)\,g_{\sill}(k_y)
-=\frac{1}{2\pi\sill^2}
-\exp\Bigl(-\frac{\abs{\mathbf{k}}^2}{2\sill^2}\Bigr).
-\label{eq:s}
-\end{align}
-\end{definition}
-
-\begin{lemma}[FWHM of a centred Gaussian]
-\label{lem:fwhm}
-Let $f(x)=\exp(-x^2/(2\sigma^2))$ with $\sigma>0$.
-If $f(\pm\Delta/2)=\tfrac12 f(0)$, then
-\begin{equation}
-\label{eq:fwhm}
-\Delta=2\sqrt{2\ln 2}\,\sigma,
-\qquad
-\sigma^2=\frac{\Delta^2}{8\ln 2}.
+=s_{1\mathrm{D}}(k_x)\,s_{1\mathrm{D}}(k_y).
+\end{aligned}
 \end{equation}
-\end{lemma}
-\begin{proof}
-$f(0)=1$, so the half-maximum condition is
-$\exp\bigl(-(\Delta/2)^2/(2\sigma^2)\bigr)=1/2$.
-Taking $-\log$ yields $(\Delta/2)^2/(2\sigma^2)=\ln 2$, hence
-$\Delta^2/(8\sigma^2)=\ln 2$.
-The positive root is~\eqref{eq:fwhm}.
-Squaring $\Delta=2\sqrt{2\ln 2}\,\sigma$ recovers the variance formula.
-\end{proof}
+The paper identifies $\DE$ with the FWHM of $c$ and
+$\qill=\alpha_{\mathrm{ill}}/\lambda$ with the isotropic FWHM of $s$.
+A centred Gaussian $f(x)=\exp(-x^2/(2\sigma^2))$ has
+FWHM $\Delta=2\sqrt{2\ln 2}\,\sigma$, hence
+$\sigma^2=\Delta^2/(8\ln 2)$ (\cref{lem:fwhm}).
 
-The paper identifies $\DE$ with the FWHM of $c$ and $\qill=\alpha_{\mathrm{ill}}/\lambda$
-with the isotropic FWHM of $s$.
-Write $F:=2\sqrt{2\ln 2}$ for the FWHM factor.
-
-\begin{lemma}[Product structure]
-\label{lem:product}
-$s(\mathbf{k})=s_{1\mathrm{D}}(k_x)\,s_{1\mathrm{D}}(k_y)$.
-\end{lemma}
-\begin{proof}
-$\abs{\mathbf{k}}^2=k_x^2+k_y^2$ splits the exponential.
-The prefactors multiply:
-$(1/(\sill\sqrt{2\pi}))^2=1/(2\pi\sill^2)$ because
-$\sqrt{2\pi}\,\sqrt{2\pi}=2\pi$.
-\end{proof}
-
-\begin{lemma}[Complex Gaussian integral]
-\label{lem:cgaussian}
-Let $B,C,D\in\C$ with $\ReOp(B)<0$. Then
-\begin{equation}
-\label{eq:cgaussian}
-\int_{\R}\exp(Bx^2+Cx+D)\,\dd x
-=\Bigl(\frac{\pi}{-B}\Bigr)^{1/2}
-\exp\Bigl(D-\frac{C^2}{4B}\Bigr),
-\end{equation}
-using the principal square root.
-\end{lemma}
-\begin{proof}
-Complete the square:
-$Bx^2+Cx+D=B\bigl(x+C/(2B)\bigr)^2+D-C^2/(4B)$.
-The hypothesis $\ReOp(B)<0$ gives Gaussian decay in a neighbourhood of the
-real axis, so the contour may be shifted and the integral equals
-$\exp(D-C^2/(4B))$ times $\int\exp(Bw^2)\,\dd w$.
-The standard evaluation of the latter is $(\pi/(-B))^{1/2}$.
-Because $\ReOp(-B)>0$, the number $-B$ lies in the open right half-plane,
-so $\Arg(-B)\in(-\pi/2,\pi/2)$ and the principal square root never meets
-its branch cut (the negative reals).
-When $B$ is real and negative this recovers the positive root
-$\sqrt{\pi/\abs{B}}$.
-\end{proof}
-
-\begin{theorem}[One-dimensional characteristic function]
-\label{thm:char1d}
-For $\sigma>0$ and $a\in\R$,
-\begin{equation}
-\label{eq:char1d}
-\int_{\R}g_\sigma(k)\,\ee^{2\pi\ii a k}\,\dd k
-=\exp(-2\pi^2\sigma^2 a^2).
-\end{equation}
-In particular this holds for $s_{1\mathrm{D}}=g_{\sill}$ and for $c=g_{\sE}$.
-\end{theorem}
-\begin{proof}
-The integrand is a constant times $\exp(Bk^2+Ck)$ with
-$B=-1/(2\sigma^2)$ (real) and $C=2\pi\ii a$.
-Then $\ReOp(B)<0$.
-\Cref{lem:cgaussian} gives the prefactor
-\[
-\frac{1}{\sigma\sqrt{2\pi}}
-\Bigl(\frac{\pi}{1/(2\sigma^2)}\Bigr)^{1/2}
-=\frac{1}{\sigma\sqrt{2\pi}}\sqrt{2\pi\sigma^2}=1,
-\]
-using the positive square root ($\sigma>0$).
-The exponent is $-C^2/(4B)$.
-Now $C^2=(2\pi\ii a)^2=-4\pi^2 a^2$, so
-\[
--\frac{C^2}{4B}=\frac{4\pi^2 a^2}{4B}=\frac{\pi^2 a^2}{B}
-=\pi^2 a^2\cdot\bigl(-2\sigma^2\bigr)=-2\pi^2\sigma^2 a^2.
-\]
-Equivalently, the characteristic function of $\mathcal{N}(0,\sigma^2)$ is
-$\mathbb{E}[\ee^{\ii t k}]=\ee^{-\sigma^2 t^2/2}$ at $t=2\pi a$.
-\end{proof}
-
-\begin{theorem}[Two-dimensional characteristic function]
-\label{thm:char2d}
-For $\sigma>0$ and $\mathbf{a}\in\R^2$, write
-$s_\sigma(\mathbf{k})=g_\sigma(k_x)g_\sigma(k_y)$. Then
-\begin{equation}
-\label{eq:char2d}
-\int_{\R^2}s_\sigma(\mathbf{k})\,\ee^{2\pi\ii\,\mathbf{a}\cdot\mathbf{k}}\,\dd^2k
-=\exp(-2\pi^2\sigma^2\abs{\mathbf{a}}^2).
-\end{equation}
-The illumination density $s$ is the case $\sigma=\sill$.
-\end{theorem}
-\begin{proof}
-The density factors as a product of one-dimensional Gaussians of the same
-width, and
-$\mathbf{a}\cdot\mathbf{k}=a_x k_x+a_y k_y$ factors the exponential.
-The double integral is a product of two copies of~\cref{thm:char1d},
-and the exponents add.
-\end{proof}
-
-\begin{corollary}[FWHM packaging]
-\label{cor:kappa}
-If $\qill=F\sill$ and
-$\kappa:=\pi^2\qill^2/(4\ln 2)$, then $2\pi^2\sill^2=\kappa$.
-Likewise $2\pi^2\sE^2=\pi^2\DE^2/(4\ln 2)$.
-\end{corollary}
-\begin{proof}
-Substitute $\sigma^2=\Delta^2/(8\ln 2)$ from~\cref{lem:fwhm} into
-$2\pi^2\sigma^2$:
-\[
-2\pi^2\cdot\frac{\Delta^2}{8\ln 2}=\frac{\pi^2\Delta^2}{4\ln 2}.
-\]
-\end{proof}
-
-\section{Aberration identities}
-\label{sec:aberration}
-
-\begin{theorem}[Gradient of $\chi_S$]
-\label{thm:grad}
-Viewing~\eqref{eq:chiS} as a radial $C^\infty$ function on $\R^2$,
-\begin{equation}
-\label{eq:grad}
-\nabla_{\mathbf{q}}\chi_S(\mathbf{q},\Dz)
-=\bigl(C_3\lambda^3 q^2+C_5\lambda^5 q^4+\Dz\,\lambda\bigr)\,\mathbf{q}.
-\end{equation}
-In one dimension,
-$\partial_q\chi_S=C_3\lambda^3 q^3+C_5\lambda^5 q^5+\Dz\,\lambda\,q$.
-\end{theorem}
-\begin{proof}
-Write $\rho=q^2=\abs{\mathbf{q}}^2$, so
-$\chi_S=\tfrac14 C_3\lambda^3\rho^2+\tfrac16 C_5\lambda^5\rho^3+\tfrac12\Dz\lambda\,\rho$.
-The Euclidean gradient is $\nabla\rho=2\mathbf{q}$.
-Chain rule:
-$\nabla(\rho^2)=4\rho\,\mathbf{q}=4q^2\mathbf{q}$ and
-$\nabla(\rho^3)=6\rho^2\mathbf{q}=6q^4\mathbf{q}$.
-The numerical coefficients cancel: $\tfrac14\cdot 4=1$ and $\tfrac16\cdot 6=1$
-and $\tfrac12\cdot 2=1$.
-In one dimension, differentiate the even powers $q^4$, $q^6$, $q^2$
-directly; odd powers keep the sign of $q$.
-\end{proof}
-
-\begin{definition}[Tilt vector]
-\label{def:a}
+Define the tilt vector
 \begin{equation}
 \label{eq:a}
 \mathbf{a}(\mathbf{q},\mathbf{q}',\Dz)
 :=\nabla\chi_S(\mathbf{q},\Dz)-\nabla\chi_S(\mathbf{q}',\Dz).
 \end{equation}
-In one dimension,
-$a=C_3\lambda^3(q^3-{q'}^3)+C_5\lambda^5(q^5-{q'}^5)+\Dz\lambda(q-q')$.
-On the diagonal, $\mathbf{a}(\mathbf{q},\mathbf{q})=0$.
-On the axis $\mathbf{q}'=\mathbf{0}$, $\nabla\chi_S(\mathbf{0})=0$, so
-$\mathbf{a}(\mathbf{q},\mathbf{0})=\nabla\chi_S(\mathbf{q})$.
-\end{definition}
-
-\begin{theorem}[First-order remainder]
-\label{thm:taylor}
-For each fixed $\mathbf{q},\Dz$,
-\[
-\chi_S(\mathbf{q}+\mathbf{k},\Dz)-\chi_S(\mathbf{q},\Dz)
--\mathbf{k}\cdot\nabla\chi_S(\mathbf{q},\Dz)
-=o(\abs{\mathbf{k}})\qquad(\mathbf{k}\to\mathbf{0}).
-\]
-\end{theorem}
-\begin{proof}
-This is the definition of differentiability.
-Since $\chi_S$ is a polynomial the remainder is in fact $O(\abs{\mathbf{k}}^2)$.
-The little-o statement is what paper Eq.~(3) uses; it does \emph{not}
-justify dropping the remainder uniformly in $\mathbf{q}$, which remains
-\cref{approx:taylor}.
-\end{proof}
-
-\begin{theorem}[$b_1$/$b_2$ splitting]
-\label{thm:b1b2}
-If $E\neq 0$, then
+On the diagonal $\mathbf{a}(\mathbf{q},\mathbf{q})=0$; on the axis
+$\mathbf{q}'=\mathbf{0}$, $\mathbf{a}(\mathbf{q},\mathbf{0})=\nabla\chi_S(\mathbf{q})$.
+If $E\neq 0$, the chromatic path difference splits exactly as
 $\chi_C(\mathbf{q},\varepsilon)-\chi_C(\mathbf{q}',\varepsilon)
-=b_1\varepsilon+b_2\varepsilon^2$ with
+=b_1\varepsilon+b_2\varepsilon^2$, with
 \begin{equation}
 \label{eq:b1b2}
 \begin{aligned}
@@ -480,102 +269,102 @@ b_2(\mathbf{q},\mathbf{q}')
 &=\frac{C_{CC}\lambda}{2E^2}(q^2-{q'}^2).
 \end{aligned}
 \end{equation}
-In two dimensions, $q^2$ means $\abs{\mathbf{q}}^2$.
-Units: $b_1$ is waves/energy, $b_2$ is waves/energy$^2$.
-\end{theorem}
-\begin{proof}
-Subtract~\eqref{eq:chiC} at $\mathbf{q}$ and $\mathbf{q}'$ and collect
-powers of $\varepsilon$.
-The $C_C$ term contributes $\tfrac12 C_C\lambda E^{-1}(q^2-{q'}^2)\varepsilon$;
-the $C_{3C}$ term contributes $\tfrac14 C_{3C}\lambda^3 E^{-1}(q^4-{q'}^4)\varepsilon$;
-the $C_{CC}$ term contributes $\tfrac12 C_{CC}\lambda E^{-2}(q^2-{q'}^2)\varepsilon^2$.
-No other powers appear.
-This is an identity, not an approximation.
-\end{proof}
+This is an identity: no other powers of $\varepsilon$ appear.
+On the diagonal $b_1=b_2=0$; both coefficients are antisymmetric in
+$(\mathbf{q},\mathbf{q}')$.
+Under ac, $C_C=0$ and $b_1=(C_{3C}\lambda^3/(4E))(q^4-{q'}^4)$;
+under nac, $C_{CC}=C_{3C}=0$, so $b_2=0$.
 
-\begin{corollary}[Specialisations]
-\label{cor:b1b2}
-On the diagonal, $b_1(\mathbf{q},\mathbf{q})=b_2(\mathbf{q},\mathbf{q})=0$.
-Antisymmetry: $b_j(\mathbf{q},\mathbf{q}')=-b_j(\mathbf{q}',\mathbf{q})$.
-Under ac ($C_C=0$),
-$b_1=(C_{3C}\lambda^3/(4E))(q^4-{q'}^4)$.
-Under nac ($C_{CC}=C_{3C}=0$), $b_2=0$ and
-$b_1=(C_C\lambda/(2E))(q^2-{q'}^2)$.
-\end{corollary}
-\begin{proof}
-Immediate from~\eqref{eq:b1b2}.
-\end{proof}
+\begin{approximation}[First-order tilt, no mixed $k\varepsilon$]
+\label{approx:taylor}
+Expand the path functions to first order in $\mathbf{k}$ and drop mixed
+tilt--energy terms (paper Eq.~(3)):
+\begin{equation}
+\label{eq:paper3}
+\chi_S(\mathbf{q}+\mathbf{k},\Dz)+\chi_C(\mathbf{q}+\mathbf{k},\varepsilon)
+\approx
+\chi_S(\mathbf{q},\Dz)
++\mathbf{k}\cdot\nabla\chi_S(\mathbf{q},\Dz)
++\chi_C(\mathbf{q},\varepsilon).
+\end{equation}
+Together with~\cref{approx:aperture} this is paper Eq.~(4)~\cite{Yu2019}:
+\begin{equation}
+\label{eq:R0approx}
+\Rzero(\mathbf{q}+\mathbf{k},\mathbf{q}'+\mathbf{k},\Dz,\varepsilon)
+\approx
+\Rzero(\mathbf{q},\mathbf{q}',\Dz,0)
+\,\ee^{2\pi\ii\,\mathbf{a}\cdot\mathbf{k}}
+\,\ee^{2\pi\ii(b_1\varepsilon+b_2\varepsilon^2)}.
+\end{equation}
+The $(\mathbf{k},\varepsilon)$ integral then factors as
+$\EStot\,\ECtot$.
+\end{approximation}
+Because $\chi_S$ is a polynomial the Taylor remainder is
+$O(\abs{\mathbf{k}}^2)$; \eqref{eq:paper3} does not justify dropping
+that remainder uniformly in $\mathbf{q}$.
+
+Under~\cref{approx:taylor} the working kernel is
+\begin{equation}
+\label{eq:assembly}
+R(\mathbf{q},\mathbf{q}',\Dz)
+=\Rzero(\mathbf{q},\mathbf{q}',\Dz,0)\,
+\EStot(\mathbf{q},\mathbf{q}',\Dz)\,
+\ECtot(\mathbf{q},\mathbf{q}'),
+\end{equation}
+with $\EStot$ from~\eqref{eq:paper5} and $\ECtot$ from~\eqref{eq:paper6a}.
+Nac/ac specialisation is substitution of coefficients, not a new
+identity.
 
 \section{Spatial envelope}
 \label{sec:spatial}
 
-\begin{definition}[Spatial envelope integral]
-\label{def:ES}
-After~\cref{approx:taylor},
+After~\cref{approx:taylor} the spatial envelope is
 \begin{equation}
 \label{eq:ESint}
 \EStot(\mathbf{q},\mathbf{q}',\Dz)
 :=\int_{\R^2}
-s(\mathbf{k})\,\ee^{2\pi\ii\,\mathbf{a}\cdot\mathbf{k}}\,\dd^2k,
+s(\mathbf{k})\,\ee^{2\pi\ii\,\mathbf{a}\cdot\mathbf{k}}\,\dd^2k.
 \end{equation}
-and likewise in one dimension with $s_{1\mathrm{D}}$ and scalar $a$.
-\end{definition}
-
-\begin{theorem}[Closed form in $\sill$]
-\label{thm:ES-sigma}
-If $\sill>0$, then
-$\EStot=\exp(-2\pi^2\sill^2\abs{\mathbf{a}}^2)$.
-The envelope is real, even under
-$(\mathbf{q},\mathbf{q}')\leftrightarrow(\mathbf{q}',\mathbf{q})$,
-and equals $1$ on the diagonal.
-\end{theorem}
-\begin{proof}
-Apply~\cref{thm:char2d} (or~\cref{thm:char1d} in one dimension).
-Reality: the exponent is real.
-Symmetry: $\mathbf{a}(\mathbf{q}',\mathbf{q})=-\mathbf{a}(\mathbf{q},\mathbf{q}')$,
-and $\abs{\mathbf{a}}^2$ is even.
-On the diagonal $\mathbf{a}=\mathbf{0}$.
-\end{proof}
-
-\begin{theorem}[Paper Eq.~(5)]
-\label{thm:ES-fwhm}
-If $\qill>0$ and $\kappa=\pi^2\qill^2/(4\ln 2)$, then
+The characteristic function of a centred Gaussian of width $\sigma$ is
+\begin{equation}
+\label{eq:char1d}
+\int_{\R}g_\sigma(k)\,\ee^{2\pi\ii a k}\,\dd k
+=\exp(-2\pi^2\sigma^2 a^2),
+\end{equation}
+and the two-dimensional source factors, so
+\begin{equation}
+\label{eq:char2d}
+\int_{\R^2}s(\mathbf{k})\,\ee^{2\pi\ii\,\mathbf{a}\cdot\mathbf{k}}\,\dd^2k
+=\exp(-2\pi^2\sill^2\abs{\mathbf{a}}^2)
+\end{equation}
+(\cref{lem:cgaussian,thm:char}).
+If $\qill>0$ and $\kappa=\pi^2\qill^2/(4\ln 2)$, the FWHM conversion
+$\sill^2=\qill^2/(8\ln 2)$ rewrites~\eqref{eq:char2d} as paper Eq.~(5),
 \begin{equation}
 \label{eq:paper5}
-\boxed{
 \EStot(\mathbf{q},\mathbf{q}',\Dz)
 =\exp\Bigl(-\frac{\pi^2\qill^2}{4\ln 2}\,
 \abs{\mathbf{a}(\mathbf{q},\mathbf{q}',\Dz)}^2\Bigr)
 =\ee^{-\kappa\abs{\mathbf{a}}^2}.
-}
 \end{equation}
-\end{theorem}
-\begin{proof}
-Combine~\cref{thm:ES-sigma} with~\cref{cor:kappa}.
-\end{proof}
+The envelope is real, even under
+$(\mathbf{q},\mathbf{q}')\leftrightarrow(\mathbf{q}',\mathbf{q})$,
+and equals $1$ on the diagonal.
+Thus $\kappa=2\pi^2\sill^2$, not $\pi^2\sigma^2$ (a factor of two);
+substituting FWHM for $\sigma$ instead of $\sigma^2=\Delta^2/(8\ln 2)$
+is a factor $8\ln 2$.
 
-\begin{corollary}[Expanded $\abs{\mathbf{a}}^2$]
-\label{cor:a2}
-Let $u(\mathbf{q}):=C_3\lambda^3 q^2+C_5\lambda^5 q^4+\Dz\lambda$,
-so $\nabla\chi_S=u(\mathbf{q})\,\mathbf{q}$ and
-$\mathbf{a}=u(\mathbf{q})\mathbf{q}-u(\mathbf{q}')\mathbf{q}'$.
-Then
-\[
-\abs{\mathbf{a}}^2
+Writing $u(\mathbf{q}):=C_3\lambda^3 q^2+C_5\lambda^5 q^4+\Dz\lambda$,
+one has $\nabla\chi_S=u(\mathbf{q})\,\mathbf{q}$ and
+$\mathbf{a}=u(\mathbf{q})\mathbf{q}-u(\mathbf{q}')\mathbf{q}'$, hence
+$\abs{\mathbf{a}}^2
 =u(\mathbf{q})^2 q^2+u(\mathbf{q}')^2{q'}^2
--2\,u(\mathbf{q})u(\mathbf{q}')\,(\mathbf{q}\cdot\mathbf{q}').
-\]
+-2\,u(\mathbf{q})u(\mathbf{q}')\,(\mathbf{q}\cdot\mathbf{q}')$.
 The inner product $\mathbf{q}\cdot\mathbf{q}'$ cannot be replaced by
 $q\,q'$.
-\end{corollary}
-\begin{proof}
-Expand $\abs{\mathbf{x}-\mathbf{y}}^2$.
-\end{proof}
-
-\begin{corollary}[One-dimensional polynomial form]
-\label{cor:ES1d}
 In one dimension~\eqref{eq:paper5} is
-\[
+\begin{equation}
+\label{eq:ES1d}
 \EStot(q,q',\Dz)
 =\exp\Biggl(
 -\kappa
@@ -584,26 +373,17 @@ C_3\lambda^3(q^3-{q'}^3)
 +C_5\lambda^5(q^5-{q'}^5)
 +\Dz\lambda(q-q')
 \Bigr]^2
-\Biggr).
-\]
-One may factor $(q-q')^2$ via $q^3-{q'}^3=(q-q')(q^2+qq'+{q'}^2)$.
+\Biggr);
+\end{equation}
+one may factor $(q-q')^2$ via $q^3-{q'}^3=(q-q')(q^2+qq'+{q'}^2)$.
 For ac, $C_3=0$.
-\end{corollary}
-
-\begin{corollary}[CTF slice]
-\label{cor:ES-ctf}
-$\EStot(\mathbf{q},\mathbf{0},\Dz)=\exp(-\kappa\abs{\nabla\chi_S(\mathbf{q})}^2)$,
-the separable CTF spatial envelope.
-\end{corollary}
-\begin{proof}
-\Cref{def:a}: $\mathbf{a}(\mathbf{q},\mathbf{0})=\nabla\chi_S(\mathbf{q})$.
-\end{proof}
+The CTF slice is
+$\EStot(\mathbf{q},\mathbf{0},\Dz)=\exp(-\kappa\abs{\nabla\chi_S(\mathbf{q})}^2)$.
 
 \section{Chromatic envelope}
 \label{sec:chromatic}
 
-\begin{definition}[Chromatic envelope integral]
-\label{def:EC}
+The chromatic envelope is
 \begin{equation}
 \label{eq:ECint}
 \ECtot(\mathbf{q},\mathbf{q}')
@@ -612,130 +392,39 @@ c(\varepsilon)\,
 \exp\bigl(2\pi\ii(b_1\varepsilon+b_2\varepsilon^2)\bigr)
 \,\dd\varepsilon.
 \end{equation}
-\end{definition}
-
-\begin{lemma}[Quadratic coefficient]
-\label{lem:B}
-The integrand of~\eqref{eq:ECint} is a constant times
-$\exp(B\varepsilon^2+C\varepsilon)$ with
-\begin{equation}
-\label{eq:B}
-B=-\frac{1}{2\sE^2}+2\pi\ii b_2,
-\qquad
-C=2\pi\ii b_1.
-\end{equation}
-If $\sE>0$ then $\ReOp(B)=-1/(2\sE^2)<0$, independently of $b_2$.
-Writing $z:=1-4\pi\ii b_2\sE^2$ (so $\ReOp(z)=1>0$), one has
+The integrand is a constant times $\exp(B\varepsilon^2+C\varepsilon)$
+with $B=-1/(2\sE^2)+2\pi\ii b_2$ and $C=2\pi\ii b_1$.
+If $\sE>0$ then $\ReOp(B)=-1/(2\sE^2)<0$, independently of $b_2$:
+Gaussian decay comes only from the real energy density.
+Writing $z:=1-4\pi\ii b_2\sE^2$ one has $\ReOp(z)=1>0$ and
 $B=-z/(2\sE^2)$.
-\end{lemma}
-\begin{proof}
-Add the Gaussian exponent $-\varepsilon^2/(2\sE^2)$ to the phase
-$2\pi\ii(b_1\varepsilon+b_2\varepsilon^2)$.
-The imaginary part of $B$ is $2\pi b_2$ and does not affect $\ReOp(B)$.
-The identity $B=-z/(2\sE^2)$ is algebra:
-\[
--\frac{z}{2\sE^2}
-=-\frac{1-4\pi\ii b_2\sE^2}{2\sE^2}
-=-\frac{1}{2\sE^2}+2\pi\ii b_2.
-\]
-Thus~\cref{lem:cgaussian} applies for every real $b_2$ as soon as
-$\sE>0$.
-\end{proof}
-
-\begin{lemma}[Square-root identity]
-\label{lem:sqrt-div}
-If $A>0$ is real and $D\in\C\setminus\{0\}$ has $\Arg(D)\neq\pi$, then
-$(A/D)^{1/2}=A^{1/2}D^{-1/2}$ on principal branches.
-This applies to $D=z=1-4\pi\ii b_2\sE^2$, because $\ReOp(z)=1$ implies
-$\Arg(z)\in(-\pi/2,\pi/2)$.
-\end{lemma}
-\begin{proof}
-$\mathrm{Log}(A/D)=\log A-\mathrm{Log}\,D$ provided $\Arg(D)\neq\pi$
-(the identity $\mathrm{Log}(1/w)=-\mathrm{Log}\,w$ fails on the negative
-reals).
-Exponentiate $\tfrac12\mathrm{Log}(A/D)$.
-\end{proof}
-
-\begin{theorem}[Paper Eq.~(6b)]
-\label{thm:ECC}
-Define
+Evaluating~\cref{lem:cgaussian} on the principal branch
+(\cref{thm:EC}) produces paper Eqs.~(6a)--(6b),
 \begin{equation}
 \label{eq:paper6b}
-\boxed{
 \ECC(\mathbf{q},\mathbf{q}')
 :=\bigl(1-4\pi\ii\,b_2\sE^2\bigr)^{-1/2}
-=z^{-1/2}
-}
+=z^{-1/2},
 \end{equation}
-on the principal branch, with value $1$ at $b_2=0$.
-Then the Gaussian-integral prefactor of~\eqref{eq:ECint} equals $\ECC$,
-and $\ECC^2=z^{-1}$.
-\end{theorem}
-\begin{proof}
-\Cref{lem:cgaussian} produces the prefactor
-\[
-\frac{1}{\sE\sqrt{2\pi}}
-\Bigl(\frac{\pi}{-B}\Bigr)^{1/2}.
-\]
-From~\cref{lem:B}, $\pi/(-B)=\pi\cdot(2\sE^2)/z=2\pi\sE^2/z$.
-\Cref{lem:sqrt-div} with $A=2\pi\sE^2>0$ gives
-$(\pi/(-B))^{1/2}=(2\pi\sE^2)^{1/2}z^{-1/2}$.
-The positive real root $(2\pi\sE^2)^{1/2}=\sE\sqrt{2\pi}$ cancels the
-Gaussian normalisation, leaving $z^{-1/2}=\ECC$.
-At $b_2=0$, $z=1$ and $1^{-1/2}=1$ (not $-1$).
-The identity $\ECC^2=z^{-1}$ is
-$z^{-1/2}z^{-1/2}=z^{-1}$, valid because $\Arg(z)\neq\pi$.
-\end{proof}
-
-In FWHM variables,
-$4\pi b_2\sE^2=\pi b_2\DE^2/(2\ln 2)$, so
-$z=1-\ii\,(\pi b_2\DE^2)/(2\ln 2)$.
-
-\begin{theorem}[Paper Eq.~(6a)]
-\label{thm:EC-closed}
-If $\sE>0$, then
+with value $1$ at $b_2=0$, and
 \begin{equation}
 \label{eq:paper6a}
-\boxed{
 \ECtot
 =\ECC\exp\bigl(-2\pi^2\sE^2 b_1^2\,\ECC^2\bigr)
 =\bigl(1-4\pi\ii b_2\sE^2\bigr)^{-1/2}
 \exp\Bigl(
 -\frac{2\pi^2\sE^2 b_1^2}{1-4\pi\ii b_2\sE^2}
 \Bigr).
-}
 \end{equation}
-\end{theorem}
-\begin{proof}
-\Cref{lem:cgaussian} supplies the exponent $-C^2/(4B)$ with
-$C=2\pi\ii b_1$.
-Then $C^2=(2\pi\ii b_1)^2=-4\pi^2 b_1^2$, hence
-\[
--\frac{C^2}{4B}=\frac{4\pi^2 b_1^2}{4B}=\frac{\pi^2 b_1^2}{B}.
-\]
-Substitute $B=-z/(2\sE^2)$:
-\[
-\frac{\pi^2 b_1^2}{B}
-=\pi^2 b_1^2\cdot\frac{-2\sE^2}{z}
-=-2\pi^2\sE^2 b_1^2/z.
-\]
-Since $\ECC^2=z^{-1}$, this is $-2\pi^2\sE^2 b_1^2\,\ECC^2$.
-Multiply by the prefactor of~\cref{thm:ECC}.
-\end{proof}
+In FWHM variables,
+$z=1-\ii\,(\pi b_2\DE^2)/(2\ln 2)$.
+The Han{\ss}en--Trepte packaging~\cite{Hanen1971} writes
+$2\pi^2\sE^2 b_1^2=(\DE)^2(2\pi b_1)^2/(16\ln 2)$, where $2\pi b_1$
+is the coefficient of $\varepsilon$ in the radian phase
+$2\pi\Delta\chi_C$: both $\pi$ (from $W=\ee^{2\pi\ii\chi}$) and
+$16\ln 2$ (from FWHM) must appear.
 
-\begin{remark}[Hanßen--Trepte packaging]
-\label{rem:16ln2}
-One has
-$2\pi^2\sE^2 b_1^2=(\DE)^2(2\pi b_1)^2/(16\ln 2)$,
-where $2\pi b_1$ is the coefficient of $\varepsilon$ in the
-\emph{radian} phase $2\pi\Delta\chi_C$.
-Both $\pi$ (from $W=\ee^{2\pi\ii\chi}$) and $16\ln 2$ (from FWHM) must appear.
-\end{remark}
-
-\begin{corollary}[Nac / $b_2=0$]
-\label{cor:nac}
-If $b_2=0$ then $\ECC=1$ and
-$\ECtot=\exp(-2\pi^2\sE^2 b_1^2)$.
+If $b_2=0$ then $\ECC=1$ and $\ECtot=\exp(-2\pi^2\sE^2 b_1^2)$.
 On the nac CTF slice $\mathbf{q}'=\mathbf{0}$,
 $b_1=C_C\lambda q^2/(2E)$, hence
 \begin{equation}
@@ -746,58 +435,17 @@ $b_1=C_C\lambda q^2/(2E)$, hence
 \Biggr),
 \end{equation}
 the standard chromatic envelope of Schramm \emph{et al.}~\cite{Schramm2012}.
-\end{corollary}
-\begin{proof}
-\Cref{thm:EC-closed} with $z=1$, then substitute $b_1$ and~\cref{cor:kappa}:
-\[
-2\pi^2\sE^2 b_1^2
-=\frac{\pi^2\DE^2}{4\ln 2}\cdot\frac{C_C^2\lambda^2 q^4}{4E^2}
-=\frac{(\pi C_C\lambda\DE q^2)^2}{16\ln 2\,E^2}.
-\]
-\end{proof}
+The density $c$ is real, so
+$\ECtot(\mathbf{q}',\mathbf{q})=\conj{\ECtot(\mathbf{q},\mathbf{q}')}$.
 
-\begin{corollary}[Conjugation]
-\label{cor:ECconj}
-$\ECtot(-b_1,-b_2)=\conj{\ECtot(b_1,b_2)}$.
-Equivalently $\ECtot(\mathbf{q}',\mathbf{q})=\conj{\ECtot(\mathbf{q},\mathbf{q}')}$.
-\end{corollary}
-\begin{proof}
-The density $c$ is real, and
-$\exp(2\pi\ii\psi)^*=\exp(-2\pi\ii\psi)$ for real $\psi$.
-Thus the integrand at $(-b_1,-b_2)$ is the conjugate of the integrand at
-$(b_1,b_2)$.
-Integrate, or apply~\cref{cor:b1b2} to swap $(\mathbf{q},\mathbf{q}')$.
-\end{proof}
-
-\section{Polar form of the chromatic envelope}
+\subsection{Polar form}
 \label{sec:polar}
 
 Write $y:=4\pi b_2\sE^2=\pi b_2\DE^2/(2\ln 2)$, so
 $\ECC=(1-\ii y)^{-1/2}$.
-Under ac,
-$y=\gamma(q^2-{q'}^2)$ with
-\begin{equation}
-\label{eq:gamma}
-\gamma:=\frac{\pi C_{CC}\lambda\DE^2}{4\ln 2\,E^2}.
-\end{equation}
-
-\begin{lemma}[Modulus and argument of $1-\ii y$]
-\label{lem:arg}
 For $y\in\R$, $\abs{1-\ii y}=\sqrt{1+y^2}$ and
-$\Arg(1-\ii y)=-\arctan y$.
-In particular $\Arg(1-\ii y)\in(-\pi/2,\pi/2)$.
-\end{lemma}
-\begin{proof}
-Real part $1>0$, imaginary part $-y$.
-The modulus is $\sqrt{1+y^2}$.
-For a number in the closed right half-plane,
-$\Arg=\mathrm{atan2}(\ImOp,\ReOp)=\mathrm{atan2}(-y,1)=-\arctan y$,
-where $\arctan:\R\to(-\pi/2,\pi/2)$.
-Because the real part is identically $1$, the argument never jumps.
-\end{proof}
-
-\begin{theorem}[Polar form of $\ECC$]
-\label{thm:ECC-polar}
+$\Arg(1-\ii y)=-\arctan y$: the real part is identically $1$, so the
+argument never jumps.
 On the principal branch,
 \begin{equation}
 \label{eq:ECC-polar}
@@ -805,39 +453,25 @@ On the principal branch,
 =(1+y^2)^{-1/4}
 \exp\bigl(\tfrac{\ii}{2}\arctan y\bigr).
 \end{equation}
-Hence under ac,
-\[
-\ECC
+The phase of $\ECC$ therefore lies in $(-\pi/4,\pi/4)$.
+Under ac, $y=\gamma(q^2-{q'}^2)$ with
+\begin{equation}
+\label{eq:gamma}
+\gamma:=\frac{\pi C_{CC}\lambda\DE^2}{4\ln 2\,E^2},
+\end{equation}
+and~\eqref{eq:ECC-polar} is
+$\ECC
 =\bigl[1+\gamma^2(q^2-{q'}^2)^2\bigr]^{-1/4}
-\exp\Bigl(\tfrac{\ii}{2}\arctan\bigl(\gamma(q^2-{q'}^2)\bigr)\Bigr).
-\]
-\end{theorem}
-\begin{proof}
-$z^{-1/2}=\abs{z}^{-1/2}\exp(-\ii\Arg(z)/2)$.
-By~\cref{lem:arg}, $\abs{z}^{-1/2}=(1+y^2)^{-1/4}$ and
-$-\Arg(z)/2=\tfrac12\arctan y$.
-The phase of $\ECC$ therefore lies in $(-\pi/4,\pi/4)$ and never jumps.
-At $y=0$ one recovers $+1$.
-\end{proof}
+\exp\bigl(\tfrac{\ii}{2}\arctan(\gamma(q^2-{q'}^2))\bigr)$.
 
-\begin{lemma}[Polar form of $1/z$]
-\label{lem:1z}
-$1/(1-\ii y)=(1+\ii y)/(1+y^2)$.
-\end{lemma}
-\begin{proof}
-Multiply numerator and denominator by $1+\ii y$.
-The denominator is $\abs{1-\ii y}^2=1+y^2$.
-\end{proof}
-
-\begin{theorem}[Polar form of the remaining exponential, ac]
-\label{thm:exp-polar}
 Let
 \begin{equation}
 \label{eq:eta}
 \eta:=\frac{(\pi C_{3C}\lambda^3\DE)^2}{64\ln 2\,E^2},
 \end{equation}
 so that $2\pi^2\sE^2 b_1^2=\eta(q^4-{q'}^4)^2$ under ac.
-Then
+Rationalising $1/(1-\ii y)=(1+\ii y)/(1+y^2)$ splits the remaining
+exponential:
 \begin{equation}
 \label{eq:exp-polar}
 \begin{aligned}
@@ -852,26 +486,8 @@ Then
 \Biggr).
 \end{aligned}
 \end{equation}
-\end{theorem}
-\begin{proof}
-Under ac, \cref{cor:b1b2} gives $b_1=(C_{3C}\lambda^3/(4E))(q^4-{q'}^4)$, so
-\[
-2\pi^2\sE^2 b_1^2
-=\frac{\pi^2\DE^2}{4\ln 2}\cdot\frac{C_{3C}^2\lambda^6}{16E^2}(q^4-{q'}^4)^2
-=\eta(q^4-{q'}^4)^2.
-\]
-Now $\ECC^2=1/z=1/(1-\ii y)$.
-The exponent is
-$-2\pi^2\sE^2 b_1^2\cdot(1+\ii y)/(1+y^2)$
-by~\cref{lem:1z}.
-The real part is $-\eta(q^4-{q'}^4)^2/(1+y^2)$;
-the imaginary part is $-\eta(q^4-{q'}^4)^2 y/(1+y^2)$.
-Substitute $y=\gamma(q^2-{q'}^2)$.
-\end{proof}
-
-\begin{theorem}[Amplitude and phase of $\ECtot$, ac]
-\label{thm:A-theta}
-Write $\ECtot=A\ee^{\ii\theta}$ with $A\ge 0$. Then
+Writing $\ECtot=A\ee^{\ii\theta}$ with $A\ge 0$, moduli multiply and
+arguments add:
 \begin{equation}
 \label{eq:A-theta}
 \begin{aligned}
@@ -887,18 +503,12 @@ A(q,q')
 \end{equation}
 Parity: $A(q,q')=A(q',q)=A(\abs{q},\abs{q'})$ and
 $\theta(q,q')=-\theta(q',q)$.
-\end{theorem}
-\begin{proof}
-Product of~\cref{thm:ECC-polar,thm:exp-polar}: moduli multiply, arguments add.
-Parity follows because $y$ and $(q^4-{q'}^4)$ both change sign under
-$(q,q')\leftrightarrow(q',q)$, while $y^2$ and $(q^4-{q'}^4)^2$ do not.
-\end{proof}
 
-\section{Envelope ratios and the CTF comparison}
+\section{Comparison with the contrast-transfer function}
 \label{sec:ratios}
 
-\begin{definition}[Paper Eqs.~(7a)--(7b)]
-\label{def:gamma}
+The paper compares FO with a separable CTF kernel through the
+ratios~\cite{Yu2019}
 \begin{equation}
 \label{eq:paper7}
 \begin{aligned}
@@ -911,43 +521,29 @@ $(q,q')\leftrightarrow(q',q)$, while $y^2$ and $(q^4-{q'}^4)^2$ do not.
 {\EStot(\mathbf{q},\mathbf{q}',\Dz)}.
 \end{aligned}
 \end{equation}
-Printed~(7a) uses the \emph{non-conjugated} product
+Printed~(7a) uses the non-conjugated product
 $\ECtot(\mathbf{q},\mathbf{0})\ECtot(\mathbf{q}',\mathbf{0})$.
-For ac, $\ECtot$ is complex, so $\Gamma_C$ is complex; the plotted quantity
-is $\abs{\Gamma_C}$.
-\end{definition}
+For ac, $\ECtot$ is complex, so $\Gamma_C$ is complex; the plotted
+quantity is $\abs{\Gamma_C}$.
+In the polar form of~\cref{sec:polar},
+\begin{equation}
+\label{eq:gammaC-polar}
+\Gamma_C(q,q')
+=\frac{A(q,0)\,A(q',0)}{A(q,q')}
+\exp\bigl(\ii[\theta(q,0)+\theta(q',0)-\theta(q,q')]\bigr).
+\end{equation}
 
-\begin{theorem}[$\Gamma_S$ algebra]
-\label{thm:gammaS}
-Let $\mathbf{u}=\nabla\chi_S(\mathbf{q},\Dz)$,
-$\mathbf{v}=\nabla\chi_S(\mathbf{q}',\Dz)$, and
-$\kappa=\pi^2\qill^2/(4\ln 2)$.
-Then
+Let $\mathbf{u}=\nabla\chi_S(\mathbf{q},\Dz)$ and
+$\mathbf{v}=\nabla\chi_S(\mathbf{q}',\Dz)$.
+Then $\EStot=\ee^{-\kappa\abs{\mathbf{u}-\mathbf{v}}^2}$ and the
+quadratic terms cancel, leaving
 \begin{equation}
 \label{eq:gammaS}
 \Gamma_S=\exp(-2\kappa\,\mathbf{u}\cdot\mathbf{v}).
 \end{equation}
-In one dimension,
-$\Gamma_S=\exp\bigl(-2\kappa\,(\partial_q\chi_S(q))(\partial_q\chi_S(q'))\bigr)$.
-\end{theorem}
-\begin{proof}
-$\EStot=\ee^{-\kappa\abs{\mathbf{a}}^2}$ with $\mathbf{a}=\mathbf{u}-\mathbf{v}$,
-and $\nabla\chi_S(\mathbf{0})=\mathbf{0}$, so
-$\EStot(\mathbf{q},\mathbf{0})=\ee^{-\kappa\abs{\mathbf{u}}^2}$ and
-$\EStot(\mathbf{q}',\mathbf{0})=\ee^{-\kappa\abs{\mathbf{v}}^2}$.
-Therefore
-\[
-\Gamma_S
-=\exp\bigl(-\kappa\abs{\mathbf{u}}^2-\kappa\abs{\mathbf{v}}^2
-+\kappa\abs{\mathbf{u}-\mathbf{v}}^2\bigr).
-\]
-Expand $\abs{\mathbf{u}-\mathbf{v}}^2=\abs{\mathbf{u}}^2+\abs{\mathbf{v}}^2-2\mathbf{u}\cdot\mathbf{v}$.
-The quadratic terms cancel, leaving $\ee^{-2\kappa\,\mathbf{u}\cdot\mathbf{v}}$.
-\end{proof}
-
-\begin{corollary}[One-dimensional ac formula]
-\label{cor:gammaS-ac}
-If $C_3=0$ and $\qill>0$, then
+The inner product is $\nabla\chi_S(\mathbf{q})\cdot\nabla\chi_S(\mathbf{q}')$,
+not a product of Euclidean norms.
+In one dimension with $C_3=0$,
 \begin{equation}
 \label{eq:gammaS-ac}
 \Gamma_S(q,q',\Dz)
@@ -957,65 +553,15 @@ If $C_3=0$ and $\qill>0$, then
 \bigl(C_5\lambda^5 {q'}^5+\Dz\lambda\,q'\bigr)
 \Biggr].
 \end{equation}
-\end{corollary}
-\begin{proof}
-\Cref{thm:gammaS} with $2\kappa=\pi^2\qill^2/(2\ln 2)$ and
-\cref{thm:grad} with $C_3=0$.
-\end{proof}
 
-\begin{theorem}[Perfect coherence]
-\label{thm:perfect}
-If $\qill=\DE=0$ (equivalently $\sill=\sE=0$), then every envelope equals $1$,
-hence $\Gamma_C=\Gamma_S=1$ and $\Gamma_C\Gamma_S=1$ for all
-$(\mathbf{q},\mathbf{q}',\Dz)$.
-\end{theorem}
-\begin{proof}
-$\exp(0)=1$ and $1^{-1/2}=1$.
-The closed forms extend by continuity to vanishing widths.
-\end{proof}
+If $\qill=\DE=0$ then every envelope equals $1$, hence
+$\Gamma_C=\Gamma_S=1$.
+On either spatial axis $\Gamma_S=1$.
+The chromatic ratio satisfies $\Gamma_C(\mathbf{q},\mathbf{0})=1$;
+if $\DE>0$ then only $\abs{\Gamma_C(\mathbf{0},\mathbf{q}')}=1$ in
+general for ac, because~\eqref{eq:paper7} has no extra conjugate.
 
-\begin{theorem}[Axes]
-\label{thm:axes}
-$\Gamma_S(\mathbf{q},\mathbf{0},\Dz)=\Gamma_S(\mathbf{0},\mathbf{q}',\Dz)=1$.
-$\Gamma_C(\mathbf{q},\mathbf{0})=1$.
-If $\DE>0$ then $\abs{\Gamma_C(\mathbf{0},\mathbf{q}')}=1$.
-\end{theorem}
-\begin{proof}
-Write $E_S(\mathbf{q},\mathbf{q}')$ for $\EStot(\mathbf{q},\mathbf{q}',\Dz)$.
-Then $E_S(\mathbf{0},\mathbf{0})=1$ because $\mathbf{a}(\mathbf{0},\mathbf{0})=\mathbf{0}$.
-Hence
-\[
-\Gamma_S(\mathbf{q},\mathbf{0},\Dz)
-=\frac{E_S(\mathbf{q},\mathbf{0})\,E_S(\mathbf{0},\mathbf{0})}{E_S(\mathbf{q},\mathbf{0})}
-=1,
-\]
-and likewise $\Gamma_S(\mathbf{0},\mathbf{q}',\Dz)=1$ by symmetry of $E_S$.
-
-For the chromatic ratios, $b_1(\mathbf{0},\mathbf{0})=b_2(\mathbf{0},\mathbf{0})=0$,
-so $\ECtot(\mathbf{0},\mathbf{0})=1$. Therefore
-\[
-\Gamma_C(\mathbf{q},\mathbf{0})
-=\frac{\ECtot(\mathbf{q},\mathbf{0})\,\ECtot(\mathbf{0},\mathbf{0})}
-{\ECtot(\mathbf{q},\mathbf{0})}
-=1.
-\]
-For the other axis, $b_j(\mathbf{0},\mathbf{q}')=-b_j(\mathbf{q}',\mathbf{0})$, so
-\cref{cor:ECconj} gives
-$\ECtot(\mathbf{0},\mathbf{q}')=\conj{\ECtot(\mathbf{q}',\mathbf{0})}$.
-Let $Z:=\ECtot(\mathbf{q}',\mathbf{0})$. Then $Z\neq 0$
-($\ECC\neq 0$ and the exponential never vanishes), and
-\[
-\Gamma_C(\mathbf{0},\mathbf{q}')
-=\frac{\ECtot(\mathbf{0},\mathbf{0})\,Z}{\conj{Z}}
-=\frac{Z}{\conj{Z}},
-\]
-which has modulus $1$. (For ac this need not equal $1$: only the modulus is
-identically one.)
-\end{proof}
-
-\begin{definition}[Working FO and CTF kernels]
-\label{def:RFO}
-After~\cref{approx:taylor},
+After~\cref{approx:taylor} the working kernels are
 \begin{align}
 \RFO(\mathbf{q},\mathbf{q}',\Dz)
 &:=\Rzero(\mathbf{q},\mathbf{q}',\Dz,0)\,
@@ -1030,250 +576,317 @@ After~\cref{approx:taylor},
 \ECtot(\mathbf{q}',\mathbf{0}),
 \label{eq:RCTF}
 \end{align}
-where the last two chromatic factors are \emph{not} conjugated, matching
+where the last two chromatic factors are not conjugated, matching
 printed~(7a).
-Spatial envelopes are real, so conjugating $\EStot(\mathbf{q}',\mathbf{0},\Dz)$
-is redundant. The spatial CTF factors still depend on defocus.
-\end{definition}
-
-\begin{lemma}[Hermiticity of $\Rzero$]
-\label{lem:R0herm}
-$\conj{\Rzero(\mathbf{q},\mathbf{q}',\Dz,\varepsilon)}
-=\Rzero(\mathbf{q}',\mathbf{q},\Dz,\varepsilon)$.
-\end{lemma}
-\begin{proof}
-$M$ is real. Each of $W_S$ and $W_C$ is unimodular, so
-$W^*(\mathbf{q})W(\mathbf{q}')=\conj{W(\mathbf{q})W^*(\mathbf{q}')}$
-for $W\in\{W_S,W_C\}$. The product of these factors therefore swaps
-$(\mathbf{q},\mathbf{q}')$ under conjugation.
-\end{proof}
-
-\begin{theorem}[FO recovers CTF on the axis]
-\label{thm:axis-eq}
-$\RFO(\mathbf{q},\mathbf{0},\Dz)=\RCTF(\mathbf{q},\mathbf{0},\Dz)$.
-\end{theorem}
-\begin{proof}
-On $\mathbf{q}'=\mathbf{0}$, \cref{thm:axes} gives $\Gamma_C=\Gamma_S=1$,
-or expand~\eqref{eq:RFO}--\eqref{eq:RCTF} using
-$\EStot(\mathbf{0},\mathbf{0},\Dz)=1$ and $\ECtot(\mathbf{0},\mathbf{0})=1$.
-\end{proof}
-
-\begin{theorem}[Paper comparison identity]
-\label{thm:R-gamma}
+Neither envelope vanishes ($\EStot$ is an exponential;
+$\ECC=z^{-1/2}$ with $\ReOp(z)=1$), so multiplying~\eqref{eq:RFO} by
+\eqref{eq:paper7} yields the comparison identity
 \begin{equation}
 \label{eq:R-gamma}
-\boxed{\RCTF=\RFO\,\Gamma_C\,\Gamma_S.}
+\RCTF=\RFO\,\Gamma_C\,\Gamma_S.
 \end{equation}
-\end{theorem}
-\begin{proof}
-Neither envelope vanishes:
-$\EStot$ is an exponential, and $\ECtot=\ECC$ times an exponential with
-$\ECC=z^{-1/2}$ and $z\neq 0$ ($\ReOp(z)=1$).
-Multiplying~\eqref{eq:RFO} by~\eqref{eq:paper7} therefore cancels
-$\EStot(\mathbf{q},\mathbf{q}')$ and $\ECtot(\mathbf{q},\mathbf{q}')$,
-leaving~\eqref{eq:RCTF}.
-\end{proof}
+On $\mathbf{q}'=\mathbf{0}$ one has $\Gamma_C=\Gamma_S=1$, hence
+$\RFO(\mathbf{q},\mathbf{0},\Dz)=\RCTF(\mathbf{q},\mathbf{0},\Dz)$.
+Thus $\Gamma_C\Gamma_S\neq 1$ is the warning that a separable CTF
+kernel differs from the FO kernel; the two agree on the axes, at
+perfect coherence, and in the weak-phase limit that samples those
+axes.
+The coherent kernel is Hermitian,
+$\conj{\Rzero(\mathbf{q},\mathbf{q}',\Dz,\varepsilon)}
+=\Rzero(\mathbf{q}',\mathbf{q},\Dz,\varepsilon)$,
+because $M$ is real and each of $W_S$ and $W_C$ is unimodular.
 
-Thus $\Gamma_C\Gamma_S\neq 1$ is precisely the warning that a separable CTF
-kernel differs from the FO kernel.
-
-\section{Jacobi--Anger expansion of a sinusoidal object}
+\section{Sinusoidal phase object}
 \label{sec:jacobi}
 
 A kinematic LEEM phase object of physical amplitude $A$ and wavelength
 $\Lambda$ is
 $\psi_0(x)\propto\exp(\ii\varphi\sin(kx))$ with
-$\varphi=4\pi A/\lambda_0$ and $k=2\pi/\Lambda$.
-The phase amplitude is a definition of the reflection kinematics, not an
-FO theorem.
-
-\begin{definition}[Fourier--Bessel coefficients]
-\label{def:bessel}
-For $\varphi\in\R$ and $n\in\Z$,
+$\varphi=4\pi A/\lambda_0$ and $k=2\pi/\Lambda$~\cite{Yu2017,Yu2019}.
+The phase amplitude is a definition of the reflection kinematics, not
+an FO theorem.
+At $E_0=10\,\mathrm{eV}$, $\lambda_0\simeq 0.39\,\mathrm{nm}$, so
+$A=0.1\,\mathrm{nm}$ already gives $\varphi\sim 3$, outside the
+weak-phase regime occupied by graphene ripples and atomic
+steps~\cite{Yu2017}.
+The Bessel coefficients are the Fourier coefficients
 \begin{equation}
 \label{eq:Jn}
 J_n(\varphi)
-:=\frac{1}{2\pi}
+=\frac{1}{2\pi}
 \int_{(0,2\pi]}
-\exp(\ii\varphi\sin\theta)\,\ee^{-\ii n\theta}\,\dd\theta.
+\exp(\ii\varphi\sin\theta)\,\ee^{-\ii n\theta}\,\dd\theta,
 \end{equation}
-\end{definition}
-
-\begin{lemma}[Periodicity and unit modulus]
-\label{lem:phase}
-$\theta\mapsto\exp(\ii\varphi\sin\theta)$ is $2\pi$-periodic and has
-modulus $1$.
-Its second derivative is bounded by $\abs{\varphi}+\varphi^2$.
-\end{lemma}
-\begin{proof}
-Sine is $2\pi$-periodic.
-The exponent $\ii\varphi\sin\theta$ is purely imaginary, so the exponential
-has modulus $1$.
-Differentiating,
-$f'=\ii\varphi\cos\theta\cdot f$ and
-$f''=\ii\varphi(-\sin\theta)f+(\ii\varphi\cos\theta)^2 f$,
-hence $\abs{f''}\le\abs{\varphi}+\varphi^2$.
-\end{proof}
-
-\begin{lemma}[Bessel bound]
-\label{lem:bessel-bound}
-If $n\neq 0$ then $\abs{J_n(\varphi)}\le(\abs{\varphi}+\varphi^2)/n^2$.
-Consequently $\sum_{n\in\Z}J_n(\varphi)$ is absolutely summable.
-\end{lemma}
-\begin{proof}
-Two integrations by parts on the circle (periodic endpoints cancel)
-express $J_n$, for $n\neq 0$, as the Fourier coefficient of $f''$
-divided by $(in)^2$.
-The bound on $\abs{f''}$ yields the coefficient bound.
-Comparison with $\sum n^{-2}$ gives summability; the $n=0$ term is finite.
-\end{proof}
-
-\begin{theorem}[Jacobi--Anger]
-\label{thm:jacobi}
-For all real $\varphi,\theta$,
+and Jacobi--Anger supplies the expansion
 \begin{equation}
 \label{eq:jacobi}
 \exp(\ii\varphi\sin\theta)
 =\sum_{n\in\Z}J_n(\varphi)\,\ee^{\ii n\theta},
 \end{equation}
-the series converging absolutely and uniformly on $\R$.
-Hence $\exp(\ii\varphi\sin(kx))=\sum_n J_n(\varphi)\,\ee^{\ii nkx}$.
-\end{theorem}
-\begin{proof}
-The map $\theta\mapsto\exp(\ii\varphi\sin\theta)$ is continuous and
-$2\pi$-periodic.
-Its Fourier coefficients~\eqref{eq:Jn} are absolutely summable
-by~\cref{lem:bessel-bound}.
-A continuous function on the circle with absolutely summable Fourier
-coefficients equals its Fourier series pointwise on $(0,2\pi]$.
-Both sides of~\eqref{eq:jacobi} are $2\pi$-periodic, so the identity
-extends to all real $\theta$ by reducing modulo $2\pi$
-($\ee^{\ii n(\theta-2\pi m)}=\ee^{\ii n\theta}$).
-\end{proof}
-
-\begin{corollary}[Discrete spectrum]
-\label{cor:spectrum}
+absolutely and uniformly on $\R$ (\cref{thm:jacobi}), hence
+$\exp(\ii\varphi\sin(kx))=\sum_n J_n(\varphi)\,\ee^{\ii nkx}$.
 In the paper's $2\pi$ Fourier convention,
-$\ee^{\ii n k x}=\ee^{2\pi\ii q_n x}$ with $q_n=nk/(2\pi)=n/\Lambda$.
-The object is a discrete spectrum at those frequencies.
-Larger $\varphi$ populates larger $\abs{n}$, so pairs $(q,q')$ leave the
-axes where $\Gamma_C\Gamma_S=1$, and a separable CTF becomes inaccurate.
-\end{corollary}
+$\ee^{\ii n k x}=\ee^{2\pi\ii q_n x}$ with $q_n=n/\Lambda$.
+Larger $\varphi$ populates larger $\abs{n}$, so pairs $(q,q')$ leave
+the axes where $\Gamma_C\Gamma_S=1$, and a separable CTF becomes
+inaccurate.
+That is the object used in~\cite{Yu2017,Yu2019} to exhibit CTF
+failure, and the aperture-truncated Bessel ladder inverted in the
+companion reconstruction~\cite{Lau2026inverse}.
 
-\section{Assembly}
-\label{sec:assembly}
+\section{Conclusions}
+\label{sec:end}
 
-\begin{theorem}[Working formula]
-\label{thm:assembly}
-Under~\cref{approx:taylor},
+We evaluate the closed-form spatial and chromatic envelopes of the FO
+kernel of Yu, Lau and Altman~\cite{Yu2019}.
+After the truncations of their Eqs.~(3)--(4) those envelopes are
+identities: the spatial envelope is the characteristic function of a
+Gaussian source, and the chromatic envelopes follow from a complex
+Gaussian integral, including the polar form of the chromatic
+prefactor.
+The comparison $\RCTF=\RFO\,\Gamma_C\Gamma_S$ isolates the off-axis
+pairs at which FO and CTF disagree; the two agree on the axes, at
+perfect coherence, and for weak-phase objects that sample those axes.
+Jacobi--Anger places a sinusoidal object on the frequency ladder where
+that distinction matters.
+These identities are the forward kernel inverted in the companion
+through-focal reconstruction, with selected claims machine-checked in
+Lean~4 against that kernel.
+FO/CTF disagreement is therefore an identity of the same kernel used
+to predict a focal series and to recover the object that produced it.
+
+\appendix
+\section{Formal claims}
+\label{app:formal}
+
+The statements below are the analytic identities used in the main
+text.
+\Cref{approx:aperture,approx:taylor} are not theorems: the working
+kernel $\RFO$ is defined as the factorised expression after those
+truncations.
+Wavelength is the field \texttt{lam} (Lean reserves $\lambda$).
+No experimental claim or Table~1 numerical accuracy is asserted.
+
+\begin{lemma}[Complex Gaussian integral]
+\label{lem:cgaussian}
+Let $B,C,D\in\C$ with $\ReOp(B)<0$. Then
 \begin{equation}
-\label{eq:assembly}
-R(\mathbf{q},\mathbf{q}',\Dz)
-=\Rzero(\mathbf{q},\mathbf{q}',\Dz,0)\,
-\EStot(\mathbf{q},\mathbf{q}',\Dz)\,
-\ECtot(\mathbf{q},\mathbf{q}'),
+\label{eq:cgaussian}
+\int_{\R}\exp(Bx^2+Cx+D)\,\dd x
+=\Bigl(\frac{\pi}{-B}\Bigr)^{1/2}
+\exp\Bigl(D-\frac{C^2}{4B}\Bigr),
 \end{equation}
-with $\EStot$ from~\cref{thm:ES-fwhm} and $\ECtot$ from~\cref{thm:EC-closed}.
-Nac/ac specialisation is substitution of coefficients, not a new theorem.
-\end{theorem}
+using the principal square root.
+\end{lemma}
 \begin{proof}
-Substitute~\eqref{eq:R0approx} into~\eqref{eq:R} and use that the
-$(\mathbf{k},\varepsilon)$ integral factors.
+Complete the square:
+$Bx^2+Cx+D=B\bigl(x+C/(2B)\bigr)^2+D-C^2/(4B)$.
+The hypothesis $\ReOp(B)<0$ gives Gaussian decay in a neighbourhood of
+the real axis, so the contour may be shifted.
+Because $\ReOp(-B)>0$, one has $\Arg(-B)\in(-\pi/2,\pi/2)$ and the
+principal square root never meets its branch cut.
+When $B$ is real and negative this recovers
+$\sqrt{\pi/\abs{B}}$.
 \end{proof}
 
-\section{Correspondence with the Lean formalization}
-\label{sec:lean}
+\begin{lemma}[FWHM of a centred Gaussian]
+\label{lem:fwhm}
+Let $f(x)=\exp(-x^2/(2\sigma^2))$ with $\sigma>0$.
+If $f(\pm\Delta/2)=\tfrac12 f(0)$, then
+$\Delta=2\sqrt{2\ln 2}\,\sigma$ and
+$\sigma^2=\Delta^2/(8\ln 2)$.
+\end{lemma}
+\begin{proof}
+$f(0)=1$, so $\exp\bigl(-(\Delta/2)^2/(2\sigma^2)\bigr)=1/2$.
+Taking $-\log$ yields $\Delta^2/(8\sigma^2)=\ln 2$.
+\end{proof}
 
+\begin{theorem}[Characteristic functions]
+\label{thm:char}
+For $\sigma>0$ and $a\in\R$,
+\eqref{eq:char1d} holds; for $\mathbf{a}\in\R^2$,
+\eqref{eq:char2d} holds with $s$ as in~\eqref{eq:cs}.
+\end{theorem}
+\begin{proof}
+The one-dimensional integrand is a constant times $\exp(Bk^2+Ck)$ with
+$B=-1/(2\sigma^2)$ and $C=2\pi\ii a$.
+\Cref{lem:cgaussian} cancels the Gaussian normalisation (positive
+square root, $\sigma>0$) and produces the exponent $-C^2/(4B)$.
+Then $C^2=-4\pi^2 a^2$, so $-C^2/(4B)=-2\pi^2\sigma^2 a^2$.
+The two-dimensional source is a product of one-dimensional Gaussians
+of the same width, and $\mathbf{a}\cdot\mathbf{k}$ factors the
+exponential, so the exponents add.
+\end{proof}
+
+\begin{lemma}[Square-root identity]
+\label{lem:sqrt-div}
+If $A>0$ is real and $D\in\C\setminus\{0\}$ has $\Arg(D)\neq\pi$, then
+$(A/D)^{1/2}=A^{1/2}D^{-1/2}$ on principal branches.
+This applies to $z=1-4\pi\ii b_2\sE^2$, because $\ReOp(z)=1$.
+\end{lemma}
+The identity $\mathrm{Log}(1/w)=-\mathrm{Log}\,w$ fails on the
+negative reals; $\ReOp(z)=1$ keeps the cut away, so $b_2=0$ yields
+$+1$.
+
+\begin{theorem}[Paper Eqs.~(6a)--(6b)]
+\label{thm:EC}
+If $\sE>0$, then~\eqref{eq:paper6b}--\eqref{eq:paper6a} hold on the
+principal branch.
+\end{theorem}
+\begin{proof}
+\Cref{lem:cgaussian} produces the prefactor
+$(1/(\sE\sqrt{2\pi}))(\pi/(-B))^{1/2}$.
+Then $\pi/(-B)=2\pi\sE^2/z$.
+\Cref{lem:sqrt-div} cancels the Gaussian normalisation, leaving
+$z^{-1/2}=\ECC$.
+At $b_2=0$, $z=1$ and $1^{-1/2}=1$ (not $-1$).
+The exponent is $-C^2/(4B)$ with $C=2\pi\ii b_1$, hence
+$C^2=-4\pi^2 b_1^2$ and $-C^2/(4B)=-2\pi^2\sE^2 b_1^2/z$.
+Forgetting $\ii^2=-1$ produces a purely oscillatory ``envelope''.
+Since $\ECC^2=z^{-1}$ this is $-2\pi^2\sE^2 b_1^2\,\ECC^2$.
+\end{proof}
+
+\begin{theorem}[Jacobi--Anger]
+\label{thm:jacobi}
+For all real $\varphi,\theta$, \eqref{eq:jacobi} converges absolutely
+and uniformly on $\R$.
+\end{theorem}
+\begin{proof}
+The map $\theta\mapsto\exp(\ii\varphi\sin\theta)$ is continuous,
+$2\pi$-periodic and unimodular; its second derivative is bounded by
+$\abs{\varphi}+\varphi^2$.
+Two integrations by parts on the circle bound
+$\abs{J_n(\varphi)}\le(\abs{\varphi}+\varphi^2)/n^2$ for $n\neq 0$,
+so the coefficients are absolutely summable.
+A continuous function on the circle with absolutely summable Fourier
+coefficients equals its Fourier series pointwise; both sides of
+\eqref{eq:jacobi} are $2\pi$-periodic, so the identity extends to all
+real $\theta$.
+\end{proof}
+
+\paragraph{Lean correspondence.}
 The identities above are encoded without $\mathtt{sorry}$ in this
 repository, using Mathlib's Gaussian and complex-power lemmas.
-Wavelength is the field \texttt{lam} (Lean reserves $\lambda$).
 
 \begin{center}
 \small
-\begin{tabular}{@{}lll@{}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}ll@{}}
 \toprule
-Statement & Paper & Lean name \\
+Claim & Lean \\
 \midrule
-FWHM / $\sigma^2=\Delta^2/(8\ln 2)$ & --- & \texttt{gaussian\_fwhm}, \texttt{variance\_from\_fwhm} \\
-Char.\ fun.\ $E[\ee^{2\pi\ii a k}]$ & A1 & \texttt{charFun\_source1D}, \texttt{charFun\_source2D} \\
-$\nabla\chi_S$ / $\partial_q\chi_S$ & --- & \texttt{hasDerivAt\_chiS}, \texttt{hasGradientAt\_chiS2} \\
-Taylor remainder $o(k)$ & (3) & \texttt{chiS\_taylor} \\
-$b_1\varepsilon+b_2\varepsilon^2$ & --- & \texttt{chiC\_sub} \\
-$E_S=\ee^{-\kappa a^2}$ & (5) & \texttt{spatialEnvelope\_eq\_fwhm} \\
-$\ECtot$ closed form & (6a)--(6b) & \texttt{chromaticEnvelopeIntegral\_eq\_closed} \\
-Polar $\ECC$ & A2 & \texttt{ecc\_eq\_polar} \\
-$\Gamma_S=\ee^{-2\kappa uv}$ & (7b) & \texttt{gammaS\_eq\_kappa}, \texttt{gammaS\_ac} \\
-Axes / perfect coherence & --- & \texttt{gammaS\_axis}, \texttt{gamma\_product\_perfect} \\
-$\RCTF=\RFO\Gamma_C\Gamma_S$ & (7) & \texttt{R\_CTF\_eq\_R\_FO\_mul\_gamma} \\
-Jacobi--Anger & \S3.2 & \texttt{jacobi\_anger} \\
+FWHM / $\sigma^2=\Delta^2/(8\ln 2)$ & \texttt{gaussian\_fwhm} \\
+Char.\ fun.\ $E[\ee^{2\pi\ii a k}]$ (A1) & \texttt{charFun\_source1D}, \texttt{charFun\_source2D} \\
+$E_S$ integral $=$ closed form (5) & \texttt{spatialEnvelopeIntegral\_eq\_closed} \\
+$\nabla\chi_S$ / $\partial_q\chi_S$ & \texttt{hasDerivAt\_chiS}, \texttt{hasGradientAt\_chiS2} \\
+Taylor remainder $o(k)$ (3) & \texttt{chiS\_taylor} \\
+$b_1\varepsilon+b_2\varepsilon^2$ & \texttt{chiC\_sub} \\
+$E_S=\ee^{-\kappa a^2}$ (5) & \texttt{spatialEnvelope\_eq\_fwhm} \\
+$\ECtot$ closed form (6a)--(6b) & \texttt{chromaticEnvelopeIntegral\_eq\_closed} \\
+Polar $\ECC$; $\Arg(1-\ii y)$ (A2) & \texttt{ecc\_eq\_polar}, \texttt{arg\_one\_sub\_I} \\
+Polar $A,\theta$ of $\ECtot$ (A2) & algebra of \texttt{ecc\_eq\_polar} \\
+$\Gamma_S=\ee^{-2\kappa uv}$ (7b) & \texttt{gammaS\_eq\_kappa}, \texttt{gammaS\_eq\_dot} \\
+Axes / perfect coherence & \texttt{gammaS\_axis}, \texttt{gammaC\_axis} \\
+FO recovers CTF on $\mathbf{q}'=0$ & \texttt{R\_FO\_eq\_R\_CTF\_axis} \\
+$\RCTF=\RFO\Gamma_C\Gamma_S$ (7) & \texttt{R\_CTF\_eq\_R\_FO\_mul\_gamma} \\
+Jacobi--Anger (\S3.2) & \texttt{jacobi\_anger} \\
+\midrule
+Frozen aperture / first-order tilt (3)--(4) & not a Lean theorem \\
+Mixed tilt--energy terms (3)--(4) & dropped by definition of $\RFO$ \\
+Table~1 numerical accuracy & informal \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-Modelling approximations~\ref{approx:aperture} and~\ref{approx:taylor} are
-\emph{not} Lean theorems: the working kernel $\RFO$ is defined as the
-factorised expression after those truncations.
+\begin{thebibliography}{99}
 
-\section{Analytic pitfalls}
-\label{sec:pitfalls}
+\bibitem{Bauer1994}
+E.~Bauer,
+\emph{Low energy electron microscopy},
+Rep.\ Prog.\ Phys.\ \textbf{57} (1994) 895--938.
 
-\begin{enumerate}[leftmargin=*,itemsep=0.35em]
-\item \textbf{Principal square root.}
-Always $\exp(\tfrac12\mathrm{Log}\,z)$ with $\Arg\in(-\pi,\pi]$.
-The identity $(A/z)^{1/2}=A^{1/2}z^{-1/2}$ requires $\Arg(z)\neq\pi$.
-For $z=1-4\pi\ii b_2\sE^2$ one has $\ReOp(z)=1$, so the cut is avoided
-and $b_2=0$ yields $+1$.
-\item \textbf{Argument of $1-\ii y$.}
-$\Arg(1-\ii y)=-\arctan y$ for \emph{all} real $y$ because the real part
-is identically $1$.
-There is no branch jump as $y$ crosses $0$.
-\item \textbf{Complex quadratic Gaussians.}
-\Cref{lem:cgaussian} requires $\ReOp(B)<0$, which comes only from the
-real Gaussian density.
-A purely imaginary quadratic coefficient would make the integral
-oscillatory.
-\item \textbf{Sign of $-C^2/(4B)$.}
-$C=2\pi\ii b_1$ implies $C^2=-4\pi^2 b_1^2$.
-Forgetting $\ii^2=-1$ produces a purely oscillatory ``envelope''.
-\item \textbf{Two-dimensional inner product.}
-$\abs{\mathbf{a}}^2$ contains $\mathbf{q}\cdot\mathbf{q}'$, not $q q'$.
-$\Gamma_S$ contains $\nabla\chi_S(\mathbf{q})\cdot\nabla\chi_S(\mathbf{q}')$,
-not a product of Euclidean norms.
-\item \textbf{Printed $\Gamma_C$ has no extra conjugate.}
-On the axis $\mathbf{q}=\mathbf{0}$, only $\abs{\Gamma_C}=1$ in general
-for ac.
-\item \textbf{FWHM versus variance.}
-$\kappa=\pi^2\qill^2/(4\ln 2)$ equals $2\pi^2\sill^2$, not $\pi^2\sigma^2$.
-Mixing FWHM and $\sigma$ typically produces a factor-of-four error.
-\item \textbf{Defocus sign.}
-$W=\ee^{+2\pi\ii\chi}$ with $+\tfrac12\Dz\lambda q^2$.
-Do not convert $\chi$ to radians and then insert another $2\pi$.
-\end{enumerate}
+\bibitem{Bauer2014}
+E.~Bauer,
+\emph{Surface Microscopy with Low Energy Electrons}
+(Springer, New York, 2014).
 
-\begin{thebibliography}{9}
+\bibitem{Tromp2000}
+R.~M. Tromp,
+\emph{Low-energy electron microscopy},
+IBM J.\ Res.\ Dev.\ \textbf{44} (2000) 503--516.
+
+\bibitem{Altman2010}
+M.~S. Altman,
+\emph{Trends in low energy electron microscopy},
+J.\ Phys.: Condens.\ Matter \textbf{22} (2010) 084017.
+
+\bibitem{Tromp2010}
+R.~M. Tromp, J.~B. Hannon, A.~W. Ellis, W.~Wan, A.~Berghaus, O.~Schaff,
+\emph{A new aberration-corrected, energy-filtered LEEM/PEEM instrument.
+I.\ Principles and design},
+Ultramicroscopy \textbf{110} (2010) 852--861.
+
+\bibitem{Tromp2013}
+R.~M. Tromp, J.~B. Hannon, W.~Wan, A.~Berghaus, O.~Schaff,
+\emph{A new aberration-corrected, energy-filtered LEEM/PEEM instrument
+II.\ Operation and results},
+Ultramicroscopy \textbf{127} (2013) 25--39.
+
+\bibitem{Pang2009}
+A.~B. Pang, Th.~M\"uller, M.~S. Altman, E.~Bauer,
+\emph{Fourier optics of image formation in LEEM},
+J.\ Phys.: Condens.\ Matter \textbf{21} (2009) 314006.
+
+\bibitem{Schramm2012}
+S.~M. Schramm, A.~B. Pang, M.~S. Altman, R.~M. Tromp,
+\emph{A contrast transfer function approach for image calculations
+in standard and aberration-corrected LEEM and PEEM},
+Ultramicroscopy \textbf{115} (2012) 88--108.
+
+\bibitem{Tromp2012}
+R.~M. Tromp, S.~M. Schramm,
+\emph{Optimization and stability of the contrast transfer function
+in aberration-corrected electron microscopy},
+Ultramicroscopy \textbf{125} (2013) 72--80.
+
+\bibitem{Yu2017}
+K.~M. Yu, A.~Locatelli, M.~S. Altman,
+\emph{Comparing Fourier optics and contrast transfer function modeling
+of image formation in low energy electron microscopy},
+Ultramicroscopy \textbf{183} (2017) 109--116.
+
 \bibitem{Yu2019}
 K.~M. Yu, K.~L.~W. Lau, M.~S. Altman,
 \emph{Fourier optics of image formation in aberration-corrected LEEM},
 Ultramicroscopy \textbf{200} (2019) 160--168.
 
-\bibitem{Pang2009}
-A.~B. Pang, Th.~M\"uller, M.~S. Altman, E.~Bauer,
-J.~Phys.: Condens.\ Matter \textbf{21} (2009) 314006.
-
-\bibitem{Schramm2012}
-S.~M. Schramm, A.~B. Pang, M.~S. Altman, R.~M. Tromp,
-Ultramicroscopy \textbf{115} (2012) 88--108.
-
-\bibitem{Yu2017}
-K.~M. Yu, A.~Locatelli, M.~S. Altman,
-Ultramicroscopy \textbf{183} (2017) 109--116.
-
-\bibitem{Tromp2012}
-R.~M. Tromp, S.~M. Schramm,
-Ultramicroscopy (2012), optimization of the CTF.
+\bibitem{Goodman2005}
+J.~W. Goodman,
+\emph{Introduction to Fourier Optics}, 3rd~ed.
+(Roberts and Company, Englewood, CO, 2005).
 
 \bibitem{Hanen1971}
-K.~J. Han{\ss}en, L.~Trepte, Optik \textbf{32} (1971) 519.
+K.~J. Han{\ss}en, L.~Trepte,
+Optik \textbf{32} (1971) 519.
+
+\bibitem{deMoura2021}
+L.~de~Moura, S.~Ullrich,
+\emph{The Lean 4 theorem prover and programming language},
+in \emph{Automated Deduction -- CADE 28},
+LNCS \textbf{12699} (Springer, Cham, 2021), pp.~625--635.
+
+\bibitem{mathlib2020}
+The mathlib Community,
+\emph{The Lean mathematical library},
+in \emph{Proc.\ 9th ACM SIGPLAN International Conference on
+Certified Programs and Proofs} (ACM, New York, 2020), pp.~367--381.
+
+\bibitem{Lau2026inverse}
+W.~Lau,
+\emph{Through-focal inversion of LEEM intensities with the
+Fourier-optics kernel},
+unpublished (2026).
+
 \end{thebibliography}
 
 \end{document}

@@ -25,7 +25,7 @@ expansion of a sinusoidal phase object.
 Equation-by-equation mapping:
 [docs/FORMALIZATION.md](docs/FORMALIZATION.md).
 
-Written proofs of the appendix identities:
+Closed-form envelopes of the FO kernel (journal-style note):
 [docs/proofs/leemfo_proofs.pdf](docs/proofs/leemfo_proofs.pdf)
 ([source](docs/proofs/leemfo_proofs.tex)).
 
