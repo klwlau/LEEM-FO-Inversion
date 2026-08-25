@@ -474,6 +474,12 @@ The $2\times 2$ Gram determinant of the vacuum Jacobian is positive for
 $\alpha>0$ (\texttt{gramDet\_pos}), so the conjugate-pair normal
 equations are invertible even though one measurement is not
 (\cref{sec:intro}).
+The Cramer closed form is the unique minimizer
+(\texttt{tikhonovXhat2}, \texttt{tikhonov2\_unique}).
+One vacuum Gauss--Newton residual is that $2\times 2$ model, hence the
+closed-form step is \texttt{stage1Pair}
+(\texttt{vacuumGN\_eq\_stage1Pair}).
+The Fourier-domain map is \texttt{LeemFO/Inverse/Pipeline.lean}.
 
 \paragraph{Modelled cost.}
 Set $\mathrm{dftCost}(N):=N\log_2 N$ and
@@ -497,11 +503,15 @@ Claim & Lean \\
 \midrule
 Tikhonov unique min, closed form & \texttt{LeemFO/Inverse/Tikhonov.lean} \\
 Bias--noise identity and sharp triangle bound & same \\
+$2\times 2$ Cramer form, unique min & \texttt{tikhonovXhat2}, \texttt{tikhonov2\_unique} \\
 Cost model versus dense $KN^2$ & \texttt{reconstructCost\_*} \\
 Aperture support of $\RFO(\cdot,0)$ & \texttt{LeemFO/Inverse/LinearInverse.lean} \\
 Gauge, vacuum Jacobian, quadratic remainder & same \\
 $K=1$ not injective; pure-defocus CTF zeros & same \\
+Hermitian kernel; DC $R_{\mathrm{FO}}(0,0)=1$ & \texttt{R\_FO\_hermitian}, \texttt{R\_FO\_dc} \\
+Stage-1 map, vacuum GN glue, algebraic skip & \texttt{LeemFO/Inverse/Pipeline.lean} \\
 Mode count $M=2\lfloor\qap\Lambda\rfloor+1$ & \texttt{LeemFO/Inverse/Modes.lean} \\
+FO ladder sample, \texttt{sinusoidJ} cost & \texttt{rFO}, \texttt{sinusoidJ} \\
 Jacobi--Anger and Bessel decay & \texttt{LeemFO/Forward/PhaseObject.lean} \\
 \midrule
 FFT exists / equals the continuum FT & informal \\

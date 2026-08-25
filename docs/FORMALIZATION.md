@@ -1105,7 +1105,7 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | Jacobi–Anger | Thm. | `jacobi_anger`, `jacobi_anger_on_Ioc`, `besselJ` |
 | $`\varphi=4\pi A/\lambda_0`$ | Def. | kinematics, outside FO |
 | Aperture modes $`M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1`$ | Thm. | `nAperture`, `modeSet`, `card_modeSet`, `card_modePairs`, `mode_in_aperture` |
-| Discrete bilinear FO image | Def. | `discreteFOImage`, `besselCoeffs`, `sinusoidalFOImage` |
+| Discrete bilinear FO image | Def. | `discreteFOImage`, `besselCoeffs`, `sinusoidalFOImage`, `rFO`, `sinusoidJ` |
 
 ### 19.1 Module map
 
@@ -1116,14 +1116,15 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | `LeemFO/Forward/Aberration.lean` | `hasDerivAt_chiS`, `chiS_taylor`, `chiC_sub`, `hasGradientAt_chiS2` |
 | `LeemFO/Forward/EnvelopeSpatial.lean` | `spatialEnvelopeIntegral` = closed = FWHM |
 | `LeemFO/Forward/EnvelopeChromatic.lean` | quadratic-phase integral, `ecc`, polar form, `chromaticEnvelopeClosed_neg` |
-| `LeemFO/Forward/CTF.lean` | `q'=0` slice, `R0_hermitian`, `R_FO` vs `R_CTF` |
+| `LeemFO/Forward/CTF.lean` | `q'=0` slice, `R0_hermitian`, `R_FO_hermitian`, `R_FO_dc`, `R_FO` vs `R_CTF` |
 | `LeemFO/Forward/Ratios.lean` | $`\Gamma_C,\Gamma_S`$ identities |
 | `LeemFO/Forward/PhaseObject.lean` | Jacobi–Anger (no `LeemFO.Forward.Basic` import) |
-| `LeemFO/Inverse/Modes.lean` | Aperture-truncated Bessel modes for the discrete inverse (`nAperture`, `modeSet`, `sinusoidalFOImage`) |
-| `LeemFO/Inverse/Tikhonov.lean` | Scalar/2×2 Fourier-bin Tikhonov (`tikhonovJ`, `tikhonov_error`, `reconstructCost`) |
+| `LeemFO/Inverse/Modes.lean` | Aperture-truncated Bessel modes (`nAperture`, `modeSet`, `rFO`, `sinusoidJ`, `discreteFOImage_eq_ihatModes`) |
+| `LeemFO/Inverse/Tikhonov.lean` | Scalar/2×2 Fourier-bin Tikhonov (`tikhonovJ`, `tikhonovXhat2`, `tikhonov2_unique`, `reconstructCost`) |
 | `LeemFO/Inverse/LinearInverse.lean` | Linearized slice identifiability (`R_FO_axis_eq_zero_iff`, `ihat_gauge`, `ihatJac_vacuum`) |
+| `LeemFO/Inverse/Pipeline.lean` | Fourier-domain inverse map (`stage1Scalar`, `stage1Pair`, `vacuumGN_eq_stage1Pair`, `stage2Skip`) |
 
-**Linearized Fourier-diagonal inverse (see [LINEAR_INVERSE.md](LINEAR_INVERSE.md)).** Multi-defocus Tikhonov on the CTF slice $`R_{\mathrm{FO}}(q,0,\Delta z)`$ has a unique minimizer for $`\alpha>0`$, the exact bias–noise identity $`\hat x-x^\star=(\sum \overline h n-\alpha x^\star)/D`$, and the sharp triangle bound. Modes with $`\lvert{q}\rvert>q_{\mathrm{ap}}`$ are identically invisible. Bilinear FO is phase-gauge invariant; its vacuum linearization has an exact quadratic remainder (one Gauss–Newton step from vacuum *is* the diagonal Tikhonov solve). Cost is modelled as $`O(KN\log N)`$ DFTs plus $`O(KN)`$ bin solves, without proving FFT existence. $`K=1`$ cannot identify a general complex $`(X(q),X(-q))`$ pair; weak-phase CTF zeros of $`\sin(2\pi\chi_S)`$ sit inside a large enough aperture. Statistical noise models remain informal.
+**Linearized Fourier-diagonal inverse (see [LINEAR_INVERSE.md](LINEAR_INVERSE.md)).** Multi-defocus Tikhonov on the CTF slice $`R_{\mathrm{FO}}(q,0,\Delta z)`$ has a unique minimizer for $`\alpha>0`$, the exact bias–noise identity $`\hat x-x^\star=(\sum \overline h n-\alpha x^\star)/D`$, and the sharp triangle bound. The vacuum $`2\times 2`$ Gram has a Cramer closed form (`tikhonovXhat2`) that is the unique minimizer for $`\alpha>0`$. The reconstruction map is `stage1Scalar` / `stage1Pair` in `Pipeline.lean`. Modes with $`\lvert{q}\rvert>q_{\mathrm{ap}}`$ are identically invisible. Bilinear FO is phase-gauge invariant; its vacuum linearization has an exact quadratic remainder (one Gauss–Newton step from vacuum *is* `stage1Pair`, `vacuumGN_eq_stage1Pair`). Cost is modelled as $`O(KN\log N)`$ DFTs plus $`O(KN)`$ bin solves, without proving FFT existence. $`K=1`$ cannot identify a general complex $`(X(q),\overline{X(-q)})`$ pair; weak-phase CTF zeros of $`\sin(2\pi\chi_S)`$ sit inside a large enough aperture. Stage 2 is skipped when the bilinear remainder is at a noise floor $`\eta`$ (`stage2Skip`); the numerical $`\max\lvert{\varphi}\rvert\lesssim 0.3`$ remains informal. Statistical noise models remain informal.
 
 **Inverse (journal-style note: [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf)).** Lean details stay in [LINEAR_INVERSE.md](LINEAR_INVERSE.md). Scientific verdict: for a 2D experimental through-focal stack the fastest inverse that still fills CTF zeros is Fourier-diagonal multi-defocus Tikhonov on the slice $`R_{\mathrm{FO}}(q,0,\Delta z)`$ (Schiske/Wiener), cost $`O(KN\log N)`$. That map is the Fréchet derivative of bilinear FO at vacuum and is biased for $`\varphi=4\pi A/\lambda_0\not\ll 1`$. Optional stage 2 is Gauss--Newton on bilinear FO, skipped when the stage-1 FO residual is at the noise floor ($`\max\lvert{\varphi}\rvert\lesssim 0.3`$). For the paper's 1D sinusoid, stage 2 collapses to Jacobi--Anger least squares on $`\{J_n(\varphi)\}_{\lvert{n}\rvert\le\lfloor q_{\mathrm{ap}}\Lambda\rfloor}`$, cost $`O(M^2)`$ with $`M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1`$. Gerchberg--Saxton is either misspecified under partial coherence or a slower rewrite of Gauss--Newton. MAL/phase diversity is Gauss--Newton stacked over extra defoci, needed only when aberrations are unknown. Uniqueness of the regularized Fourier-diagonal estimator and its bias–noise identity are machine-checked in Lean 4.
 

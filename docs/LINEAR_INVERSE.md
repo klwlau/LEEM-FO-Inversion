@@ -6,7 +6,9 @@ The inverse note is [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf).
 
 This is the Lean-ready statement list for the **Fourier-diagonal Tikhonov
 estimator** of the linearized FO/CTF slice (optionally one Gauss–Newton
-step). Encoding: `LeemFO/Inverse/Tikhonov.lean`, `LeemFO/Inverse/LinearInverse.lean`.
+step). Encoding: `LeemFO/Inverse/Tikhonov.lean`,
+`LeemFO/Inverse/LinearInverse.lean`, `LeemFO/Inverse/Pipeline.lean`,
+`LeemFO/Inverse/Modes.lean`.
 
 The object is finite-dimensional throughout. After a formal discrete Fourier
 transform, each spatial-frequency bin is a map $`\kappa \to \mathbb{C}`$ of defocus
@@ -26,7 +28,7 @@ sampled frequencies (in Lean: any `AddGroup` with `Fintype`).
 | $`g : \kappa \to \mathbb{C}`$ | conjugate-branch multipliers $`g_k = R_{\mathrm{FO}}(0, -q, \Delta z_k)`$ |
 | $`y : \kappa \to \mathbb{C}`$ | measured Fourier coefficients of intensity (one bin) |
 | $`x : \mathbb{C}`$ | unknown complex amplitude of that bin (weak-object / one branch) |
-| $`(u, v) : \mathbb{C} \times \mathbb{C}`$ | pair $`(X(q), X(-q))`$ in the vacuum $`2\times 2`$ Jacobian |
+| $`(u, v) : \mathbb{C} \times \mathbb{C}`$ | pair $`(X(q), \overline{X(-q)})`$ in the vacuum $`2\times 2`$ Jacobian |
 | $`\alpha > 0`$ | Tikhonov parameter |
 | $`n : \kappa \to \mathbb{C}`$ | additive discrepancy $`y = h \cdot x^\star + n`$ (deterministic; not a probability space) |
 
@@ -193,7 +195,7 @@ continuous Fourier transform equals the array DFT.
 Two independent Lean facts, then an informal comparison.
 
 **T8a. Complex object, vacuum Jacobian (any optics).** One complex
-measurement of two complex unknowns $`(X(q), X(-q))`$ always has a kernel.
+measurement of two complex unknowns $`(X(q), \overline{X(-q)})`$ always has a kernel.
 
 **Lean.** `one_measurement_not_injective`. Hence $`K = 1`$ cannot identify a
 general complex object even when $`R_{\mathrm{FO}}(q,0,\Delta z) \neq 0`$. Need $`K \ge 2`$ and
@@ -228,9 +230,67 @@ modelled DFTs, matching T7. A dense bilinear apply is $`\Theta(KN^2)`$
 
 ---
 
+### T9. Fourier-domain pipeline map
+
+Stage 1 is a reconstruction map on Fourier bins $`y_k(q)`$, not a
+per-bin lemma in isolation.
+
+**Scalar / 2×2 estimators.** `stage1Scalar` and `stage1Pair` apply T1 and
+the vacuum $`2\times 2`$ closed form to the slices
+$`h_k=R_{\mathrm{FO}}(q,0,\Delta z_k)`$ and
+$`g_k=R_{\mathrm{FO}}(0,-q,\Delta z_k)`$. Modes with
+$`\lvert q\rvert>q_{\mathrm{ap}}`$ map to $`0`$. The unknown pair is
+$`(X(q),\overline{X(-q)})`$.
+
+**Lean.** `sliceH`, `sliceG`, `stage1Scalar`, `stage1Pair`,
+`stage1Scalar_unique`, `stage1Pair_unique`, `stage1Scalar_outside`,
+`tikhonovXhat_outside_aperture`.
+
+**Vacuum Gauss–Newton glue.** On an odd frequency embedding
+$`q(-\xi)=-q(\xi)`$, the vacuum Jacobian residual is the $`2\times 2`$
+model. One closed-form GN step from vacuum is therefore `stage1Pair`.
+
+**Lean.** `ihatJac_vacuum_slice`, `vacuumGN_eq_stage1Pair`.
+
+**DC / gauge.** If $`0\le q_{\mathrm{ap}}`$ then $`R_{\mathrm{FO}}(0,0,\Delta z)=1`$,
+and the DC Jacobian sees $`\delta_0+\overline{\delta_0}=2\operatorname{Re}(\delta_0)`$.
+The kernel is Hermitian for $`\sigma_E\ge 0`$, so
+$`g_k(q)=\overline{h_k(-q)}`$.
+
+**Lean.** `R_FO_dc`, `R_FO_hermitian`, `sliceH_dc`, `sliceG_dc`,
+`sliceG_eq_conj_sliceH`, `ihatJac_vacuum_dc`, `ihatJac_vacuum_R_FO_dc`.
+
+**Stage 2 skip (algebraic).** Skip nonlinear refinement when the bilinear
+remainder is at a prescribed noise floor $`\eta`$:
+$`\forall\xi,\;\lVert\hat I(R,\delta)(\xi)\rVert\le\eta`$. This is **not**
+the numerical criterion $`\max\lvert\varphi\rvert\lesssim 0.3`$.
+
+**Lean.** `stage1Remainder`, `stage2Skip`, `stage2Skip_of_bound`.
+
+**1D sinusoid branch.** Sample $`R_{\mathrm{FO}}(n/\Lambda,m/\Lambda,\Delta z)`$
+as `rFO`. The spatial image is the inverse Fourier sum of `ihatModes`
+over difference frequencies in `modeDiffSet`. Harmonics outside
+`modeSet` do not enter. The estimator is the least-squares cost
+`sinusoidJ` / `stage2Sinusoid` (no GN iterator, no uniqueness of $`\varphi`$).
+
+**Lean.** `rFO`, `discreteFOImage_eq_ihatModes`,
+`discreteFOImage_eq_ihatModes_modeSet`, `sinusoidalFOImage_eq_ihatModes`,
+`discreteFOImage_rFO_restrict`, `discreteFOImage_sub_sinusoidal_le`,
+`sinusoidJ`, `stage2Sinusoid`.
+
+**$`2\times 2`$ closed form.** Cramer solution of the regularized Gram
+system; unique minimizer for $`\alpha>0`$; bias–noise identity.
+
+**Lean.** `tikhonovXhat2`, `tikhonov2_solves`, `tikhonovJ2_eq_shift`,
+`tikhonovJ2_min`, `tikhonov2_unique`, `tikhonov2_error`,
+`stage1Pair_error`.
+
+---
+
 ## Optional Gauss–Newton step
 
-From vacuum, one GN step **equals** T1 (T6). From a general $`x_0`$, one GN
+From vacuum, one GN step **equals** T1 / the $`2\times 2`$ solve (T6, T9:
+`vacuumGN_eq_stage1Pair`). From a general $`x_0`$, one GN
 step is Tikhonov for the Jacobian `ihatJac R x0`; the ignored term is
 exactly `ihat R δ`. That Jacobian is Fourier-diagonal iff $`x_0`$ is
 supported at DC (vacuum). Encode the expansion (`ihat_add`); do not
@@ -264,4 +324,5 @@ estimate in a Banach space of images).
 | T6 | `ihat_add`, `ihatJac_vacuum`, `ihat_quadratic_remainder`, `ihat_bound` |
 | T7 | `dftCost`, `reconstructCost`, `reconstructCost_le`, `reconstructCost_lt_dense_128` |
 | T8 | `one_measurement_not_injective`, `weakPhase_sin_eq_zero`, `exists_interior_weakPhase_zero` |
-| $`2\times 2`$ Gram | `tikhonovJ2`, `gramDet`, `gramDet_pos` (invertible for $`\alpha>0`$; uniqueness of the $`2\times 2`$ minimizer is the same square-completion argument as T1) |
+| $`2\times 2`$ Gram | `tikhonovJ2`, `tikhonovXhat2`, `gramDet_pos`, `tikhonovJ2_eq_shift`, `tikhonovJ2_min`, `tikhonov2_unique`, `tikhonov2_error` |
+| T9 | `stage1Scalar`, `stage1Pair`, `stage1Scalar_unique`, `stage1Pair_unique`, `vacuumGN_eq_stage1Pair`, `ihatJac_vacuum_slice`, `ihatJac_vacuum_R_FO_dc`, `stage2Skip`, `rFO`, `sinusoidJ`, `R_FO_hermitian`, `R_FO_dc` |

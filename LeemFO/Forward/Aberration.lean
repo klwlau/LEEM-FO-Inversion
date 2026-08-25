@@ -74,6 +74,14 @@ theorem b1_zero_diag (q : ℝ) : p.b1 q q = 0 := by simp [b1]
 theorem b2_zero_diag (q : ℝ) : p.b2 q q = 0 := by simp [b2]
 theorem aS_zero_diag (q Δz : ℝ) : p.aS q q Δz = 0 := by simp [aS]
 
+lemma b1_swap (q q' : ℝ) : p.b1 q q' = -p.b1 q' q := by
+  simp [b1]
+  ring
+
+lemma b2_swap (q q' : ℝ) : p.b2 q q' = -p.b2 q' q := by
+  simp [b2]
+  ring
+
 /-- AC specialisation of `b₁`. -/
 theorem b1_ac (h : p.IsAC) (q q' : ℝ) :
     p.b1 q q' = p.C3C * p.lam ^ 3 / (4 * p.E) * (q ^ 4 - q' ^ 4) := by

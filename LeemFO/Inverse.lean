@@ -6,3 +6,4 @@ Authors: Wilson
 import LeemFO.Inverse.Modes
 import LeemFO.Inverse.Tikhonov
 import LeemFO.Inverse.LinearInverse
+import LeemFO.Inverse.Pipeline
