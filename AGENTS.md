@@ -26,5 +26,5 @@ Non-obvious caveats for future agents:
 - To confirm a specific theorem is genuinely proven (no hidden `sorry`), run a scratch
   file with `lake env lean <file>` using `#print axioms <thm>`; a complete proof lists
   only `[propext, Classical.choice, Quot.sound]` and never `sorryAx`.
-- The PDFs under `docs/proofs/` are optional and require TeX Live (`latexmk`); they are
-  not needed to build or verify the Lean development.
+- Markdown math on GitHub/Cursor uses `$...$` (inline) and `$$...$$` (display).
+  Do not use TeX delimiters `\(...\)` / `\[...\]` — those render as literal text.
