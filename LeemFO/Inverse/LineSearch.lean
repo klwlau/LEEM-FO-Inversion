@@ -185,8 +185,9 @@ def quadHigherAbs (A2 A3 A4 : ℝ) : ℝ :=
   |A2| + |A3| + |A4|
 
 lemma quadHigherAbs_nonneg (A2 A3 A4 : ℝ) :
-    0 ≤ quadHigherAbs A2 A3 A4 :=
-  add_nonneg (abs_nonneg _) (add_nonneg (abs_nonneg _) (abs_nonneg _))
+    0 ≤ quadHigherAbs A2 A3 A4 := by
+  unfold quadHigherAbs
+  exact add_nonneg (add_nonneg (abs_nonneg _) (abs_nonneg _)) (abs_nonneg _)
 
 lemma quadHigherAbs_denom_pos (A2 A3 A4 : ℝ) :
     0 < 2 * (1 + quadHigherAbs A2 A3 A4) :=
@@ -216,15 +217,20 @@ lemma descentStep_mul_bound (A1 A2 A3 A4 : ℝ) :
       descentStep A1 A2 A3 A4
         ≤ |A1| / (2 * (1 + quadHigherAbs A2 A3 A4)) :=
     min_le_right _ _
-  have h1B : 0 ≤ 1 + quadHigherAbs A2 A3 A4 :=
-    add_nonneg zero_le_one (quadHigherAbs_nonneg _ _ _)
+  have hBpos : 0 < 1 + quadHigherAbs A2 A3 A4 :=
+    add_pos_of_pos_of_nonneg one_pos (quadHigherAbs_nonneg _ _ _)
+  have h1B : 0 ≤ 1 + quadHigherAbs A2 A3 A4 := hBpos.le
   have hmul := mul_le_mul_of_nonneg_right hle h1B
   have hcancel :
-      |A1| / (2 * (1 + quadHigherAbs A2 A3 A4)) * (1 + quadHigherAbs A2 A3 A4)
+      |A1| / (2 * (1 + quadHigherAbs A2 A3 A4))
+          * (1 + quadHigherAbs A2 A3 A4)
         = |A1| / 2 := by
-    have hne : (2 * (1 + quadHigherAbs A2 A3 A4) : ℝ) ≠ 0 :=
-      ne_of_gt (quadHigherAbs_denom_pos _ _ _)
-    field
+    set B := 1 + quadHigherAbs A2 A3 A4
+    have hBne : B ≠ 0 := ne_of_gt hBpos
+    calc
+      |A1| / (2 * B) * B = |A1| * B / (2 * B) := by rw [div_mul_eq_mul_div]
+      _ = |A1| / 2 := by
+        rw [mul_comm (2 : ℝ) B, mul_comm |A1| B, mul_div_mul_left _ _ hBne]
   exact hcancel ▸ hmul
 
 lemma quadEnergy_diff_bound (A2 A3 A4 s : ℝ)
@@ -240,10 +246,10 @@ lemma quadEnergy_diff_bound (A2 A3 A4 s : ℝ)
     rw [abs_mul, abs_of_nonneg hs2, mul_comm]
   have hterm3 : |A3 * s ^ 3| ≤ s ^ 2 * |A3| := by
     rw [abs_mul, abs_of_nonneg (pow_nonneg hs0 3), mul_comm]
-    exact mul_le_mul_of_nonneg_left hs3 (abs_nonneg _)
+    exact mul_le_mul_of_nonneg_right hs3 (abs_nonneg _)
   have hterm4 : |A4 * s ^ 4| ≤ s ^ 2 * |A4| := by
     rw [abs_mul, abs_of_nonneg (pow_nonneg hs0 4), mul_comm]
-    exact mul_le_mul_of_nonneg_left hs4 (abs_nonneg _)
+    exact mul_le_mul_of_nonneg_right hs4 (abs_nonneg _)
   calc
     |A2 * s ^ 2 + A3 * s ^ 3 + A4 * s ^ 4|
         ≤ |A2 * s ^ 2| + |A3 * s ^ 3| + |A4 * s ^ 4| :=
@@ -258,11 +264,8 @@ lemma quadEnergy_diff_bound (A2 A3 A4 s : ℝ)
 theorem quadEnergy_sub_zero (A0 A1 A2 A3 A4 s : ℝ) :
     quadEnergy A0 A1 A2 A3 A4 s - quadEnergy A0 A1 A2 A3 A4 0
       = s * A1 + A2 * s ^ 2 + A3 * s ^ 3 + A4 * s ^ 4 := by
-  have h := quadEnergy_shift A0 A1 A2 A3 A4 0 s
-  simp only [add_zero, zero_mul, one_mul, lineCubic_zero,
-    zero_pow (by decide : (2 : ℕ) ≠ 0),
-    zero_pow (by decide : (3 : ℕ) ≠ 0)] at h
-  linarith [h]
+  simp [quadEnergy]
+  ring
 
 /-- Armijo decrease: the constructive step cuts at least half the linear
 drop predicted by `A1 = lineCubic _ _ _ _ 0`. -/
@@ -282,11 +285,9 @@ theorem quadEnergy_armijo (A0 A1 A2 A3 A4 : ℝ) (hA1 : A1 < 0) :
   have hmulB := descentStep_mul_bound A1 A2 A3 A4
   have hsB :
       s * quadHigherAbs A2 A3 A4 ≤ s * (1 + quadHigherAbs A2 A3 A4) :=
-    mul_le_mul_of_nonneg_left
-      (le_add_of_nonneg_left zero_le_one) hs0
+    mul_le_mul_of_nonneg_left (le_add_of_nonneg_left zero_le_one) hs0
   have hs2B : s ^ 2 * quadHigherAbs A2 A3 A4 ≤ s * (|A1| / 2) := by
-    have : s * quadHigherAbs A2 A3 A4 ≤ |A1| / 2 :=
-      le_trans hsB hmulB
+    have : s * quadHigherAbs A2 A3 A4 ≤ |A1| / 2 := le_trans hsB hmulB
     calc
       s ^ 2 * quadHigherAbs A2 A3 A4
           = s * (s * quadHigherAbs A2 A3 A4) := by ring
@@ -299,9 +300,7 @@ theorem quadEnergy_armijo (A0 A1 A2 A3 A4 : ℝ) (hA1 : A1 < 0) :
         ≤ (1 / 2) * s * A1 := by
     have : s * A1 + s ^ 2 * quadHigherAbs A2 A3 A4
         ≤ (1 / 2) * s * A1 := by
-      have hpos : 0 ≤ s * (|A1| / 2) :=
-        mul_nonneg hs0 (div_nonneg (abs_nonneg _) two_pos.le)
-      nlinarith [hA1abs, hs2B, hpos]
+      nlinarith [hA1abs, hs2B]
     linarith [hrest, this]
   linarith [hdiff, hhalf]
 
@@ -313,7 +312,12 @@ theorem quadEnergy_descent (A0 A1 A2 A3 A4 : ℝ) (hA1 : A1 < 0) :
     descentStep_pos A1 A2 A3 A4 hA1
   have hdrop : (1 / 2 : ℝ) * descentStep A1 A2 A3 A4 * A1 < 0 :=
     mul_neg_of_pos_of_neg (mul_pos (by norm_num : (0 : ℝ) < 1 / 2) hs) hA1
-  exact lt_of_le_of_lt harm (lt_add_of_neg_right _ hdrop)
+  have hlt :
+      quadEnergy A0 A1 A2 A3 A4 0
+          + (1 / 2) * descentStep A1 A2 A3 A4 * A1
+        < quadEnergy A0 A1 A2 A3 A4 0 := by
+    linarith [hdrop]
+  exact lt_of_le_of_lt harm hlt
 
 /-- A unit step can raise the quartic even when the directional derivative
 `A1` is negative. -/
@@ -322,10 +326,7 @@ theorem exists_unit_step_energy_increase :
       A1 < 0 ∧
         quadEnergy A0 A1 A2 A3 A4 0
           < quadEnergy A0 A1 A2 A3 A4 1 := by
-  refine ⟨0, -1, 0, 0, 2, ?_, ?_⟩
-  · norm_num
-  · simp [quadEnergy]
-    norm_num
+  refine ⟨0, -1, 0, 0, 2, by norm_num, by norm_num [quadEnergy]⟩
 
 end
 
