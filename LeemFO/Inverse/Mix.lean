@@ -14,14 +14,21 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 # Mixed 2D inverse: TCC apply + Born homotopy, with rejects
 
 Recommended large-`φ` 2D estimator: vacuum `2×2` Tikhonov (`stage1Pair2`),
-then remainder-corrected Born steps whose apply is rank-`M` TCC
-(`ihat_tcc`) or exact rank-1 autocorrelation under `PerfectCoherence`.
+then remainder-corrected Born steps (`mixed2D` / `mixedSpectrum2`) whose
+apply is rank-`M` TCC (`ihat_tcc`) or exact rank-1 autocorrelation under
+`PerfectCoherence`. Per-bin remainder weight (`remainderWeight`) skips Born
+on quiet bins (`t = 0`) and takes the full remainder (`t = 1`) otherwise.
 Bilinear FO is exactly quadratic, so the homotopy in `t` has no cubic
 term. Competing maps (TIE, coherent GS, linearized CTF, radial 1D kernel,
 1D Jacobi–Anger as a 2D inverse) fail as identities on concrete columns.
 
-Iterative convergence and uniqueness of the nonlinear inverse are not
-encoded (`ihat_gauge`).
+Hermitian kernel plus Hermitian data on an odd embedding recovers the
+dropped partner: `δ(-ξ) = conj v(ξ)` (`mixed2D_conj_partner`).
+
+Iterative convergence, Banach fixed-point existence, Cardano line search,
+and uniqueness of the nonlinear inverse are not encoded (`ihat_gauge`;
+`picard_unique_of_lip` is only an algebraic contraction implication).
+FFT existence is not encoded (`dftCost` is a cost model).
 -/
 
 set_option linter.unusedSectionVars false
@@ -273,6 +280,18 @@ theorem bornRhs_of_perfect {κ : Type*} [Fintype κ] (p : LEEM)
   funext k
   simp [bornRhs, ihat_R_FO_of_perfect p hpc]
 
+theorem bornRhs_of_perfect2 {κ : Type*} [Fintype κ] (p : LEEM)
+    (hpc : p.PerfectCoherence) (qmap : G → EuclideanSpace ℝ (Fin 2))
+    (Δz : κ → ℝ) (y : κ → G → ℂ) (t : ℝ) (δ : G → ℂ) (ξ : G) :
+    bornRhs (fun k a b => p.R_FO2 (qmap a) (qmap b) (Δz k)) y t δ ξ
+      = fun k =>
+          yLin (fun k a b => p.R_FO2 (qmap a) (qmap b) (Δz k)) y ξ k
+            - (t : ℂ) * autocorr
+                (hadamard (fun a => p.coherentPupil2 (Δz k) 0 (qmap a)) δ)
+                  ξ := by
+  funext k
+  simp [bornRhs, ihat_R_FO2_of_perfect p hpc]
+
 /-- Stationarity cubic of a real quartic (exact line energy of bilinear FO). -/
 def lineCubic (A1 A2 A3 A4 : ℝ) (s : ℝ) : ℝ :=
   A1 + 2 * A2 * s + 3 * A3 * s ^ 2 + 4 * A4 * s ^ 3
@@ -306,5 +325,128 @@ theorem mixedSpectrum_zero_eq_stage1Pair {p : LEEM} (α : ℝ)
       = (tikhonovXhat2 α (p.sliceH Δz (qmap ξ)) (p.sliceG Δz (qmap ξ))
           (fun k => y k ξ)).1 := by
   simp [mixedSpectrum, yLin_of_ne_zero _ y hξ]
+
+/-! ## End-to-end 2D mixed inverse on `R_FO2` -/
+
+/-- 2D mixed spectrum iterate: CTF slices of `R_FO2` on embedding `qmap`. -/
+def mixedSpectrum2 (p : LEEM) (α : ℝ) (qmap : G → EuclideanSpace ℝ (Fin 2))
+    (Δz : κ → ℝ) (y : κ → G → ℂ) (t damp : ℕ → ℝ) : ℕ → G → ℂ :=
+  mixedSpectrum α
+    (fun ξ => p.sliceH2 Δz (qmap ξ))
+    (fun ξ => p.sliceG2 Δz (qmap ξ))
+    (fun k a b => p.R_FO2 (qmap a) (qmap b) (Δz k)) y t damp
+
+/-- Pair-valued 2D mixed iterate (`mixedBinStep` on each bin). -/
+def mixedSpectrumPair2 (p : LEEM) (α : ℝ) (qmap : G → EuclideanSpace ℝ (Fin 2))
+    (Δz : κ → ℝ) (y : κ → G → ℂ) (t damp : ℕ → ℝ) : ℕ → G → ℂ × ℂ :=
+  mixedSpectrumPair α
+    (fun ξ => p.sliceH2 Δz (qmap ξ))
+    (fun ξ => p.sliceG2 Δz (qmap ξ))
+    (fun k a b => p.R_FO2 (qmap a) (qmap b) (Δz k)) y t damp
+
+/-- End-to-end 2D mixed inverse: vacuum `2×2` at `t = 0`, then Born homotopy. -/
+def mixed2D (p : LEEM) (α : ℝ) (qmap : G → EuclideanSpace ℝ (Fin 2))
+    (Δz : κ → ℝ) (y : κ → G → ℂ) (t damp : ℕ → ℝ) : ℕ → G → ℂ × ℂ :=
+  mixedSpectrumPair2 p α qmap Δz y t damp
+
+/-- Per-bin skip/Born mix on the 2D kernel. -/
+def mixed2DMix (p : LEEM) (α : ℝ) (qmap : G → EuclideanSpace ℝ (Fin 2))
+    (Δz : κ → ℝ) (y : κ → G → ℂ) (η : ℝ) (damp : ℕ → ℝ) : ℕ → G → ℂ :=
+  mixedSpectrumMix α
+    (fun ξ => p.sliceH2 Δz (qmap ξ))
+    (fun ξ => p.sliceG2 Δz (qmap ξ))
+    (fun k a b => p.R_FO2 (qmap a) (qmap b) (Δz k)) y η damp
+
+theorem mixedSpectrum2_eq_pair_fst (p : LEEM) (α : ℝ)
+    (qmap : G → EuclideanSpace ℝ (Fin 2)) (Δz : κ → ℝ)
+    (y : κ → G → ℂ) (t damp : ℕ → ℝ) :
+    ∀ n, mixedSpectrum2 p α qmap Δz y t damp n
+      = fun ξ => (mixed2D p α qmap Δz y t damp n ξ).1 :=
+  mixedSpectrum_eq_pair_fst α
+    (fun ξ => p.sliceH2 Δz (qmap ξ))
+    (fun ξ => p.sliceG2 Δz (qmap ξ))
+    (fun k a b => p.R_FO2 (qmap a) (qmap b) (Δz k)) y t damp
+
+theorem mixedSpectrum2_zero_eq_tikhonovXhat2 (p : LEEM) (α : ℝ)
+    (qmap : G → EuclideanSpace ℝ (Fin 2)) (Δz : κ → ℝ)
+    (y : κ → G → ℂ) (t damp : ℕ → ℝ) {ξ : G} (hξ : ξ ≠ 0) :
+    mixedSpectrum2 p α qmap Δz y t damp 0 ξ
+      = (tikhonovXhat2 α (p.sliceH2 Δz (qmap ξ)) (p.sliceG2 Δz (qmap ξ))
+          (fun k => y k ξ)).1 := by
+  simp [mixedSpectrum2, mixedSpectrum, yLin_of_ne_zero _ y hξ]
+
+/-- Init equals `stage1Pair2` for `ξ ≠ 0` (inside or outside the disk). -/
+theorem mixedSpectrum2_zero_eq_stage1Pair2 (p : LEEM) (α : ℝ)
+    (qmap : G → EuclideanSpace ℝ (Fin 2)) (Δz : κ → ℝ)
+    (y : κ → G → ℂ) (t damp : ℕ → ℝ) {ξ : G} (hξ : ξ ≠ 0) :
+    mixedSpectrum2 p α qmap Δz y t damp 0 ξ
+      = (p.stage1Pair2 α Δz (fun k _ => y k ξ) (qmap ξ)).1 := by
+  rw [mixedSpectrum2_zero_eq_tikhonovXhat2 p α qmap Δz y t damp hξ,
+    p.stage1Pair2_eq_tikhonovXhat2]
+
+theorem mixed2D_zero_eq_tikhonovXhat2 (p : LEEM) (α : ℝ)
+    (qmap : G → EuclideanSpace ℝ (Fin 2)) (Δz : κ → ℝ)
+    (y : κ → G → ℂ) (t damp : ℕ → ℝ) {ξ : G} (hξ : ξ ≠ 0) :
+    mixed2D p α qmap Δz y t damp 0 ξ
+      = tikhonovXhat2 α (p.sliceH2 Δz (qmap ξ)) (p.sliceG2 Δz (qmap ξ))
+          (fun k => y k ξ) := by
+  simp [mixed2D, mixedSpectrumPair2, mixedSpectrumPair,
+    yLin_of_ne_zero _ y hξ]
+
+theorem mixed2D_zero_eq_stage1Pair2 (p : LEEM) (α : ℝ)
+    (qmap : G → EuclideanSpace ℝ (Fin 2)) (Δz : κ → ℝ)
+    (y : κ → G → ℂ) (t damp : ℕ → ℝ) {ξ : G} (hξ : ξ ≠ 0) :
+    mixed2D p α qmap Δz y t damp 0 ξ
+      = p.stage1Pair2 α Δz (fun k _ => y k ξ) (qmap ξ) := by
+  rw [mixed2D_zero_eq_tikhonovXhat2 p α qmap Δz y t damp hξ,
+    p.stage1Pair2_eq_tikhonovXhat2]
+
+/-- Hermitian kernel + Hermitian data on an odd embedding: the dropped
+partner is `conj` of `mixed2D n ξ`.snd. -/
+theorem mixed2D_conj_partner (p : LEEM) (hσ : 0 ≤ p.sigmaE) (α : ℝ)
+    (qmap : G → EuclideanSpace ℝ (Fin 2))
+    (hq : ∀ ξ, qmap (-ξ) = -qmap ξ) (Δz : κ → ℝ) (y : κ → G → ℂ)
+    (hy : ∀ k ξ, y k (-ξ) = conj (y k ξ))
+    (t damp : ℕ → ℝ) (n : ℕ) (ξ : G) :
+    mixed2D p α qmap Δz y t damp n (-ξ)
+      = (conj (mixed2D p α qmap Δz y t damp n ξ).2,
+        conj (mixed2D p α qmap Δz y t damp n ξ).1) := by
+  refine mixedSpectrumPair_conj_partner α
+    (fun ζ => p.sliceH2 Δz (qmap ζ))
+    (fun ζ => p.sliceG2 Δz (qmap ζ))
+    (fun k a b => p.R_FO2 (qmap a) (qmap b) (Δz k)) y t damp ξ ?hh ?hg ?hR
+      ?hyLin n
+  · funext k
+    rw [hq ξ]
+    have hsg := p.sliceG2_eq_conj_sliceH2 hσ Δz (qmap ξ) k
+    simpa using (congrArg conj hsg).symm
+  · funext k
+    rw [hq ξ]
+    simpa [neg_neg] using p.sliceG2_eq_conj_sliceH2 hσ Δz (-qmap ξ) k
+  · intro k a b
+    exact p.R_FO2_hermitian (q := qmap a) (q' := qmap b) (Δz := Δz k) hσ
+  · refine yLin_hermitian
+        (fun k a b => p.R_FO2 (qmap a) (qmap b) (Δz k)) y ξ ?_ fun k => hy k ξ
+    intro k a b
+    exact p.R_FO2_hermitian (q := qmap a) (q' := qmap b) (Δz := Δz k) hσ
+
+theorem mixedSpectrum2_eq_conj_pair_snd (p : LEEM) (hσ : 0 ≤ p.sigmaE)
+    (α : ℝ) (qmap : G → EuclideanSpace ℝ (Fin 2))
+    (hq : ∀ ξ, qmap (-ξ) = -qmap ξ) (Δz : κ → ℝ) (y : κ → G → ℂ)
+    (hy : ∀ k ξ, y k (-ξ) = conj (y k ξ))
+    (t damp : ℕ → ℝ) (n : ℕ) (ξ : G) :
+    mixedSpectrum2 p α qmap Δz y t damp n (-ξ)
+      = conj (mixed2D p α qmap Δz y t damp n ξ).2 := by
+  rw [mixedSpectrum2_eq_pair_fst]
+  have hpair := mixed2D_conj_partner p hσ α qmap hq Δz y hy t damp n ξ
+  simpa [mixed2D] using congrArg Prod.fst hpair
+
+theorem mixed2DMix_zero_eq_stage1Pair2 (p : LEEM) (α : ℝ)
+    (qmap : G → EuclideanSpace ℝ (Fin 2)) (Δz : κ → ℝ)
+    (y : κ → G → ℂ) (η : ℝ) (damp : ℕ → ℝ) {ξ : G} (hξ : ξ ≠ 0) :
+    mixed2DMix p α qmap Δz y η damp 0 ξ
+      = (p.stage1Pair2 α Δz (fun k _ => y k ξ) (qmap ξ)).1 := by
+  simp [mixed2DMix, mixedSpectrumMix, yLin_of_ne_zero _ y hξ,
+    p.stage1Pair2_eq_tikhonovXhat2]
 
 end

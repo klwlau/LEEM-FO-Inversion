@@ -279,6 +279,24 @@ theorem ihat_add_kernel (R₁ R₂ : G → G → ℂ) (Ψ : G → ℂ) (ξ : G) 
   unfold ihat
   simp [add_mul, mul_add, Finset.sum_add_distrib]
 
+/-- Algebraic two-source Hopkins kernel: finite TCC on `Fin 2`. -/
+lemma tccKernel_fin2 (w : Fin 2 → ℂ) (pupil : Fin 2 → G → ℂ) :
+    tccKernel w pupil Finset.univ
+      = fun q q' =>
+          w 0 * rank1Kernel (pupil 0) q q'
+            + w 1 * rank1Kernel (pupil 1) q q' := by
+  funext q q'
+  simp [tccKernel, rank1Kernel, Fin.sum_univ_two]
+  ring
+
+/-- Two rank-1 pupils: `ihat` is the corresponding sum of autocorrelations. -/
+theorem ihat_twoSource (w₁ w₂ : ℂ) (h₁ h₂ Ψ : G → ℂ) (ξ : G) :
+    ihat (fun q q' => w₁ * rank1Kernel h₁ q q' + w₂ * rank1Kernel h₂ q q') Ψ ξ
+      = w₁ * autocorr (hadamard h₁ Ψ) ξ
+        + w₂ * autocorr (hadamard h₂ Ψ) ξ := by
+  rw [ihat_add_kernel, ihat_smul_kernel, ihat_smul_kernel, ihat_rank1,
+    ihat_rank1]
+
 theorem ihat_sub_kernel (R₁ R₂ : G → G → ℂ) (Ψ : G → ℂ) (ξ : G) :
     ihat (fun q q' => R₁ q q' - R₂ q q') Ψ ξ
       = ihat R₁ Ψ ξ - ihat R₂ Ψ ξ := by

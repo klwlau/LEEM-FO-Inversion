@@ -46,6 +46,13 @@ theorem sliceG2_eq_sliceG (Δz : κ → ℝ) (q : EuclideanSpace ℝ (Fin 2)) :
   funext k
   rw [sliceG2, sliceG, p.R_FO2_eq_R_FO_conj_axis]
 
+/-- Conjugate branch is the Hermitian partner of the 2D CTF slice. -/
+theorem sliceG2_eq_conj_sliceH2 (hσ : 0 ≤ p.sigmaE) (Δz : κ → ℝ)
+    (q : EuclideanSpace ℝ (Fin 2)) (k : κ) :
+    p.sliceG2 Δz q k = conj (p.sliceH2 Δz (-q) k) := by
+  simpa [sliceG2, sliceH2] using
+    (p.R_FO2_hermitian (q := -q) (q' := 0) (Δz := Δz k) hσ).symm
+
 variable [Fintype κ]
 
 /-- Stage 1 on a 2D frequency: disk truncation, then the vacuum `2×2` solve. -/

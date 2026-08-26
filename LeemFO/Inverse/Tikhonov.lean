@@ -349,6 +349,50 @@ lemma tikhonov2FromRhs_v (α : ℝ) (h g : κ → ℂ) (ru rv : ℂ) :
       = ((gramA α h : ℂ) * rv - conj (gramB h g) * ru) / (gramDet α h g : ℂ) :=
   rfl
 
+/-! ### Conjugate swap of the 2×2 Gram solve -/
+
+lemma gramA_conj (α : ℝ) (h : κ → ℂ) :
+    gramA α (fun k => conj (h k)) = gramA α h := by
+  simp [gramA]
+
+lemma gramB_conj_swap (h g : κ → ℂ) :
+    gramB (fun k => conj (g k)) (fun k => conj (h k)) = gramB h g := by
+  unfold gramB
+  refine Finset.sum_congr rfl fun k _ => ?_
+  rw [conj_conj, mul_comm]
+
+lemma gramDet_conj_swap (α : ℝ) (h g : κ → ℂ) :
+    gramDet α (fun k => conj (g k)) (fun k => conj (h k)) = gramDet α h g := by
+  unfold gramDet
+  rw [gramA_conj, gramA_conj, gramB_conj_swap, mul_comm (gramA α g)]
+
+lemma tikhonov2Rhs_conj (h y : κ → ℂ) :
+    tikhonov2Rhs (fun k => conj (h k)) (fun k => conj (y k))
+      = conj (tikhonov2Rhs h y) := by
+  unfold tikhonov2Rhs
+  simp [map_sum, map_mul]
+
+lemma tikhonov2FromRhs_conj_swap (α : ℝ) (h g : κ → ℂ) (ru rv : ℂ) :
+    tikhonov2FromRhs α (fun k => conj (g k)) (fun k => conj (h k))
+        (conj rv) (conj ru)
+      = (conj (tikhonov2FromRhs α h g ru rv).2,
+        conj (tikhonov2FromRhs α h g ru rv).1) := by
+  apply Prod.ext
+  · simp [tikhonov2FromRhs, gramA_conj, gramB_conj_swap, gramDet_conj_swap,
+      map_sub, map_mul, conj_ofReal]
+  · simp [tikhonov2FromRhs, gramA_conj, gramB_conj_swap, gramDet_conj_swap,
+      map_sub, map_mul, conj_ofReal]
+
+/-- If `h' = conj ∘ g`, `g' = conj ∘ h`, `y' = conj ∘ y`, then the 2×2
+estimator swaps coordinates under conjugation: `(û', v̂') = (conj v̂, conj û)`. -/
+lemma tikhonovXhat2_conj_swap (α : ℝ) (h g y : κ → ℂ) :
+    tikhonovXhat2 α (fun k => conj (g k)) (fun k => conj (h k))
+        (fun k => conj (y k))
+      = (conj (tikhonovXhat2 α h g y).2, conj (tikhonovXhat2 α h g y).1) := by
+  unfold tikhonovXhat2
+  rw [tikhonov2Rhs_conj, tikhonov2Rhs_conj]
+  exact tikhonov2FromRhs_conj_swap α h g _ _
+
 lemma gramB_mul_conj (h g : κ → ℂ) :
     gramB h g * conj (gramB h g) = (‖gramB h g‖ ^ 2 : ℂ) := by
   rw [mul_conj, Complex.normSq_eq_norm_sq, ofReal_pow]

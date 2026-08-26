@@ -333,7 +333,50 @@ theorem mixedSkip_of_bound (R : κ → G → G → ℂ) (δ : G → ℂ) {η : �
     mixedSkip R δ η :=
   fun k => stage2Skip_of_bound (R k) δ (h k)
 
-/-- Spectrum iterate: stage-1 init, then damped Born with schedules `t, damp`. -/
+/-- Per-bin remainder weight: `t = 0` (stage-1 residual) when every defocus
+remainder at this bin is at most `η`; otherwise `t = 1` (full Born). -/
+noncomputable def remainderWeight (quad : κ → ℂ) (η : ℝ) : ℝ :=
+  haveI : Decidable (∀ k, ‖quad k‖ ≤ η) := Classical.dec _
+  if ∀ k, ‖quad k‖ ≤ η then 0 else 1
+
+theorem remainderWeight_zero {quad : κ → ℂ} {η : ℝ}
+    (h : ∀ k, ‖quad k‖ ≤ η) : remainderWeight quad η = 0 := by
+  simp [remainderWeight, h]
+
+theorem remainderWeight_one {quad : κ → ℂ} {η : ℝ} {k : κ}
+    (h : η < ‖quad k‖) : remainderWeight quad η = 1 := by
+  have : ¬ ∀ k', ‖quad k'‖ ≤ η := fun hall => (not_le_of_gt h) (hall k)
+  simp [remainderWeight, this]
+
+theorem remainderWeight_of_mixedSkip (R : κ → G → G → ℂ) (δ : G → ℂ)
+    {η : ℝ} (h : mixedSkip R δ η) (ξ : G) :
+    remainderWeight (fun k => ihat (R k) δ ξ) η = 0 :=
+  remainderWeight_zero fun k => h k ξ
+
+lemma yLin_hermitian (R : κ → G → G → ℂ) (y : κ → G → ℂ) (ξ : G)
+    (hR : ∀ k a b, conj (R k a b) = R k b a)
+    (hy : ∀ k, y k (-ξ) = conj (y k ξ)) :
+    yLin R y (-ξ) = fun k => conj (yLin R y ξ k) := by
+  funext k
+  simp [yLin, hy k, map_sub, ihat_hermitian (R k) vacuum ξ (hR k)]
+
+lemma mixedBinStep_conj_swap (α : ℝ) (h g rhsLin quad : κ → ℂ)
+    (t damp : ℝ) (uv : ℂ × ℂ) :
+    mixedBinStep α (fun k => conj (g k)) (fun k => conj (h k))
+        (fun k => conj (rhsLin k)) (fun k => conj (quad k)) t damp
+        (conj uv.2, conj uv.1)
+      = (conj (mixedBinStep α h g rhsLin quad t damp uv).2,
+        conj (mixedBinStep α h g rhsLin quad t damp uv).1) := by
+  have hy :
+      (fun k => conj (rhsLin k) - (t : ℂ) * conj (quad k))
+        = fun k => conj (rhsLin k - (t : ℂ) * quad k) := by
+    funext k
+    simp [map_sub, map_mul, conj_ofReal]
+  simp [mixedBinStep, hy, tikhonovXhat2_conj_swap, map_sub, map_mul, conj_ofReal]
+
+/-- Spectrum iterate: stage-1 init, then damped Born with schedules `t, damp`.
+Only the first `2×2` coordinate is stored as a spectrum (`δ ξ`). The partner
+`v ≈ conj(δ (-ξ))` is carried by `mixedSpectrumPair`. -/
 def mixedSpectrum (α : ℝ) (h g : G → κ → ℂ) (R : κ → G → G → ℂ)
     (y : κ → G → ℂ) (t damp : ℕ → ℝ) : ℕ → G → ℂ
   | 0 => fun ξ => (tikhonovXhat2 α (h ξ) (g ξ) (yLin R y ξ)).1
@@ -342,6 +385,21 @@ def mixedSpectrum (α : ℝ) (h g : G → κ → ℂ) (R : κ → G → G → �
     fun ξ =>
       let tgt := (tikhonovXhat2 α (h ξ) (g ξ) (bornRhs R y (t n) δ ξ)).1
       ((1 : ℂ) - (damp n : ℂ)) * δ ξ + (damp n : ℂ) * tgt
+
+/-- Both vacuum-Jacobian coordinates of the mixed iterate.
+`mixedBinStep` updates `(u,v)`; the stored object spectrum is the first
+component (`mixedSpectrum_eq_pair_fst`). Identifying `δ(-ξ)` with
+`conj v(ξ)` is a post-processing step on an odd frequency embedding, not
+an automatic property of a general finite group. -/
+def mixedSpectrumPair (α : ℝ) (h g : G → κ → ℂ) (R : κ → G → G → ℂ)
+    (y : κ → G → ℂ) (t damp : ℕ → ℝ) : ℕ → G → ℂ × ℂ
+  | 0 => fun ξ => tikhonovXhat2 α (h ξ) (g ξ) (yLin R y ξ)
+  | n + 1 =>
+    let uv := mixedSpectrumPair α h g R y t damp n
+    let δ : G → ℂ := fun ξ => (uv ξ).1
+    fun ξ =>
+      mixedBinStep α (h ξ) (g ξ) (yLin R y ξ) (fun k => ihat (R k) δ ξ)
+        (t n) (damp n) (uv ξ)
 
 theorem mixedSpectrum_zero (α : ℝ) (h g : G → κ → ℂ)
     (R : κ → G → G → ℂ) (y : κ → G → ℂ) (t damp : ℕ → ℝ) :
@@ -370,6 +428,189 @@ theorem mixedSpectrum_t0_step (α : ℝ) (h g : G → κ → ℂ)
         rw [hdamp, ht, hrhs]
         simp
     _ = mixedSpectrum α h g R y t damp 0 ξ := rfl
+
+theorem mixedSpectrumPair_zero (α : ℝ) (h g : G → κ → ℂ)
+    (R : κ → G → G → ℂ) (y : κ → G → ℂ) (t damp : ℕ → ℝ) :
+    mixedSpectrumPair α h g R y t damp 0
+      = fun ξ => tikhonovXhat2 α (h ξ) (g ξ) (yLin R y ξ) :=
+  rfl
+
+set_option linter.flexible false in
+theorem mixedSpectrum_eq_pair_fst (α : ℝ) (h g : G → κ → ℂ)
+    (R : κ → G → G → ℂ) (y : κ → G → ℂ) (t damp : ℕ → ℝ) :
+    ∀ n, mixedSpectrum α h g R y t damp n
+      = fun ξ => (mixedSpectrumPair α h g R y t damp n ξ).1 := by
+  intro n
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    funext ξ
+    simp [mixedSpectrum, mixedSpectrumPair, mixedBinStep, ih]
+    have hrhs :
+        bornRhs R y (t n)
+            (fun ζ => (mixedSpectrumPair α h g R y t damp n ζ).1) ξ
+          = fun k => yLin R y ξ k - (t n : ℂ) *
+              ihat (R k)
+                (fun ζ => (mixedSpectrumPair α h g R y t damp n ζ).1) ξ :=
+      rfl
+    rw [hrhs]
+    ring
+
+theorem mixedSpectrumPair_t0_step (α : ℝ) (h g : G → κ → ℂ)
+    (R : κ → G → G → ℂ) (y : κ → G → ℂ) (t damp : ℕ → ℝ)
+    (ht : t 0 = 0) (hdamp : damp 0 = 1) :
+    mixedSpectrumPair α h g R y t damp 1
+      = mixedSpectrumPair α h g R y t damp 0 := by
+  funext ξ
+  have hstep :
+      mixedSpectrumPair α h g R y t damp 1 ξ
+        = mixedBinStep α (h ξ) (g ξ) (yLin R y ξ)
+            (fun k => ihat (R k)
+              (fun ζ => (mixedSpectrumPair α h g R y t damp 0 ζ).1) ξ)
+            (t 0) (damp 0)
+            (mixedSpectrumPair α h g R y t damp 0 ξ) :=
+    rfl
+  rw [hstep, ht, hdamp, mixedBinStep_init]
+  rfl
+
+/-- Mix of stage-1 skip and Born: per-bin remainder weight, then a damped
+`2×2` update. Init is the vacuum Tikhonov estimator. -/
+def mixedSpectrumMix (α : ℝ) (h g : G → κ → ℂ) (R : κ → G → G → ℂ)
+    (y : κ → G → ℂ) (η : ℝ) (damp : ℕ → ℝ) : ℕ → G → ℂ
+  | 0 => fun ξ => (tikhonovXhat2 α (h ξ) (g ξ) (yLin R y ξ)).1
+  | n + 1 =>
+    let δ := mixedSpectrumMix α h g R y η damp n
+    fun ξ =>
+      let tξ := remainderWeight (fun k => ihat (R k) δ ξ) η
+      let tgt := (tikhonovXhat2 α (h ξ) (g ξ) (bornRhs R y tξ δ ξ)).1
+      ((1 : ℂ) - (damp n : ℂ)) * δ ξ + (damp n : ℂ) * tgt
+
+theorem mixedSpectrumMix_zero (α : ℝ) (h g : G → κ → ℂ)
+    (R : κ → G → G → ℂ) (y : κ → G → ℂ) (η : ℝ) (damp : ℕ → ℝ) :
+    mixedSpectrumMix α h g R y η damp 0
+      = fun ξ => (tikhonovXhat2 α (h ξ) (g ξ) (yLin R y ξ)).1 :=
+  rfl
+
+/-- Global skip: if the bilinear remainder is at the noise floor, one
+`damp = 1` step is already the stage-1 estimator. -/
+theorem mixedSpectrumMix_skip_step (α : ℝ) (h g : G → κ → ℂ)
+    (R : κ → G → G → ℂ) (y : κ → G → ℂ) (η : ℝ) (damp : ℕ → ℝ)
+    (hskip : mixedSkip R (mixedSpectrumMix α h g R y η damp 0) η)
+    (hdamp : damp 0 = 1) :
+    mixedSpectrumMix α h g R y η damp 1
+      = mixedSpectrumMix α h g R y η damp 0 := by
+  funext ξ
+  have ht := remainderWeight_of_mixedSkip R
+    (mixedSpectrumMix α h g R y η damp 0) hskip ξ
+  have hrhs :
+      bornRhs R y 0 (mixedSpectrumMix α h g R y η damp 0) ξ
+        = yLin R y ξ := by
+    funext k
+    simp [bornRhs]
+  calc mixedSpectrumMix α h g R y η damp 1 ξ
+      = ((1 : ℂ) - (damp 0 : ℂ)) * mixedSpectrumMix α h g R y η damp 0 ξ
+          + (damp 0 : ℂ) *
+            (tikhonovXhat2 α (h ξ) (g ξ)
+              (bornRhs R y
+                (remainderWeight
+                  (fun k => ihat (R k)
+                    (mixedSpectrumMix α h g R y η damp 0) ξ) η)
+                (mixedSpectrumMix α h g R y η damp 0) ξ)).1 :=
+        rfl
+    _ = (tikhonovXhat2 α (h ξ) (g ξ) (yLin R y ξ)).1 := by
+        rw [hdamp, ht, hrhs]
+        simp
+    _ = mixedSpectrumMix α h g R y η damp 0 ξ := rfl
+
+/-- A loud bin (`‖ihat δ‖ > η` in some defocus) takes a full Born step. -/
+theorem mixedSpectrumMix_born_bin (α : ℝ) (h g : G → κ → ℂ)
+    (R : κ → G → G → ℂ) (y : κ → G → ℂ) (η : ℝ) (damp : ℕ → ℝ)
+    {ξ : G} {k : κ}
+    (hbig : η < ‖ihat (R k) (mixedSpectrumMix α h g R y η damp 0) ξ‖)
+    (hdamp : damp 0 = 1) :
+    mixedSpectrumMix α h g R y η damp 1 ξ
+      = (tikhonovXhat2 α (h ξ) (g ξ)
+          (bornRhs R y 1 (mixedSpectrumMix α h g R y η damp 0) ξ)).1 := by
+  have ht :
+      remainderWeight
+        (fun k' => ihat (R k') (mixedSpectrumMix α h g R y η damp 0) ξ) η
+        = 1 :=
+    remainderWeight_one (k := k) hbig
+  calc mixedSpectrumMix α h g R y η damp 1 ξ
+      = ((1 : ℂ) - (damp 0 : ℂ)) * mixedSpectrumMix α h g R y η damp 0 ξ
+          + (damp 0 : ℂ) *
+            (tikhonovXhat2 α (h ξ) (g ξ)
+              (bornRhs R y
+                (remainderWeight
+                  (fun k' => ihat (R k')
+                    (mixedSpectrumMix α h g R y η damp 0) ξ) η)
+                (mixedSpectrumMix α h g R y η damp 0) ξ)).1 :=
+        rfl
+    _ = (tikhonovXhat2 α (h ξ) (g ξ)
+          (bornRhs R y 1 (mixedSpectrumMix α h g R y η damp 0) ξ)).1 := by
+        rw [hdamp, ht]
+        simp
+
+/-- On an odd embedding the Hermitian partner of the dropped `2×2`
+coordinate is recovered by conjugating `pair.snd` at `ξ`. -/
+theorem mixedSpectrumPair_conj_partner (α : ℝ) (h g : G → κ → ℂ)
+    (R : κ → G → G → ℂ) (y : κ → G → ℂ) (t damp : ℕ → ℝ) (ξ : G)
+    (hh : h (-ξ) = fun k => conj (g ξ k))
+    (hg : g (-ξ) = fun k => conj (h ξ k))
+    (hR : ∀ k a b, conj (R k a b) = R k b a)
+    (hy : yLin R y (-ξ) = fun k => conj (yLin R y ξ k))
+    (n : ℕ) :
+    mixedSpectrumPair α h g R y t damp n (-ξ)
+      = (conj (mixedSpectrumPair α h g R y t damp n ξ).2,
+        conj (mixedSpectrumPair α h g R y t damp n ξ).1) := by
+  induction n with
+  | zero =>
+    simp only [mixedSpectrumPair]
+    rw [hh, hg, hy, tikhonovXhat2_conj_swap]
+  | succ n ih =>
+    have hL :
+        mixedSpectrumPair α h g R y t damp (n + 1) (-ξ)
+          = mixedBinStep α (h (-ξ)) (g (-ξ)) (yLin R y (-ξ))
+              (fun k => ihat (R k)
+                (fun ζ => (mixedSpectrumPair α h g R y t damp n ζ).1) (-ξ))
+              (t n) (damp n)
+              (mixedSpectrumPair α h g R y t damp n (-ξ)) :=
+      rfl
+    have hRstep :
+        mixedSpectrumPair α h g R y t damp (n + 1) ξ
+          = mixedBinStep α (h ξ) (g ξ) (yLin R y ξ)
+              (fun k => ihat (R k)
+                (fun ζ => (mixedSpectrumPair α h g R y t damp n ζ).1) ξ)
+              (t n) (damp n)
+              (mixedSpectrumPair α h g R y t damp n ξ) :=
+      rfl
+    have hquad :
+        (fun k => ihat (R k)
+            (fun ζ => (mixedSpectrumPair α h g R y t damp n ζ).1) (-ξ))
+          = fun k => conj (ihat (R k)
+              (fun ζ => (mixedSpectrumPair α h g R y t damp n ζ).1) ξ) := by
+      funext k
+      exact ihat_hermitian (R k)
+        (fun ζ => (mixedSpectrumPair α h g R y t damp n ζ).1) ξ (hR k)
+    rw [hL, hRstep, hh, hg, hy, hquad, ih]
+    exact mixedBinStep_conj_swap α (h ξ) (g ξ) (yLin R y ξ)
+      (fun k => ihat (R k)
+        (fun ζ => (mixedSpectrumPair α h g R y t damp n ζ).1) ξ)
+      (t n) (damp n) (mixedSpectrumPair α h g R y t damp n ξ)
+
+/-- The dropped partner of `mixedSpectrum` is `conj` of `pair.snd` at `ξ`. -/
+theorem mixedSpectrum_eq_conj_pair_snd (α : ℝ) (h g : G → κ → ℂ)
+    (R : κ → G → G → ℂ) (y : κ → G → ℂ) (t damp : ℕ → ℝ) (ξ : G)
+    (hh : h (-ξ) = fun k => conj (g ξ k))
+    (hg : g (-ξ) = fun k => conj (h ξ k))
+    (hR : ∀ k a b, conj (R k a b) = R k b a)
+    (hy : yLin R y (-ξ) = fun k => conj (yLin R y ξ k))
+    (n : ℕ) :
+    mixedSpectrum α h g R y t damp n (-ξ)
+      = conj (mixedSpectrumPair α h g R y t damp n ξ).2 := by
+  rw [mixedSpectrum_eq_pair_fst]
+  have hpair := mixedSpectrumPair_conj_partner α h g R y t damp ξ hh hg hR hy n
+  simpa using congrArg Prod.fst hpair
 
 /-- Algebraic contraction implication (no existence / Banach FPT). -/
 lemma l1_eq_zero_of_lip {s s' : G → ℂ} {L : ℝ}
