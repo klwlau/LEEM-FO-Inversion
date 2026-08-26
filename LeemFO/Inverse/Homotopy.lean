@@ -411,6 +411,13 @@ theorem remainderWeight_one {quad : κ → ℂ} {η : ℝ} {k : κ}
   have : ¬ ∀ k', ‖quad k'‖ ≤ η := fun hall => (not_le_of_gt h) (hall k)
   simp [remainderWeight, this]
 
+/-- Skip control is a bit: quiet `0` or loud `1`. -/
+theorem remainderWeight_eq_zero_or_one (quad : κ → ℂ) (η : ℝ) :
+    remainderWeight quad η = 0 ∨ remainderWeight quad η = 1 := by
+  by_cases h : ∀ k, ‖quad k‖ ≤ η
+  · exact Or.inl (remainderWeight_zero h)
+  · exact Or.inr (by simp [remainderWeight, h])
+
 theorem remainderWeight_of_mixedSkip (R : κ → G → G → ℂ) (δ : G → ℂ)
     {η : ℝ} (h : mixedSkip R δ η) (ξ : G) :
     remainderWeight (fun k => ihat (R k) δ ξ) η = 0 :=

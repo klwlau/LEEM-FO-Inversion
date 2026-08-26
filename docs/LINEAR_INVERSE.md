@@ -372,7 +372,8 @@ Born update of the pair $`(u,v)`$ (`mixedBinStep`). `mixedSpectrum`
 stores only $`u=\delta(\xi)`$; `mixedSpectrumPair` / `mixed2D` carry
 both coordinates and expose schedules $`t,\mathrm{damp}`$ as a general
 API. The recommended mix is per-bin $`t=0`$ on quiet bins and $`t=1`$
-on loud bins (`remainderWeight`, `mixedSpectrumMix`, `mixed2DMix`).
+on loud bins (`remainderWeight`, `remainderWeight_eq_zero_or_one`,
+`mixedSpectrumMix`, `mixed2DMix`).
 
 On $`R_{\mathrm{FO}2}`$, for $`\xi\neq 0`$, the $`n=0`$ iterate is
 `stage1Pair2` (`mixed2D_zero_eq_stage1Pair2`,
@@ -598,7 +599,7 @@ Cardano roots of the line cubic.
 | T10 | `R_FO2`, `stage1Pair2`, `qmap2_zero`, `vacuumGN_eq_stage1Pair2`, `exists_R_FO2_ne_R_FO_of_norms` |
 | T11 | `ihat_rank1`, `ihat_tcc`, `ihat_R0`, `ihat_R_FO_of_perfect`, `ihat_R_FO2_of_perfect`, `ihat_tcc_trunc_bound`, `ihat_twoSource`, `lrPlusDiag` |
 | T12 | `ihat_homotopy`, `ihat_homotopy_cubic_zero`, `bornModel`, `bornModel_sub`, `bornModel_t1_ne_t0`, `bornModel_t0_ne_full`, `bornRhs_t0`, `bornRhs_sub`, `bornRhs_t1_ne_t0`, `bornRhs_t0_ignores_loud`, `born_fixed_point_normal` |
-| T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixed2DMix`, `mixedSpectrumMix`, `remainderWeight`, `mixed2D_zero_eq_stage1Pair2`, `mixed2DMix_zero_eq_stage1Pair2` |
+| T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixed2DMix`, `mixedSpectrumMix`, `remainderWeight`, `remainderWeight_eq_zero_or_one`, `mixed2D_zero_eq_stage1Pair2`, `mixed2DMix_zero_eq_stage1Pair2` |
 | T14 | `tikhonovXhat2_conj_swap`, `ihat_hermitian`, `mixed2D_conj_partner` |
 | T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `descentStep`, `nlsJ_line`, `lineFid_eq_nlsJ_zero`, `exists_lineFid_flat_unbounded`, `exists_newtonCandidate_not_critical` |
 | T16 | `tccApplyCost_lt_dense_128`, `tccApplyCost_lt_dense_128_nine`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1`, `recommendTccRank`, `tccKernel_insert_weight_zero`, `denseApplyCost_le_tccApplyCost_128`, `kaczmarzCost` |
