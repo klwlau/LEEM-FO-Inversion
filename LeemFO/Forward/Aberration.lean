@@ -153,6 +153,10 @@ theorem hasGradientAt_chiS2 (Δz : ℝ) (q : EuclideanSpace ℝ (Fin 2)) :
   simp [toDual_apply_apply, smul_smul, two_smul, pow_two]
   ring
 
+lemma gradient_chiS2_eq_uS (Δz : ℝ) (q : EuclideanSpace ℝ (Fin 2)) :
+    HasGradientAt (p.chiS2 · Δz) (p.uS q Δz • q) q := by
+  simpa [uS] using p.hasGradientAt_chiS2 Δz q
+
 end chiS2
 
 end LEEM

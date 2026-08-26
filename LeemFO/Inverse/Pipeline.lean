@@ -11,12 +11,13 @@ import Mathlib.Tactic.Linarith
 # Fourier-domain inverse pipeline
 
 Stage 1 is per-bin Tikhonov on the CTF slice `R_FO(q,0,Δz)` (scalar or the
-vacuum 2×2). Stage 2 is optional: skip when the bilinear remainder of the
-linear reconstruction is at a prescribed noise floor. The 1D sinusoid
+vacuum 2×2). Stage 2 for large phase is the mixed Born homotopy of
+`LeemFO.Inverse.Homotopy` (Fourier-diagonal `2×2` on a remainder-corrected
+residual; rank-`M` TCC apply of `ihat`). Skip when the bilinear remainder of
+the linear reconstruction is at a prescribed noise floor. The 1D sinusoid
 special case is Jacobi–Anger least squares on `modeSet` (`sinusoidJ`).
 
-No DFT is constructed; inputs are already Fourier bins. Iterative
-Gauss–Newton is not encoded.
+No DFT is constructed; inputs are already Fourier bins.
 -/
 
 open Complex Real

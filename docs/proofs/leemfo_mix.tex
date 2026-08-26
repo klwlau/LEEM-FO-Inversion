@@ -1,0 +1,561 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{microtype}
+\emergencystretch=3em
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{hyperref}
+\usepackage[nameinlink,capitalize]{cleveref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black,
+  pdftitle={A mixed TCC--Born inverse of LEEM Fourier optics: algorithm selection},
+  pdfauthor={Wilson Lau}
+}
+
+\newtheorem{theorem}{Theorem}[section]
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\ee}{\mathrm{e}}
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\conj}[1]{\overline{#1}}
+\newcommand{\abs}[1]{\lvert#1\rvert}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+\newcommand{\qap}{q_{\mathrm{ap}}}
+\newcommand{\Dz}{\Delta z}
+\newcommand{\RFO}{R_{\mathrm{FO}}}
+\newcommand{\RCTF}{R_{\mathrm{CTF}}}
+
+\title{A mixed TCC--Born inverse of LEEM Fourier optics:\\
+algorithm selection}
+\author{Wilson Lau}
+\date{26 August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We invert a two-dimensional through-focal LEEM intensity stack for the
+exit wave $\psi_0=\sigma\,\ee^{\ii\phi}$ against the bilinear
+Fourier-optics (FO) kernel of Yu, Lau and Altman~\cite{Yu2019}.
+Among discrete inverses that are identities of that kernel, the
+cheapest large-phase estimator at modelled $N=128$ is a mixed
+transmission-cross-coefficient (TCC)--Born homotopy: vacuum
+$2\times 2$ Tikhonov initialization, rank-$M$ TCC (or exact rank-1
+under perfect coherence) apply, remainder-corrected Born updates on
+the same Fourier-diagonal $2\times 2$, per-bin skip
+$t\in\{0,1\}$, and optional algebraic Armijo on the exact quartic line
+energy.
+This note records \emph{every} candidate examined against that mix,
+with a Pick / Component / Not-pick verdict and the Lean witness or
+an explicit informal tag.
+The scientific inverse statement is the companion
+note~\cite{Lau2026inverse}; algebraic claims are machine-checked in
+Lean~4.
+\end{abstract}
+
+\section{Problem and selection criteria}
+\label{sec:criteria}
+
+The forward map is bilinear FO intensity~\cite{Yu2019}
+\begin{equation}
+\label{eq:I}
+I(\mathbf{r},\Dz)
+=\iint
+\boldsymbol{\Psi}(\mathbf{q})\,\boldsymbol{\Psi}^*(\mathbf{q}')
+\,\RFO(\mathbf{q},\mathbf{q}',\Dz)
+\,\ee^{2\pi\ii(\mathbf{q}-\mathbf{q}')\cdot\mathbf{r}}
+\,\dd^2q\,\dd^2q',
+\end{equation}
+with $\boldsymbol{\Psi}=\mathcal{F}[\psi_0]$ and kernel support
+$\abs{\mathbf{q}},\abs{\mathbf{q}'}\le\qap$.
+On a finite frequency group $G$ and a finite defocus index $\kappa$,
+the same bilinear form is \texttt{ihat} on the 2D kernel
+\texttt{R\_FO2}~\cite{Lau2026proofs,Lau2026inverse}.
+
+A candidate is a \textbf{Pick} for 2D large $\phi$ only if
+\begin{enumerate}[leftmargin=*]
+\item it is an \emph{identity} of \texttt{ihat}/\texttt{R\_FO2}
+(FO-faithful), and
+\item it is strictly cheaper than a dense pair apply $KN^2$ at
+$N=128$ in the cost model $\mathrm{dftCost}(N):=N\log_2 N$
+(\texttt{dftCost} is a definition, not an FFT existence theorem).
+\end{enumerate}
+A method may be a \textbf{Component} of the winner without being a
+standalone 2D inverse.
+\textbf{Not pick} means it fails faithfulness, cost, or the experiment
+geometry (through-focal LEEM with known aberration $\chi$).
+Convergence rates, statistical noise models and Banach fixed-point
+theorems are not FO identities and are tagged \emph{informal}.
+
+\section{Winner mix}
+\label{sec:winner}
+
+The locked 2D large-phase estimator is
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Init.} Vacuum $2\times 2$ Tikhonov on $\RFO$ in 2D
+(\texttt{stage1Pair2}/\texttt{tikhonovXhat2}), default $K=2$
+independent defoci.
+\item \textbf{Apply.} Rank-$M$ TCC (\texttt{ihat\_tcc}) or exact
+rank-1 autocorrelation under \texttt{PerfectCoherence}.
+Rank policy \texttt{recommendTccRank}: $M=1$ if perfectly coherent
+or if using the quartic line search, else $M\le 8$ at $N=128$.
+\item \textbf{Update.} Remainder-corrected Born
+(\texttt{mixedBinStep}) on the same Fourier-diagonal $2\times 2$.
+\item \textbf{Skip.} Per-bin \texttt{remainderWeight}${}\in\{0,1\}$
+(\texttt{mixed2DMix}): quiet $t=0$ keeps stage~1; loud $t=1$ takes
+the full FO remainder.
+\item \textbf{Line search (optional).} Algebraic Armijo
+(\texttt{lineDescentStep}) on stack fidelity \texttt{lineFid}.
+\item \textbf{Partner.} Hermitian data and odd $qmap$ recover
+$\delta(-\xi)=\conj{v(\xi)}$ (\texttt{mixed2D\_conj\_partner}).
+\end{enumerate}
+FO-faithfulness is the exact quadratic homotopy
+(\texttt{ihat\_homotopy\_cubic\_zero}): there is no cubic remainder.
+Cost: a rank-$M\le 8$ Born step is cheaper than dense at $N=128$
+(\texttt{bornStepCost\_lt\_dense\_128},
+\texttt{hybridCost\_lt\_dense\_succ}).
+The one-dimensional sinusoid of Yu~\emph{et al.} remains Jacobi--Anger
+(\texttt{sinusoidJ}), not a branch of \texttt{mixed2D}.
+
+Quiet skip is the linearized / weak-object branch
+(\texttt{mixedSpectrumMix\_skip\_step}); there is no separate
+weak-phase inverse.
+\texttt{mixed2D} with free schedules $(t,\mathrm{damp})$ stays the
+general pair API; \texttt{mixed2DMix} is the recommended skip policy.
+
+\section{Picked components}
+\label{sec:pick}
+
+\paragraph{Vacuum $2\times 2$ Tikhonov / Schiske--Wiener.}
+\textbf{Pick as init} and as the quiet-bin map.
+For $\alpha>0$, \texttt{tikhonovXhat2} is the unique minimizer of the
+bin energy \texttt{tikhonovJ2} (\texttt{tikhonov2\_unique}).
+One Gauss--Newton step from vacuum \emph{is} that solve
+(\texttt{vacuumGN\_eq\_stage1Pair2}).
+Default $K=2$: $K=1$ always has a kernel on
+$(X(\mathbf{q}),\conj{X(-\mathbf{q})})$
+(\texttt{exists\_one\_defocus\_pair\_kernel}).
+Closed-form Cramer, not an iterative $2\times 2$ solver.
+
+\paragraph{Rank-$M$ TCC apply.}
+\textbf{Pick as apply.} Hopkins expansion \texttt{ihat\_tcc} with
+modelled cost $KM\cdot 2\cdot N\log_2 N$.
+At $N=128$, $M\le 8$ is cheaper than dense
+(\texttt{tccApplyCost\_lt\_dense\_128}); $M=9$ is still cheaper
+(\texttt{tccApplyCost\_lt\_dense\_128\_nine}); $M\ge 10$ is not.
+The Born cap stays $M\le 8$.
+Zero-weight padding of unused modes is free
+(\texttt{tccKernel\_insert\_weight\_zero}).
+
+\paragraph{Perfect-coherence rank-1 autocorrelation.}
+\textbf{Pick when \texttt{PerfectCoherence}} ($q_{\mathrm{ill}}=\Delta E=0$):
+\texttt{ihat\_R\_FO\_of\_perfect} / \texttt{ihat\_rank1}.
+Not picked from ``envelope $\approx 1$'': \texttt{exists\_R\_FO\_ne\_R0}
+on a column with $\Delta E=0$ but $q_{\mathrm{ill}}\neq 0$.
+
+\paragraph{Remainder-corrected Born / quadratic homotopy.}
+\textbf{Pick as update.} The true ray is
+$\hat I(\mathrm{vac}+t\delta)=\hat I(\mathrm{vac})+t\,DI+t^2\hat I(\delta)$.
+\texttt{bornModel} interpolates stage-1 ($t=0$) and full FO ($t=1$).
+Loud bins use $t=1$; quiet bins use $t=0$.
+
+\paragraph{Per-bin skip \texttt{remainderWeight}.}
+\textbf{Pick as skip.} The control is a bit
+(\texttt{remainderWeight\_eq\_zero\_or\_one}).
+Global $t$ and fractional $t=\min(1,\norm{\hat I}/\eta)$ are not the
+mix (\cref{sec:fail}).
+
+\paragraph{Algebraic Armijo on the exact quartic.}
+\textbf{Pick as optional 1D mix} after a Born direction.
+Along $x_0+s\cdot d$ the residual is degree 2, so stack fidelity
+\texttt{lineFid} is a real quartic (\texttt{lineFid\_quadEnergy}).
+\texttt{descentStep} decreases energy when the cubic slope at $0$ is
+negative (\texttt{lineFid\_descent}).
+Full NLS on the ray is the companion \texttt{nlsJ\_line}; the FO 1D
+mix stays fidelity-only because bins already use $\alpha$ in
+\texttt{mixedBinStep}.
+
+\paragraph{Hermitian partner / odd \texttt{qmap}.}
+\textbf{Pick as recovery.} Hypotheses are
+$q(-\xi)=-q(\xi)$ and Hermitian data, not odd $\abs{G}$.
+
+\paragraph{Jacobi--Anger for a 1D sinusoid.}
+\textbf{Pick as a 1D special case} (\texttt{sinusoidJ},
+\texttt{stage2Sinusoid}).
+\textbf{Not pick as a 2D inverse}: the Bessel ladder has $M$ modes,
+bilinear FO has $M^2$ pairs
+(\texttt{exists\_modeSet\_lt\_modePairs}).
+
+\paragraph{LR+D apply.}
+\textbf{Optional component}, not the default apply.
+Tighter truncation bound than plain TCC, strictly costlier
+(\texttt{tccApplyCost\_lt\_lrPlusDiagApplyCost}); still cheaper than
+dense at the Born cap.
+
+\section{Not pick: FO-map mismatch}
+\label{sec:fail}
+
+\paragraph{Transport of intensity / Fresnel multiplier.}
+Wrong PDE; the multiplier is nonzero outside the aperture where FO is
+blind (\texttt{exists\_interior\_R\_FO\_ne\_tie},
+\texttt{exists\_interior\_R\_FO2\_ne\_tie},
+\texttt{R\_FO\_ne\_tie\_outside}).
+
+\paragraph{Gerchberg--Saxton / HIO / error reduction / $\RCTF$.}
+The coherent intensity is
+$\RCTF=\RFO\,\Gamma_C\Gamma_S$; $\Gamma_S\neq 1$ off axis
+(\texttt{exists\_R\_CTF\_ne\_R\_FO}).
+HIO/ER use the same misspecified projector
+(\texttt{exists\_hio\_kernel\_ne\_R\_FO}).
+
+\paragraph{Coherent projector $R_0$ as FO.}
+Partial spatial coherence: \texttt{exists\_R\_FO\_ne\_R0}.
+
+\paragraph{Single-defocus Wiener.}
+The vacuum $2\times 2$ always has a kernel
+(\texttt{exists\_one\_defocus\_pair\_kernel}).
+
+\paragraph{Weak-phase CTF $\sin(2\pi\chi_S)$ as the map.}
+Can vanish while the FO slice does not
+(\texttt{exists\_weakPhase\_sin\_zero\_R\_FO\_ne\_zero}).
+Quiet Mix skip is the linearized path; this sine is not that path.
+
+\paragraph{Radial / $\norm{\mathbf{q}}$-only 2D kernel.}
+$E_S$ contains $\mathbf{q}\cdot\mathbf{q}'$
+(\texttt{exists\_R\_FO2\_ne\_R\_FO\_of\_norms},
+\texttt{exists\_aS2\_ne\_radial\_aS}).
+Cartesian \texttt{R\_FO2} stays the 2D kernel.
+
+\paragraph{Jacobi--Anger as a 2D inverse / Bool dispatcher on \texttt{mixed2D}.}
+\texttt{exists\_modeSet\_lt\_modePairs}. Types differ: scalar $\phi$-cost
+versus Fourier-bin $2\times 2$.
+
+\paragraph{First-order Rytov increment.}
+$i\phi$ is not $\ee^{i\phi}-1$ on FO
+(\texttt{exists\_rytov\_inc\_ne\_fo\_phase}).
+
+\paragraph{Forgetful Kaczmarz.}
+Last-row only; not the \texttt{tikhonovJ2} minimizer for $K\ge 2$
+(\texttt{exists\_kaczmarzSweep\_ne\_tikhonovXhat2}) and costlier than
+one Cramer solve (\texttt{binSolveCost\_lt\_kaczmarzCost\_one\_sweep}).
+
+\paragraph{Unit Gauss--Newton as a line critical point.}
+The exact cubic at a unit GN step ($B=-A$) is not identically zero
+(\texttt{lineCubic\_exactGN}); a unit step can raise energy
+(\texttt{exists\_unit\_step\_energy\_increase}).
+
+\paragraph{Gauss--Newton Hessian as the quartic Hessian.}
+Drops the remainder coupling $2\operatorname{Re}(\conj{A}C)$
+(\texttt{exists\_quadA2\_ne\_gn}).
+
+\paragraph{Quadratic Newton candidate $-A_1/(2A_2)$.}
+Ignores $A_3,A_4$; not a cubic root; can raise energy
+(\texttt{exists\_newtonCandidate\_not\_critical},
+\texttt{exists\_newtonCandidate\_energy\_increase}).
+
+\paragraph{Global or fractional homotopy $t$ as skip.}
+Exact FO is loud $t=1$; stage-1 is quiet $t=0$.
+Distinct $t$ disagree on occupied remainder
+(\texttt{exists\_bornModel\_t\_disagree});
+loud $t=0$ drops the remainder
+(\texttt{bornRhs\_t0\_ignores\_loud}).
+Fractional $t=\min(1,\norm{\hat I}/\eta)$ is neither endpoint.
+
+\section{Not pick: faithful or equivalent, but not the cheap mix}
+\label{sec:cost}
+
+\paragraph{Dense / generic-background Gauss--Newton.}
+FO-faithful (exact quadratic remainder) but \texttt{ihatJac} off vacuum
+is not Fourier-diagonal and is $KN^2$, not $O(KN\log N)$.
+
+\paragraph{Real-space Born--GN as the cheap mix.}
+Same obstruction as dense GN.
+
+\paragraph{Always-on quartic line search.}
+Faithful 1D mix, but \texttt{recommendTccCap} then forces $M=1$.
+Rank-1 line search beats dense at $N=128$
+(\texttt{lineSearchCost\_lt\_dense\_128\_rank1}); rank-8 line search
+does not.
+Born $M\le 8$ is the cheaper 2D default; Armijo stays optional.
+
+\paragraph{Tikhonov line replacing \texttt{lineFid}.}
+$\texttt{nlsJ}=\texttt{lineFid}+\alpha\sum\norm{x_0+sd}^2$
+(\texttt{nlsJ\_line}).
+Bins already use $\alpha$.
+Fidelity-only \texttt{lineFid} can be flat while
+$\norm{x_0+sd}$ is unbounded
+(\texttt{exists\_lineFid\_flat\_unbounded}).
+
+\paragraph{Two-source special case in \texttt{recommendTccRank}.}
+\texttt{ihat\_twoSource} is \texttt{ihat\_tcc} at $M=2$.
+
+\paragraph{$\Delta E=0$ as rank-1 apply.}
+Chromatic envelope $1$ is not \texttt{PerfectCoherence}
+(\texttt{exists\_R\_FO\_ne\_R0} on \texttt{nacPC}).
+
+\paragraph{Landweber / CGLS / CG as bin solvers.}
+Dimension $2$: exact CG recovers Cramer after the same $O(K)$ Gram
+work; rates are informal.
+Stage-1 stays closed-form \texttt{tikhonovXhat2}.
+
+\paragraph{Recursive least squares / Kalman.}
+Proper accumulation of the Gram is the same estimator as batch Cramer,
+not cheaper.
+Forgetful streaming is Kaczmarz (already rejected).
+
+\paragraph{Three-point $\{0,\texttt{descentStep},1\}$ min.}
+Same \texttt{lineSearchCost} as Armijo; not required (T15 already has
+descent).
+Fixed $\{0,\tfrac12,1\}$ does not guarantee descent.
+
+\paragraph{LR+D as the default apply.}
+See \cref{sec:pick}: optional tighter bound, not cheaper.
+
+\paragraph{Near-perfect coherence as hard $M=1$.}
+Rank-1 apply needs \texttt{PerfectCoherence}.
+Near-PC belongs under \texttt{ihat\_tcc\_trunc\_bound} /
+\texttt{chooseTccRank}, not a hard cap of $1$.
+
+\paragraph{Formal $K>2$ always better / iterate count $T=1$ because quadratic.}
+$K=2$ is the algebraic default; extra $K$ is SNR / common CTF zeros
+(informal).
+Quadratic FO is the \emph{model}, not one-step exactness of Born;
+$T$ stays API (\texttt{hybridCost} is parametric in all $T$).
+
+\section{Not pick: not an FO identity, or a different experiment}
+\label{sec:informal}
+
+Each item below was examined and left informal or out of geometry.
+No new \texttt{exists\_*} is claimed.
+
+\paragraph{Cardano roots of \texttt{lineCubic}.}
+Stationarity is a cubic; roots are not constructed.
+Armijo is the encoded 1D mix.
+
+\paragraph{Trust-region / dogleg / cubic regularization.}
+The quadratic model is not the FO quartic; a cubic model returns to
+Cardano.
+
+\paragraph{Complex-step line search.}
+A complex step is sesquilinear in $(\sigma,\conj{\sigma})$, not
+\texttt{quadPoly}. Real $s\in\R$ only.
+
+\paragraph{Nesterov / FISTA / Polyak / Heavy-ball.}
+Acceleration rates, not FO identities; same bucket as GN/Born
+convergence.
+
+\paragraph{L-BFGS / BFGS / Levenberg--Marquardt.}
+Secant / damped-GN models inherit the GN Hessian gap
+(\texttt{exists\_quadA2\_ne\_gn}) and lose the Fourier-diagonal
+$2\times 2$ Born loop.
+
+\paragraph{Anderson / DIIS mixing.}
+Multi-history residual LS, not the scalar damp of
+\texttt{mixedBinStep}; not cheaper per outer step.
+
+\paragraph{Wirtinger / ADMM / PhaseLift convergence.}
+Not FO identities.
+The PC kernel mismatch is already \texttt{exists\_R\_FO\_ne\_R0}.
+
+\paragraph{Banach FPT / Picard iterate convergence.}
+\texttt{picard\_unique\_of\_lip} is only a Lipschitz implication.
+Existence and rates are not encoded.
+
+\paragraph{TV / Split-Bregman / $\ell^1$.}
+Drops the Cramer uniqueness story of $\alpha\norm{\cdot}^2$.
+FO-faithfulness of the mix comes from the quadratic homotopy, not the
+penalty.
+
+\paragraph{Weighted LS / VST / $1/\abs{h}^2$.}
+Statistical; \texttt{tikhonovJ2}/\texttt{nlsJ} are unweighted
+$\ell^2$. No probability space.
+
+\paragraph{Huber / truncated least squares.}
+A robust $\rho(r)$ breaks $\norm{\texttt{quadPoly}}^2\to$ quartic, so
+it is not the FO 1D mix.
+
+\paragraph{Richardson--Lucy / Poisson EM.}
+No probability space; not bilinear FO.
+
+\paragraph{MAL / phase diversity as the large-$\phi$ inverse.}
+GN stacked over extra defoci when $\chi$ is \emph{unknown}~\cite{Coene1996}.
+The mix assumes known $\chi$ in \texttt{R\_FO2} and is cheaper.
+
+\paragraph{Ptychography / Wigner-distribution deconvolution.}
+Probe--diffraction geometry, not a through-focal LEEM stack.
+
+\paragraph{Multi-slice / dynamical scattering.}
+A volume propagator, not bilinear \texttt{ihat}.
+
+\paragraph{Learned / unrolled neural inverse.}
+Not an FO identity.
+
+\paragraph{Image alignment / drift as the inverse.}
+Preprocessing. Inverse inputs are already Fourier bins.
+Alignment and the current-to-defocus map remain informal in the
+inverse note.
+
+\paragraph{Contrast-normalized $y/\langle I\rangle$ or $y_k-y_0$.}
+Experiment convention.
+The mix uses raw $y$ and vacuum-subtracted \texttt{yLin}.
+
+\paragraph{Defocus interpolant on $\Dz$.}
+$\kappa$ is given; missing frames shrink the index.
+Uneven $\Dz$ is already an arbitrary map $\kappa\to\R$.
+
+\paragraph{Energy-filtered / spectroscopic stack as $\kappa$.}
+The inverse index is defocus, not energy.
+Bibliographic energy-filtered LEEM is not this mix.
+
+\paragraph{SPLEEM / magnetic contrast.}
+Scalar \texttt{objectWave} $\sigma\,\ee^{i\phi}$; spin is a different
+channel.
+
+\paragraph{Pin $\operatorname{Im}(\delta 0)=0$ for uniqueness.}
+\texttt{ihat\_gauge}: global phase leaves intensity and
+$\sum\norm{\Psi}^2$ invariant. Gauge theatre.
+
+\paragraph{Deprecate \texttt{mixed2D}; restrict to \texttt{modeSet}; DC-bin special case.}
+\texttt{mixed2D} stays the general pair API.
+\texttt{modeSet} is the 1D JA ladder; outside-disk bins already vanish
+(T4).
+DC uses $\texttt{yLin}=y-\RFO(0,0)$; partner at $0$ is $v=\conj{u}$.
+
+\section{Verdict table}
+\label{sec:table}
+
+{\small
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{@{}p{4.2cm}p{2.0cm}p{7.0cm}@{}}
+\toprule
+Algorithm & Verdict & Why \\
+\midrule
+\endfirsthead
+\toprule
+Algorithm & Verdict & Why \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+Vacuum $2\times 2$ Tikhonov & Component (init) & Unique Cramer; $K=2$ default \\
+Rank-$M$ TCC & Component (apply) & Cheaper than dense at $N=128$, $M\le 8$ \\
+PC rank-1 autocorrelation & Component & Exact under \texttt{PerfectCoherence} \\
+Remainder-corrected Born & Component (update) & Exact quadratic FO \\
+\texttt{remainderWeight} $\{0,1\}$ & Component (skip) & Quiet=stage-1, loud=full FO \\
+Quartic Armijo & Optional 1D mix & Exact \texttt{lineFid}; not always-on \\
+Odd \texttt{qmap} partner & Component & Hermitian recovery \\
+Odd $\lvert G\rvert$ as partner hyp. & Not pick & Partner uses $q(-\xi)=-q(\xi)$, not odd cardinality \\
+Jacobi--Anger & 1D only & Not a 2D inverse \\
+LR+D & Optional apply & Tighter, not cheaper than TCC \\
+\textbf{Mixed TCC--Born} & \textbf{Pick (2D large $\phi$)} & Faithful and cheapest in tree \\
+TIE / Fresnel & Not pick & Wrong PDE; \texttt{exists\_*\_ne\_tie} \\
+GS / HIO / ER / $\RCTF$ & Not pick & $\Gamma_S\neq 1$; \texttt{exists\_R\_CTF\_ne\_R\_FO} \\
+$R_0$ as FO & Not pick & \texttt{exists\_R\_FO\_ne\_R0} \\
+Single-defocus Wiener & Not pick & Vacuum $2\times 2$ kernel \\
+Weak-phase sine as map & Not pick & Zeros inside aperture \\
+Radial 1D-as-2D & Not pick & $\mathbf{q}\cdot\mathbf{q}'$ in $E_S$ \\
+JA as 2D / Bool dispatcher & Not pick & Ladder $M$ vs pairs $M^2$ \\
+Rytov increment & Not pick & $i\phi\neq \ee^{i\phi}-1$ \\
+Forgetful Kaczmarz & Not pick & Not \texttt{tikhonovXhat2}; costlier \\
+Unit GN / GN Hessian / Newton $A_1,A_2$ & Not pick & Not the FO quartic \\
+Global / fractional $t$ skip & Not pick & Not endpoints of Born/FO \\
+Dense / real-space GN & Not pick (as cheap mix) & Faithful, $KN^2$ \\
+Always-on line search & Not pick (as 2D default) & Forces $M=1$ \\
+Tikhonov line / 3-point min & Not pick & Companion or redundant \\
+Two-source rank case & Not pick (extra) & Already TCC $M=2$ \\
+$\Delta E=0$ rank-1 & Not pick & Not \texttt{PerfectCoherence} \\
+Landweber / CGLS / RLS / Kalman & Not pick & Cramer exact; forgetful=Kaczmarz \\
+LR+D as default & Not pick & Costlier than \texttt{ihat\_tcc} \\
+Near-PC as $M=1$ & Not pick & Needs \texttt{PerfectCoherence} \\
+Formal $K$-count / iterate-count $T$ & Not pick (cost) & $K=2$ default; $T$ stays API (\texttt{hybridCost}) \\
+Cardano / TR / dogleg / complex $s$ & Informal & Not the encoded 1D mix \\
+Nesterov / FISTA / L-BFGS / LM / Anderson & Informal & Rates / wrong model \\
+Wirtinger / ADMM / PhaseLift conv. & Informal & Not an identity \\
+Banach FPT / Picard conv. & Informal & Only Lip uniqueness \\
+TV / WLS / Huber / RL & Informal & Penalty / noise / Poisson \\
+MAL as large-$\phi$ inverse & Informal & Unknown-$\chi$ only \\
+Ptycho / WDD / multi-slice / SPLEEM / EF-$\kappa$ & Informal & Different experiment \\
+Learned inverse & Informal & Not an identity \\
+Alignment / $I$-norm / $\Dz$ interpolant & Informal & Preprocessing / convention \\
+Pin $\operatorname{Im}(\delta 0)$ & Informal & \texttt{ihat\_gauge} \\
+Deprecate \texttt{mixed2D} / restrict \texttt{modeSet} / DC special case & Informal & Keep pair API; JA is 1D; DC is $y{-}\RFO(0,0)$ \\
+FFT existence / noise models / \texttt{Approx.} truncations & Informal & Not claimed; see \cref{sec:not} \\
+\end{longtable}
+}
+
+\section{Lean encoding map}
+\label{sec:lean}
+
+Modules: \texttt{Forward/Kernel2}, \texttt{Inverse/Tikhonov},
+\texttt{LinearInverse}, \texttt{Pipeline}, \texttt{LowRank},
+\texttt{Homotopy}, \texttt{LineSearch}, \texttt{Plane2},
+\texttt{Mix}.
+Theorem list T10--T17 in the inverse statement file of the
+repository.
+Sound proofs depend only on
+$[\mathtt{propext},\ \mathtt{Classical.choice},\ \mathtt{Quot.sound}]$.
+No \texttt{sorry}.
+
+\section{Not claimed}
+\label{sec:not}
+
+FFT existence or wall-clock $O(N\log N)$; array DFT $=$ continuum FT;
+Gaussian/Poisson/MSE/Cram\'er--Rao; frozen-aperture and first-order
+tilt truncations already flagged \texttt{Approx.} in the forward
+model; local quadratic convergence of GN/Born; ``fastest among all
+conceivable inverses'' (only DFT-based / dense-bilinear / TCC
+comparisons are proved); uniqueness of the nonlinear inverse
+(\texttt{ihat\_gauge}).
+
+\begin{thebibliography}{99}
+
+\bibitem{Yu2019}
+K.~M. Yu, K.~L.~W. Lau, M.~S. Altman,
+\emph{Fourier optics of image formation in aberration-corrected LEEM},
+Ultramicroscopy \textbf{200} (2019) 160--168.
+
+\bibitem{Yu2017}
+K.~M. Yu, A.~Locatelli, M.~S. Altman,
+\emph{Comparing Fourier optics and contrast transfer function modeling
+of image formation in low energy electron microscopy},
+Ultramicroscopy \textbf{183} (2017) 109--116.
+
+\bibitem{Coene1996}
+W.~M.~J. Coene, A.~Thust, M.~Op de Beeck, D.~Van Dyck,
+\emph{Maximum-likelihood method for focus-variation image
+reconstruction in high resolution transmission electron microscopy},
+Ultramicroscopy \textbf{64} (1996) 109--135.
+
+\bibitem{Lau2026proofs}
+W.~Lau,
+\emph{Closed-form envelopes of the Fourier-optics kernel in
+aberration-corrected LEEM},
+unpublished (2026).
+
+\bibitem{Lau2026inverse}
+W.~Lau,
+\emph{Through-focal inversion of LEEM intensities with the
+Fourier-optics kernel},
+unpublished (2026).
+
+\end{thebibliography}
+
+\end{document}

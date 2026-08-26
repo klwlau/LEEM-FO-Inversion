@@ -11,3 +11,4 @@ import LeemFO.Forward.EnvelopeChromatic
 import LeemFO.Forward.CTF
 import LeemFO.Forward.Ratios
 import LeemFO.Forward.PhaseObject
+import LeemFO.Forward.Kernel2

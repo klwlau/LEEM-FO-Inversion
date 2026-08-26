@@ -7,6 +7,7 @@ import LeemFO.Forward.CTF
 import LeemFO.Forward.Ratios
 import LeemFO.Inverse.Tikhonov
 import Mathlib.Algebra.BigOperators.Ring.Finset
+import Mathlib.Algebra.Group.Equiv.Basic
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Ring
@@ -182,6 +183,25 @@ theorem ihat_gauge (R : G → G → ℂ) (Ψ : G → ℂ) (ξ : G) (θ : ℝ) :
           ring
     _ = Ψ q * R q (q - ξ) * conj (Ψ (q - ξ)) := by
           rw [hφ, one_mul]
+
+/-- Hermitian kernel ⇒ Hermitian Fourier intensity, for any object spectrum. -/
+theorem ihat_hermitian (R : G → G → ℂ) (Ψ : G → ℂ) (ξ : G)
+    (hR : ∀ q q', conj (R q q') = R q' q) :
+    ihat R Ψ (-ξ) = conj (ihat R Ψ ξ) := by
+  unfold ihat
+  simp only [sub_neg_eq_add]
+  have hreindex :
+      (∑ q : G, Ψ q * R q (q + ξ) * conj (Ψ (q + ξ)))
+        = ∑ q : G, Ψ (q - ξ) * R (q - ξ) q * conj (Ψ q) :=
+    Fintype.sum_equiv (Equiv.addRight ξ) _ _ fun q => by
+      simp [Equiv.addRight]
+  have hconj :
+      conj (∑ q : G, Ψ q * R q (q - ξ) * conj (Ψ (q - ξ)))
+        = ∑ q : G, conj (Ψ q) * R (q - ξ) q * Ψ (q - ξ) := by
+    simp [map_sum, map_mul, hR]
+  rw [hreindex, hconj]
+  refine Finset.sum_congr rfl fun q _ => ?_
+  ac_rfl
 
 theorem ihat_vacuum (R : G → G → ℂ) (ξ : G) :
     ihat R vacuum ξ = if ξ = 0 then R 0 0 else 0 := by

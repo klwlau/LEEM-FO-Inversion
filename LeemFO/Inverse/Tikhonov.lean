@@ -22,7 +22,9 @@ import Mathlib.Tactic.Abel
 # Fourier-diagonal Tikhonov (scalar and 2×2 Gram)
 
 Finite-dimensional algebra for one spatial-frequency bin of the linearized
-multi-defocus FO/CTF slice. No DFT is constructed.
+multi-defocus FO/CTF slice. No DFT is constructed. Forgetful Kaczmarz
+(`kaczmarzSweep`) is not the unique `tikhonovJ2` minimizer for `K ≥ 2`;
+stage 1 uses the batch Cramer solve `tikhonovXhat2`.
 -/
 
 open Complex
@@ -348,6 +350,50 @@ lemma tikhonov2FromRhs_v (α : ℝ) (h g : κ → ℂ) (ru rv : ℂ) :
     (tikhonov2FromRhs α h g ru rv).2
       = ((gramA α h : ℂ) * rv - conj (gramB h g) * ru) / (gramDet α h g : ℂ) :=
   rfl
+
+/-! ### Conjugate swap of the 2×2 Gram solve -/
+
+lemma gramA_conj (α : ℝ) (h : κ → ℂ) :
+    gramA α (fun k => conj (h k)) = gramA α h := by
+  simp [gramA]
+
+lemma gramB_conj_swap (h g : κ → ℂ) :
+    gramB (fun k => conj (g k)) (fun k => conj (h k)) = gramB h g := by
+  unfold gramB
+  refine Finset.sum_congr rfl fun k _ => ?_
+  rw [conj_conj, mul_comm]
+
+lemma gramDet_conj_swap (α : ℝ) (h g : κ → ℂ) :
+    gramDet α (fun k => conj (g k)) (fun k => conj (h k)) = gramDet α h g := by
+  unfold gramDet
+  rw [gramA_conj, gramA_conj, gramB_conj_swap, mul_comm (gramA α g)]
+
+lemma tikhonov2Rhs_conj (h y : κ → ℂ) :
+    tikhonov2Rhs (fun k => conj (h k)) (fun k => conj (y k))
+      = conj (tikhonov2Rhs h y) := by
+  unfold tikhonov2Rhs
+  simp [map_sum, map_mul]
+
+lemma tikhonov2FromRhs_conj_swap (α : ℝ) (h g : κ → ℂ) (ru rv : ℂ) :
+    tikhonov2FromRhs α (fun k => conj (g k)) (fun k => conj (h k))
+        (conj rv) (conj ru)
+      = (conj (tikhonov2FromRhs α h g ru rv).2,
+        conj (tikhonov2FromRhs α h g ru rv).1) := by
+  apply Prod.ext
+  · simp [tikhonov2FromRhs, gramA_conj, gramB_conj_swap, gramDet_conj_swap,
+      map_sub, map_mul, conj_ofReal]
+  · simp [tikhonov2FromRhs, gramA_conj, gramB_conj_swap, gramDet_conj_swap,
+      map_sub, map_mul, conj_ofReal]
+
+/-- If `h' = conj ∘ g`, `g' = conj ∘ h`, `y' = conj ∘ y`, then the 2×2
+estimator swaps coordinates under conjugation: `(û', v̂') = (conj v̂, conj û)`. -/
+lemma tikhonovXhat2_conj_swap (α : ℝ) (h g y : κ → ℂ) :
+    tikhonovXhat2 α (fun k => conj (g k)) (fun k => conj (h k))
+        (fun k => conj (y k))
+      = (conj (tikhonovXhat2 α h g y).2, conj (tikhonovXhat2 α h g y).1) := by
+  unfold tikhonovXhat2
+  rw [tikhonov2Rhs_conj, tikhonov2Rhs_conj]
+  exact tikhonov2FromRhs_conj_swap α h g _ _
 
 lemma gramB_mul_conj (h g : κ → ℂ) :
     gramB h g * conj (gramB h g) = (‖gramB h g‖ ^ 2 : ℂ) := by
@@ -696,11 +742,100 @@ theorem tikhonov2_error {α : ℝ} (h g : κ → ℂ) (ustar vstar : ℂ) (n : �
   · exact (eq_of_sub_eq_zero hu0).symm
   · exact (eq_of_sub_eq_zero hv0).symm
 
+/-! ## Kaczmarz / row-action vs batch 2×2 Gram
+
+Forgetful cyclic per-defocus updates: at each index `k`, replace the estimate
+by the single-row Tikhonov closed form. One sweep therefore equals the last
+defocus alone, so it matches `tikhonovXhat2` (the unique minimizer of
+`tikhonovJ2` for `α > 0`) if and only if there is a single defocus.
+
+Recommendation: reject sequential row-action as the stage-1 `2×2` solver;
+use the batch Cramer solve `tikhonovXhat2` (`binSolveCost K`). A useful mix
+is nonlinear (Born / homotopy) iteration that still calls the batch `2×2`
+per bin — not Kaczmarz on the linear multi-defocus Gram.
+-/
+
+/-- Single-defocus (one-row) `2×2` Tikhonov closed form. -/
+def tikhonovXhat2One (α : ℝ) (h g y : ℂ) : ℂ × ℂ :=
+  tikhonovXhat2 α (fun _ : Fin 1 => h) (fun _ => g) (fun _ => y)
+
+/-- One forgetful Kaczmarz sweep over `Fin K` in order. -/
+def kaczmarzSweep {K : ℕ} (α : ℝ) (h g y : Fin K → ℂ) : ℂ × ℂ :=
+  (List.finRange K).foldl
+    (fun _ k => tikhonovXhat2One α (h k) (g k) (y k)) (0, 0)
+
+lemma list_finRange_two : List.finRange 2 = [0, 1] := by
+  decide
+
+lemma kaczmarzSweep_one (α : ℝ) (h g y : Fin 1 → ℂ) :
+    kaczmarzSweep α h g y = tikhonovXhat2One α (h 0) (g 0) (y 0) := by
+  simp [kaczmarzSweep, List.finRange]
+
+lemma kaczmarzSweep_two (α : ℝ) (h g y : Fin 2 → ℂ) :
+    kaczmarzSweep α h g y = tikhonovXhat2One α (h 1) (g 1) (y 1) := by
+  simp [kaczmarzSweep, list_finRange_two]
+
+/-- With one defocus, a Kaczmarz sweep is exactly the batch Gram solve. -/
+theorem kaczmarzSweep_eq_tikhonovXhat2_one (α : ℝ) (h g y : Fin 1 → ℂ) :
+    kaczmarzSweep α h g y = tikhonovXhat2 α h g y := by
+  have hh : (fun _ : Fin 1 => h 0) = h := by
+    funext i; fin_cases i; rfl
+  have hg : (fun _ : Fin 1 => g 0) = g := by
+    funext i; fin_cases i; rfl
+  have hy : (fun _ : Fin 1 => y 0) = y := by
+    funext i; fin_cases i; rfl
+  rw [kaczmarzSweep_one, tikhonovXhat2One, hh, hg, hy]
+
+/-- Two orthogonal defoci: one forgetful sweep ≠ batch `tikhonovXhat2`. -/
+theorem exists_kaczmarzSweep_ne_tikhonovXhat2 :
+    ∃ (α : ℝ) (_ : 0 < α) (h g y : Fin 2 → ℂ),
+      kaczmarzSweep α h g y ≠ tikhonovXhat2 α h g y := by
+  refine ⟨1, by norm_num, fun i => if i = 0 then 1 else 0,
+    fun i => if i = 0 then 0 else 1, fun _ => 1, ?_⟩
+  set α : ℝ := 1
+  set h : Fin 2 → ℂ := fun i => if i = 0 then 1 else 0
+  set g : Fin 2 → ℂ := fun i => if i = 0 then 0 else 1
+  set y : Fin 2 → ℂ := fun _ => 1
+  have hsweep :
+      kaczmarzSweep α h g y = tikhonovXhat2One α (h 1) (g 1) (y 1) :=
+    kaczmarzSweep_two α h g y
+  -- Last row alone: `(h,g,y) = (0,1,1)` → `(û,v̂) = (0, 1/2)`.
+  have hlast : tikhonovXhat2One α (h 1) (g 1) (y 1) = (0, (1 / 2 : ℂ)) := by
+    simp [tikhonovXhat2One, tikhonovXhat2, tikhonov2FromRhs, tikhonov2Rhs,
+      gramA, gramB, gramDet, α, h, g, y]
+    norm_num
+  -- Batch Gram: `(û,v̂) = (1/2, 1/2)`.
+  have hbatch : tikhonovXhat2 α h g y = ((1 / 2 : ℂ), (1 / 2 : ℂ)) := by
+    simp [tikhonovXhat2, tikhonov2FromRhs, tikhonov2Rhs, gramA, gramB, gramDet,
+      α, h, g, y, Fin.sum_univ_two]
+    norm_num
+  rw [hsweep, hlast, hbatch]
+  norm_num
+
+/-- Hence one sweep is not a minimizer of `tikhonovJ2` when `K = 2`. -/
+theorem exists_kaczmarzSweep_not_minimizer :
+    ∃ (α : ℝ) (_ : 0 < α) (h g y : Fin 2 → ℂ),
+      ¬ (∀ u' v',
+          tikhonovJ2 α h g y (kaczmarzSweep α h g y).1 (kaczmarzSweep α h g y).2
+            ≤ tikhonovJ2 α h g y u' v') := by
+  obtain ⟨α, hα, h, g, y, hne⟩ := exists_kaczmarzSweep_ne_tikhonovXhat2
+  refine ⟨α, hα, h, g, y, ?_⟩
+  intro hmin
+  set uv := kaczmarzSweep α h g y
+  have hmin' : ∀ u' v', tikhonovJ2 α h g y uv.1 uv.2 ≤ tikhonovJ2 α h g y u' v' :=
+    hmin
+  have : uv = tikhonovXhat2 α h g y :=
+    tikhonov2_unique hα h g y hmin'
+  exact hne this
+
 /-! ## Arithmetic cost model (no FFT existence theorem) -/
 
 def dftCost (N : ℕ) : ℕ := N * Nat.log2 N
 
 def binSolveCost (K : ℕ) : ℕ := 8 * K + 4
+
+/-- Modelled cost of `T` forgetful Kaczmarz sweeps (`K` single-row `2×2` solves each). -/
+def kaczmarzCost (T K : ℕ) : ℕ := T * K * binSolveCost 1
 
 def reconstructCost (K N : ℕ) : ℕ :=
   K * dftCost N + N * binSolveCost K + dftCost N
@@ -770,5 +905,35 @@ theorem reconstructCost_lt_dense_128 {K : ℕ} (hK : 1 ≤ K) :
 theorem exists_grid_diagonal_cheaper {K : ℕ} (hK : 1 ≤ K) :
     ∃ N, 128 ≤ N ∧ reconstructCost K N < denseApplyCost K N :=
   ⟨128, le_rfl, reconstructCost_lt_dense_128 hK⟩
+
+lemma kaczmarzCost_eq (T K : ℕ) :
+    kaczmarzCost T K = T * K * 12 := by
+  simp [kaczmarzCost, binSolveCost]
+
+lemma binSolveCost_le_one_sweep {K : ℕ} (hK : 1 ≤ K) :
+    binSolveCost K ≤ kaczmarzCost 1 K := by
+  rw [kaczmarzCost_eq, binSolveCost]
+  have : 4 ≤ 4 * K := Nat.le_mul_of_pos_right 4 hK
+  omega
+
+/-- One Cramer batch solve is never more expensive than `T ≥ 1` Kaczmarz sweeps. -/
+theorem binSolveCost_le_kaczmarzCost {T K : ℕ} (hT : 1 ≤ T) (hK : 1 ≤ K) :
+    binSolveCost K ≤ kaczmarzCost T K := by
+  calc
+    binSolveCost K ≤ kaczmarzCost 1 K := binSolveCost_le_one_sweep hK
+    _ = 1 * K * binSolveCost 1 := by rw [kaczmarzCost]
+    _ ≤ T * K * binSolveCost 1 := Nat.mul_le_mul_right _ (Nat.mul_le_mul_right _ hT)
+    _ = kaczmarzCost T K := by rw [kaczmarzCost]
+
+/-- For `K ≥ 2`, even one Kaczmarz sweep costs strictly more than the batch solve. -/
+theorem binSolveCost_lt_kaczmarzCost_one_sweep {K : ℕ} (hK : 2 ≤ K) :
+    binSolveCost K < kaczmarzCost 1 K := by
+  rw [kaczmarzCost_eq, binSolveCost]
+  omega
+
+/-- At `K = 1`, one sweep matches the batch cost (and the estimator, see above). -/
+theorem kaczmarzCost_eq_binSolve_one :
+    kaczmarzCost 1 1 = binSolveCost 1 := by
+  simp [kaczmarzCost, binSolveCost]
 
 end
