@@ -373,7 +373,9 @@ stores only $`u=\delta(\xi)`$; `mixedSpectrumPair` / `mixed2D` carry
 both coordinates and expose schedules $`t,\mathrm{damp}`$ as a general
 API. The recommended mix is per-bin $`t=0`$ on quiet bins and $`t=1`$
 on loud bins (`remainderWeight`, `remainderWeight_eq_zero_or_one`,
-`mixedSpectrumMix`, `mixed2DMix`).
+`mixedSpectrumMix`, `mixed2DMix`). Quiet remainder is the linearized
+/ weak-object branch (`mixedSpectrumMix_skip_step`); there is no
+separate weak-phase inverse.
 
 On $`R_{\mathrm{FO}2}`$, for $`\xi\neq 0`$, the $`n=0`$ iterate is
 `stage1Pair2` (`mixed2D_zero_eq_stage1Pair2`,
