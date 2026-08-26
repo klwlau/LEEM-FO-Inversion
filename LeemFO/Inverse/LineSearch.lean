@@ -264,8 +264,11 @@ lemma quadEnergy_diff_bound (A2 A3 A4 s : ℝ)
 theorem quadEnergy_sub_zero (A0 A1 A2 A3 A4 s : ℝ) :
     quadEnergy A0 A1 A2 A3 A4 s - quadEnergy A0 A1 A2 A3 A4 0
       = s * A1 + A2 * s ^ 2 + A3 * s ^ 3 + A4 * s ^ 4 := by
-  simp [quadEnergy]
-  ring
+  have h := quadEnergy_shift A0 A1 A2 A3 A4 0 s
+  -- Specialize the shift identity at the origin.
+  simp [lineCubic, add_zero, mul_zero,
+    zero_pow (Nat.succ_ne_zero 1), zero_pow (by decide : (3 : ℕ) ≠ 0)] at h
+  linarith [h]
 
 /-- Armijo decrease: the constructive step cuts at least half the linear
 drop predicted by `A1 = lineCubic _ _ _ _ 0`. -/
