@@ -99,4 +99,4 @@ Forward proofs live in `LeemFO/Forward/`; inverse proofs live in `LeemFO/Inverse
 | `LeemFO/Inverse/Homotopy.lean` | Exact quadratic homotopy, Born remainder correction, mixed spectrum iterate |
 | `LeemFO/Inverse/LineSearch.lean` | Exact quartic line energy, algebraic Armijo, `nlsJ_line`, GN Hessian ≠ Newton |
 | `LeemFO/Inverse/Plane2.lean` | 2D stage-1 map `stage1Pair2` on $`R_{\mathrm{FO}2}`$ |
-| `LeemFO/Inverse/Mix.lean` | Mixed TCC–Born estimator; TIE / HIO / Rytov / Wiener / radial-1D / Kaczmarz witnesses |
+| `LeemFO/Inverse/Mix.lean` | Mixed TCC–Born `mixed2DMix`; TIE / HIO / Rytov / Wiener / radial-1D / Kaczmarz witnesses |

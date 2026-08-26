@@ -295,6 +295,8 @@ rank-$M$ TCC (Hopkins) expansion, or exactly as an autocorrelation
 when the source is a point, optionally with a diagonal leftover
 (LR+D), and the same Fourier-diagonal $2\times 2$ system is solved on
 the corrected residual.
+Skip is per-bin: quiet bins keep the stage-1 residual ($t=0$), loud
+bins take full Born ($t=1$).
 Rank policy at $N=128$: $M=1$ under perfect coherence or when the
 exact quartic line search is used, otherwise $M\le 8$.
 An algebraic Armijo step on that quartic is the FO-faithful 1D mix
@@ -305,10 +307,10 @@ Forgetful Kaczmarz is not the unique Tikhonov minimizer for $K\ge 2$.
 Dense Gauss--Newton about a generic background remains FO-faithful
 but is not Fourier-diagonal and is not $O(KN\log N)$.
 MAL applies if aberrations are unknown.
-The nonlinear stage is omitted when the FO residual of the linear
-reconstruction already lies at the noise floor, equivalently
-$\max\abs{\phi}\lesssim 0.3$ at typical LEEM signal-to-noise
-($A\lesssim 0.01\,\mathrm{nm}$ at $E_0=10\,\mathrm{eV}$).
+A global omit-stage-2 certificate exists when every bin is quiet;
+the numerical reading $\max\abs{\phi}\lesssim 0.3$ at typical LEEM
+signal-to-noise ($A\lesssim 0.01\,\mathrm{nm}$ at $E_0=10\,\mathrm{eV}$)
+is not part of the machine-checked fragment.
 The linearization never sees off-axis pairs
 $(\mathbf{q},\mathbf{q}')$ at which FO and CTF disagree; that omitted
 term is the quadratic remainder of~\eqref{eq:I} about vacuum
@@ -352,9 +354,10 @@ If the bilinear remainder of that reconstruction exceeds a noise floor,
 the same Fourier bins are updated by a mixed Born homotopy: apply
 $\hat I(\delta)$ with a rank-$M$ TCC (or a rank-1 autocorrelation under
 perfect coherence), form the remainder-corrected residual, and re-solve
-the vacuum $2\times 2$ system, optionally with an exact quartic line
-search along that direction and per-bin skip when the remainder is
-quiet.
+the vacuum $2\times 2$ system on loud bins ($t=1$), leaving quiet bins
+at the stage-1 solve ($t=0$).
+An exact quartic line search along a Born direction is optional
+(and forces $M=1$ in the cost model).
 Experimental lens current is mapped onto the defocus convention of
 \cref{sec:formation} by one fitted affine transform.
 
@@ -390,9 +393,10 @@ The multi-defocus slice map is the derivative of bilinear FO at
 vacuum; the neglected term is homogeneous of degree two
 (\cref{thm:quad}).
 When that remainder lies above the noise, the nonlinear stage is
-the mixed TCC--Born homotopy; the numerical skip criterion
-$\max\abs{\phi}\lesssim 0.3$ is not part of the machine-checked
-fragment.
+the mixed TCC--Born homotopy with per-bin skip
+(\texttt{remainderWeight}, \texttt{mixed2DMix}); the numerical
+criterion $\max\abs{\phi}\lesssim 0.3$ and the global
+\texttt{stage2Skip} certificate are not a second skip policy.
 
 A modelled operation count, treating a discrete Fourier transform as
 $N\log_2 N$ operations, shows that the linear stage is cheaper than a
@@ -413,9 +417,9 @@ of a single defocus, is unique for every positive regularization, and
 is first-order consistent with bilinear FO.
 For strong-phase objects whose linearized residual exceeds the noise,
 a mixed Born homotopy applies the exact quadratic remainder with a
-rank-$M$ TCC (or coherent rank-1 autocorrelation) and keeps the
-Fourier-diagonal $2\times 2$ solve; for the one-dimensional sinusoid
-that exhibits CTF failure it collapses to a Bessel fit.
+rank-$M$ TCC (or coherent rank-1 autocorrelation), per-bin quiet/loud
+skip, and the Fourier-diagonal $2\times 2$ solve; for the one-dimensional
+sinusoid that exhibits CTF failure it collapses to a Bessel fit.
 These results broaden quantitative LEEM contrast analysis from
 forward matching of a focal series to recovery of the object, with
 the discrete linear stage verified against the same kernel used to
@@ -536,11 +540,11 @@ Aperture support of $\RFO(\cdot,0)$ & \texttt{LeemFO/Inverse/LinearInverse.lean}
 Gauge, vacuum Jacobian, quadratic remainder & same \\
 $K=1$ not injective; pure-defocus CTF zeros & same \\
 Hermitian kernel; DC $R_{\mathrm{FO}}(0,0)=1$ & \texttt{R\_FO\_hermitian}, \texttt{R\_FO\_dc} \\
-Stage-1 map, vacuum GN glue, algebraic skip & \texttt{LeemFO/Inverse/Pipeline.lean} \\
+Stage-1 map, vacuum GN glue, global skip certificate & \texttt{LeemFO/Inverse/Pipeline.lean} \\
 2D kernel $R_{\mathrm{FO}2}$, disk aperture & \texttt{LeemFO/Forward/Kernel2.lean} \\
 2D stage-1 map \texttt{stage1Pair2} & \texttt{LeemFO/Inverse/Plane2.lean} \\
 Rank-1 / TCC apply, hybrid cost & \texttt{LeemFO/Inverse/LowRank.lean} \\
-Quadratic homotopy, Born/\texttt{mixed2D} & \texttt{LeemFO/Inverse/Homotopy.lean}, \texttt{Mix.lean} \\
+Quadratic homotopy, Born/\texttt{mixed2DMix} skip & \texttt{LeemFO/Inverse/Homotopy.lean}, \texttt{Mix.lean} \\
 Exact quartic line energy & \texttt{LeemFO/Inverse/LineSearch.lean} \\
 TIE/GS/HIO/Rytov/Wiener/radial/JA rejects & \texttt{exists\_*\_ne\_*} in \texttt{Mix.lean} \\
 Mode count $M=2\lfloor\qap\Lambda\rfloor+1$ & \texttt{LeemFO/Inverse/Modes.lean} \\

@@ -16,7 +16,7 @@ import Mathlib.Analysis.Real.Pi.Bounds
 # Mixed 2D inverse: TCC apply + Born homotopy, with rejects
 
 Recommended large-`φ` 2D estimator: vacuum `2×2` Tikhonov (`stage1Pair2`),
-then remainder-corrected Born steps (`mixed2D` / `mixedSpectrum2`) whose
+then remainder-corrected Born steps (`mixed2DMix`) whose
 apply is rank-`M` TCC (`ihat_tcc`, `recommendTccRank`) or exact rank-1
 autocorrelation under `PerfectCoherence`, optionally LR+D (`lrPlusDiag`).
 Per-bin remainder weight (`remainderWeight`) skips Born on quiet bins
