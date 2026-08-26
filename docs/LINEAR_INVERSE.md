@@ -375,12 +375,14 @@ API. The recommended mix is per-bin $`t=0`$ on quiet bins and $`t=1`$
 on loud bins (`remainderWeight`, `mixedSpectrumMix`, `mixed2DMix`).
 
 On $`R_{\mathrm{FO}2}`$, for $`\xi\neq 0`$, the $`n=0`$ iterate is
-`stage1Pair2` (`mixed2D_zero_eq_stage1Pair2`; the first coordinate
-alone is `mixedSpectrum2_zero_eq_stage1Pair2`).
+`stage1Pair2` (`mixed2D_zero_eq_stage1Pair2`,
+`mixed2DMix_zero_eq_stage1Pair2`; the first coordinate alone is
+`mixedSpectrum2_zero_eq_stage1Pair2`).
 
 **Lean.** `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`,
 `mixedSpectrum_eq_pair_fst`, `mixed2D`, `mixed2DMix`,
-`mixed2D_zero_eq_stage1Pair2`, `mixedSpectrum2_zero_eq_stage1Pair2`,
+`mixed2D_zero_eq_stage1Pair2`, `mixed2DMix_zero_eq_stage1Pair2`,
+`mixedSpectrum2_zero_eq_stage1Pair2`,
 `mixedSpectrumMix_skip_step`, `mixedSpectrumMix_born_bin`.
 
 Nonlinear uniqueness is false (`ihat_gauge`). Iterative convergence is
@@ -569,6 +571,13 @@ Cardano roots of the line cubic.
 | Multi-slice / dynamical scattering | different propagator than bilinear `ihat` |
 | Near-perfect coherence as $`M=1`$ | rank-1 apply needs `PerfectCoherence` (`exists_R_FO_ne_R0`) |
 | Formal Born-iterate-count policy / “$`T=1`$ because quadratic” | quadratic FO is the *model*, not one-step exactness |
+| Learned / unrolled neural inverse | not an FO identity |
+| Image alignment / drift as the inverse | preprocessing; stack $`y`$ is already registered |
+| Real-space / generic-background GN as the cheap mix | FO-faithful but not Fourier-diagonal (`ihatJac` off vacuum) |
+| Recursive LS / Kalman streaming | proper RLS ≡ batch Cramer; forgetful streaming is Kaczmarz |
+| $`\Delta E=0`$ as rank-1 apply | chromatic 1 is not `PerfectCoherence` (`exists_R_FO_ne_R0`) |
+| Defocus interpolant on $`\Delta z`$ | $`\kappa`$ is given; missing frames shrink the index |
+| Always-on quartic line search ($`M=1`$) | Born $`M\le 8`$ is the cheaper 2D default; Armijo is optional |
 
 ---
 
@@ -589,7 +598,7 @@ Cardano roots of the line cubic.
 | T10 | `R_FO2`, `stage1Pair2`, `qmap2_zero`, `vacuumGN_eq_stage1Pair2`, `exists_R_FO2_ne_R_FO_of_norms` |
 | T11 | `ihat_rank1`, `ihat_tcc`, `ihat_R0`, `ihat_R_FO_of_perfect`, `ihat_R_FO2_of_perfect`, `ihat_tcc_trunc_bound`, `ihat_twoSource`, `lrPlusDiag` |
 | T12 | `ihat_homotopy`, `ihat_homotopy_cubic_zero`, `bornModel`, `bornModel_sub`, `bornModel_t1_ne_t0`, `bornModel_t0_ne_full`, `bornRhs_t0`, `bornRhs_sub`, `bornRhs_t1_ne_t0`, `bornRhs_t0_ignores_loud`, `born_fixed_point_normal` |
-| T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixed2DMix`, `mixedSpectrumMix`, `remainderWeight`, `mixed2D_zero_eq_stage1Pair2` |
+| T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixed2DMix`, `mixedSpectrumMix`, `remainderWeight`, `mixed2D_zero_eq_stage1Pair2`, `mixed2DMix_zero_eq_stage1Pair2` |
 | T14 | `tikhonovXhat2_conj_swap`, `ihat_hermitian`, `mixed2D_conj_partner` |
 | T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `descentStep`, `nlsJ_line`, `lineFid_eq_nlsJ_zero`, `exists_lineFid_flat_unbounded`, `exists_newtonCandidate_not_critical` |
 | T16 | `tccApplyCost_lt_dense_128`, `tccApplyCost_lt_dense_128_nine`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1`, `recommendTccRank`, `tccKernel_insert_weight_zero`, `denseApplyCost_le_tccApplyCost_128`, `kaczmarzCost` |
