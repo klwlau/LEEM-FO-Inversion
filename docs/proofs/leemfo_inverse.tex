@@ -292,10 +292,16 @@ every $\alpha>0$ (\cref{thm:unique}).
 The FO-faithful estimator initializes that reconstruction and applies
 a mixed Born homotopy: the bilinear remainder is evaluated with a
 rank-$M$ TCC (Hopkins) expansion, or exactly as an autocorrelation
-when the source is a point, and the same Fourier-diagonal $2\times 2$
-system is solved on the corrected residual.
-An optional exact quartic line search along that direction is
-algebraic (the residual is quadratic in the step).
+when the source is a point, optionally with a diagonal leftover
+(LR+D), and the same Fourier-diagonal $2\times 2$ system is solved on
+the corrected residual.
+Rank policy at $N=128$: $M=1$ under perfect coherence or when the
+exact quartic line search is used, otherwise $M\le 8$.
+An algebraic Armijo step on that quartic is the FO-faithful 1D mix
+after a Born direction (a unit Gauss--Newton step is not a critical
+point of the quartic, and the Gauss--Newton Hessian drops the
+remainder coupling).
+Forgetful Kaczmarz is not the unique Tikhonov minimizer for $K\ge 2$.
 Dense Gauss--Newton about a generic background remains FO-faithful
 but is not Fourier-diagonal and is not $O(KN\log N)$.
 MAL applies if aberrations are unknown.

@@ -35,12 +35,14 @@ Given a 2D through-focal stack we recover $`\psi_0`$ in two stages:
 regularized multi-defocus inversion on the CTF slice (Schiske/Wiener),
 which fills CTF zeros; then, for strong-phase objects, a mixed Born
 homotopy that applies the bilinear remainder with a rank-`M` TCC /
-coherent rank-1 autocorrelation and solves the same Fourier-diagonal
-$`2\times 2`$ system on the corrected residual. That mix is FO-faithful
+coherent rank-1 autocorrelation (optionally LR+D) and solves the same
+Fourier-diagonal $`2\times 2`$ system on the corrected residual, with
+per-bin remainder skip and algebraic Armijo on the exact quartic line
+energy. Rank policy: $`M=1`$ if perfectly coherent or if using the
+line search, else $`M\le 8`$ at $`N=128`$. That mix is FO-faithful
 (bilinear FO is exactly quadratic) and cheaper than a dense pair apply
-at $`N=128`$, $`M\le 8`$. The 1D sinusoid of Yu *et al.* remains
-Jacobi–Anger fitting. Selected algebraic claims are machine-checked in
-Lean 4.
+at those ranks. The 1D sinusoid of Yu *et al.* remains Jacobi–Anger
+fitting. Selected algebraic claims are machine-checked in Lean 4.
 
 Inverse note:
 [docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
@@ -90,11 +92,11 @@ Forward proofs live in `LeemFO/Forward/`; inverse proofs live in `LeemFO/Inverse
 | File | Content |
 |---|---|
 | `LeemFO/Inverse/Modes.lean` | Aperture mode count $`M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1`$, `rFO` sampling, `sinusoidJ` |
-| `LeemFO/Inverse/Tikhonov.lean` | Fourier-bin Tikhonov: unique min, bias–noise identity, $`2\times 2`$ closed form, $`O(KN\log N)`$ cost model |
+| `LeemFO/Inverse/Tikhonov.lean` | Fourier-bin Tikhonov: unique min, bias–noise identity, $`2\times 2`$ closed form, Kaczmarz reject, $`O(KN\log N)`$ cost model |
 | `LeemFO/Inverse/LinearInverse.lean` | Aperture support of $`R_{\mathrm{FO}}(\cdot,0)`$, gauge, vacuum Jacobian remainder, $`K\ge 2`$ |
 | `LeemFO/Inverse/Pipeline.lean` | Stage-1 map `stage1Scalar`/`stage1Pair`, vacuum GN glue, algebraic `stage2Skip` |
-| `LeemFO/Inverse/LowRank.lean` | Rank-1 / TCC apply of bilinear FO, hybrid cost vs dense $`KN^2`$ |
+| `LeemFO/Inverse/LowRank.lean` | Rank-1 / TCC / LR+D apply, `recommendTccRank`, hybrid cost vs dense $`KN^2`$ |
 | `LeemFO/Inverse/Homotopy.lean` | Exact quadratic homotopy, Born remainder correction, mixed spectrum iterate |
-| `LeemFO/Inverse/LineSearch.lean` | Exact quartic line energy of bilinear FO (`lineFid`, `lineCubic`) |
+| `LeemFO/Inverse/LineSearch.lean` | Exact quartic line energy, algebraic Armijo, GN Hessian ≠ Newton |
 | `LeemFO/Inverse/Plane2.lean` | 2D stage-1 map `stage1Pair2` on $`R_{\mathrm{FO}2}`$ |
-| `LeemFO/Inverse/Mix.lean` | Mixed TCC–Born estimator; TIE / GS / Wiener / radial-1D / remainder witnesses |
+| `LeemFO/Inverse/Mix.lean` | Mixed TCC–Born estimator; TIE / GS / Wiener / radial-1D / Kaczmarz witnesses |

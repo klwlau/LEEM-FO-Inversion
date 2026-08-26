@@ -324,9 +324,14 @@ those autocorrelations. Under `PerfectCoherence` the sampled coherent
 kernel (1D or 2D) is exactly rank-1. A truncated TCC is controlled by
 the $`\ell^1`$ mass of the remainder.
 
+LR+D keeps those TCC modes plus the matrix diagonal of the remainder
+(`lrPlusDiag`); the discarded error is only off-diagonal mass, and the
+leftover costs $`O(KN)`$ (`lrPlusDiagApplyCost_lt_dense_128`).
+
 **Lean.** `rank1Kernel`, `tccKernel`, `ihat_rank1`, `ihat_tcc`,
 `ihatJac_tcc`, `ihat_R0`, `ihat_R_FO_of_perfect`, `ihat_R0_2`,
-`ihat_R_FO2_of_perfect`, `ihat_twoSource`, `ihat_tcc_trunc_bound`.
+`ihat_R_FO2_of_perfect`, `ihat_twoSource`, `ihat_tcc_trunc_bound`,
+`lrPlusDiag`, `ihat_lrPlusDiag_trunc_bound`.
 
 ---
 
@@ -408,8 +413,10 @@ Along $`x_0+s\cdot d`$ the residual is `quadPoly` of degree 2, so the
 stack fidelity `lineFid` is a real quartic (`lineFid_quadEnergy`). The
 formal $`s`$-derivative is `lineCubic`. A unit Gauss–Newton step
 ($`B=-A`$) has cubic value $`4\lVert C\rVert^2-2\operatorname{Re}(\overline A C)`$,
-not identically zero (`lineCubic_exactGN`). Roots of the cubic are not
-constructed (no Cardano).
+not identically zero (`lineCubic_exactGN`). The Gauss–Newton Hessian
+coefficient $`\lVert B\rVert^2`$ drops the remainder coupling
+$`2\operatorname{Re}(\overline A C)`$ (`exists_quadA2_ne_gn`). Roots of
+the cubic are not constructed (no Cardano).
 
 When $`A_1=\texttt{lineCubic}(\cdot)(0)<0`$, the algebraic Armijo step
 `descentStep` (built from $`\lvert A_2\rvert+\lvert A_3\rvert+\lvert A_4\rvert`$)
@@ -441,10 +448,24 @@ Same discipline as T7 (`dftCost` is a definition, not an FFT theorem).
   assembly. Under coherent rank-1 ($`M=1`$) that is still cheaper than
   dense at $`N=128`$ (`lineSearchCost_lt_dense_128_rank1`). Rank
   $`M=8`$ line search is **not** cheaper than dense (three applies
-  exceed $`KN^2`$).
+  exceed $`KN^2`$; `denseApplyCost_le_lineSearchCost_128_rank8`).
+- Large rank: for $`M\ge 10`$ at $`N=128`$ the modelled TCC apply meets
+  or exceeds dense (`denseApplyCost_le_tccApplyCost_128`).
+- Rank-adaptive policy `recommendTccRank`: cost-safe cap
+  (`recommendTccCap`: $`M=1`$ under perfect coherence or line search,
+  else $`M\le 8`$), then the smallest $`M`$ whose
+  `ihat_tcc_trunc_bound` proxy meets the tolerance. Zero-weight padding
+  of unused modes does not change `ihat`
+  (`tccKernel_insert_weight_zero`, `ihat_tcc_insert_weight_zero`).
+- LR+D with the same Born cap stays cheaper than dense
+  (`lrPlusDiagApplyCost_recommend_lt_dense`).
+- Batch `2\times 2` Cramer (`binSolveCost`) is strictly cheaper than one
+  forgetful Kaczmarz sweep for $`K\ge 2`$
+  (`binSolveCost_lt_kaczmarzCost_one_sweep`).
 
 **Lean.** `tccApplyCost`, `bornStepCost`, `mixedCost`, `hybridCost`,
-`lineSearchCost`, `quarticCoeffCost`.
+`lineSearchCost`, `quarticCoeffCost`, `recommendTccRank`,
+`tccKernel_insert_weight_zero`, `lrPlusDiagApplyCost`, `kaczmarzCost`.
 
 ---
 
@@ -463,6 +484,8 @@ Competing numerical methods fail as identities on named NAC columns
 | Radial 1D kernel as 2D | $`\mathbf{q}\cdot\mathbf{q}'`$ in $`E_S`$ | `exists_R_FO2_ne_R_FO_of_norms` |
 | Jacobi–Anger as a 2D inverse | Bessel ladder $`M`$ vs bilinear $`M^2`$ pairs | `exists_modeSet_lt_modePairs` |
 | Unit GN as exact line critical point | quartic cubic is not identically 0 at $`s=1`$ | `lineCubic_exactGN_one_not_identically_zero` |
+| Gauss–Newton Hessian | drops remainder coupling $`2\operatorname{Re}(\overline A C)`$ | `exists_quadA2_ne_gn`, `exists_lineHess0_gn_ne_newton` |
+| Forgetful Kaczmarz sweep | last-row only; not `tikhonovJ2` minimizer for $`K\ge 2`$ | `exists_kaczmarzSweep_ne_tikhonovXhat2`, `exists_kaczmarzSweep_not_minimizer` |
 
 Dense Gauss–Newton about a generic background is FO-faithful but is
 **not** Fourier-diagonal (T6) and is not $`O(KN\log N)`$ without a
@@ -475,13 +498,17 @@ further Jacobian approximation.
 From vacuum, one GN step **equals** T1 / the $`2\times 2`$ solve (T6, T9:
 `vacuumGN_eq_stage1Pair` / T10 `vacuumGN_eq_stage1Pair2`). For large
 $`\varphi`$ the recommended 2D estimator is that stage-1 init, then
-remainder-corrected Born steps whose apply is rank-$`M`$ TCC or
-coherent rank-1 autocorrelation, optionally mixed with per-bin skip
-(`remainderWeight`) and an exact quartic line search on the Born
-direction (T11–T15). The mix is FO-faithful because bilinear FO is
+remainder-corrected Born steps whose apply is rank-$`M`$ TCC
+(`recommendTccRank`: $`M=1`$ if perfectly coherent or if using the
+quartic line search, else $`M\le 8`$) or coherent rank-1
+autocorrelation, optionally LR+D, mixed with per-bin skip
+(`remainderWeight`) and algebraic Armijo on the exact quartic
+(`lineDescentStep`). The mix is FO-faithful because bilinear FO is
 exactly quadratic, and cheaper than a dense pair apply at $`N=128`$,
 $`M\le 8`$ for the Born loop (T16). From a general $`x_0`$, one GN
-step uses `ihatJac R x0`, which is **not** Fourier-diagonal.
+step uses `ihatJac R x0`, which is **not** Fourier-diagonal. Do not
+replace the batch $`2\times 2`$ by Kaczmarz; do not use the GN Hessian
+in place of the exact quartic.
 
 Do not encode local quadratic convergence of GN / Born (needs a
 Lipschitz Hessian estimate in a Banach space of images). Do not encode
@@ -519,10 +546,10 @@ Cardano roots of the line cubic.
 | $`2\times 2`$ Gram | `tikhonovJ2`, `tikhonovXhat2`, `gramDet_pos`, `tikhonovJ2_eq_shift`, `tikhonovJ2_min`, `tikhonov2_unique`, `tikhonov2_error` |
 | T9 | `stage1Scalar`, `stage1Pair`, `stage1Scalar_unique`, `stage1Pair_unique`, `vacuumGN_eq_stage1Pair`, `ihatJac_vacuum_slice`, `ihatJac_vacuum_R_FO_dc`, `stage2Skip`, `rFO`, `sinusoidJ`, `R_FO_hermitian`, `R_FO_dc` |
 | T10 | `R_FO2`, `stage1Pair2`, `qmap2_zero`, `vacuumGN_eq_stage1Pair2`, `exists_R_FO2_ne_R_FO_of_norms` |
-| T11 | `ihat_rank1`, `ihat_tcc`, `ihat_R0`, `ihat_R_FO_of_perfect`, `ihat_R_FO2_of_perfect`, `ihat_tcc_trunc_bound`, `ihat_twoSource` |
+| T11 | `ihat_rank1`, `ihat_tcc`, `ihat_R0`, `ihat_R_FO_of_perfect`, `ihat_R_FO2_of_perfect`, `ihat_tcc_trunc_bound`, `ihat_twoSource`, `lrPlusDiag` |
 | T12 | `ihat_homotopy`, `ihat_homotopy_cubic_zero`, `bornModel`, `bornModel_sub`, `bornModel_t1_ne_t0`, `bornModel_t0_ne_full`, `bornRhs_t0`, `bornRhs_sub`, `bornRhs_t1_ne_t0`, `bornRhs_t0_ignores_loud`, `born_fixed_point_normal` |
 | T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixedSpectrumMix`, `remainderWeight` |
 | T14 | `tikhonovXhat2_conj_swap`, `ihat_hermitian`, `mixed2D_conj_partner` |
-| T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `lineCubic_exactGN`, `descentStep`, `quadEnergy_descent`, `lineFid_descent` |
-| T16 | `tccApplyCost_lt_dense_128`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1` |
-| T17 | `exists_interior_R_FO_ne_tie`, `exists_R_CTF_ne_R_FO`, `exists_one_defocus_pair_kernel`, `exists_modeSet_lt_modePairs`, `exists_weakPhase_sin_zero_R_FO_ne_zero` |
+| T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `lineCubic_exactGN`, `descentStep`, `quadEnergy_descent`, `lineFid_descent`, `exists_quadA2_ne_gn` |
+| T16 | `tccApplyCost_lt_dense_128`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1`, `recommendTccRank`, `tccKernel_insert_weight_zero`, `denseApplyCost_le_tccApplyCost_128`, `kaczmarzCost` |
+| T17 | `exists_interior_R_FO_ne_tie`, `exists_R_CTF_ne_R_FO`, `exists_one_defocus_pair_kernel`, `exists_modeSet_lt_modePairs`, `exists_weakPhase_sin_zero_R_FO_ne_zero`, `exists_kaczmarzSweep_ne_tikhonovXhat2` |

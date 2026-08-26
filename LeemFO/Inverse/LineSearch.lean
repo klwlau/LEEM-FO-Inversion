@@ -17,6 +17,8 @@ When `A1 = lineCubic _ _ _ _ 0 < 0`, an algebraic Armijo step
 `descentStep` built from `|A2|+|A3|+|A4|` guarantees strict decrease of
 `quadEnergy` (and of `lineFid` after a Born / `mixedBinStep` direction).
 A unit step `s = 1` need not decrease energy even when `A1 < 0`.
+The Gauss–Newton Hessian coefficient `‖B‖²` drops the remainder
+coupling `2 Re(conj A * C)` (`exists_quadA2_ne_gn`).
 -/
 
 set_option linter.unusedSectionVars false
@@ -53,6 +55,31 @@ def quadA0 (A : ℂ) : ℝ := ‖A‖ ^ 2
 def quadA1 (A B : ℂ) : ℝ := 2 * (conj A * B).re
 
 def quadA2 (A B C : ℂ) : ℝ := ‖B‖ ^ 2 + 2 * (conj A * C).re
+
+/-- Gauss–Newton uses only `‖B‖²`; Newton keeps the remainder coupling
+`2 Re(conj A * C)`. They agree iff that coupling vanishes. -/
+theorem quadA2_eq_gn_plus_residual (A B C : ℂ) :
+    quadA2 A B C = ‖B‖ ^ 2 + 2 * (conj A * C).re :=
+  rfl
+
+theorem quadA2_eq_gn_of_C_zero (A B : ℂ) :
+    quadA2 A B 0 = ‖B‖ ^ 2 := by
+  simp [quadA2]
+
+theorem exists_quadA2_ne_gn :
+    ∃ A B C : ℂ, quadA2 A B C ≠ ‖B‖ ^ 2 := by
+  refine ⟨1, 0, 1, ?_⟩
+  simp [quadA2]
+
+/-- Second derivative coefficient of `quadEnergy` at `s = 0` is `2 A2`.
+Gauss–Newton replaces `A2` by `‖B‖²`, so the Hessians differ whenever the
+FO remainder `C` couples to the residual `A`. -/
+theorem exists_lineHess0_gn_ne_newton :
+    ∃ A B C : ℂ, 2 * quadA2 A B C ≠ 2 * ‖B‖ ^ 2 := by
+  obtain ⟨A, B, C, hne⟩ := exists_quadA2_ne_gn
+  refine ⟨A, B, C, ?_⟩
+  intro h
+  exact hne (mul_left_cancel₀ (by norm_num : (2 : ℝ) ≠ 0) h)
 
 def quadA3 (B C : ℂ) : ℝ := 2 * (conj B * C).re
 

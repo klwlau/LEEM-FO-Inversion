@@ -16,16 +16,19 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
 Recommended large-`φ` 2D estimator: vacuum `2×2` Tikhonov (`stage1Pair2`),
 then remainder-corrected Born steps (`mixed2D` / `mixedSpectrum2`) whose
-apply is rank-`M` TCC (`ihat_tcc`) or exact rank-1 autocorrelation under
-`PerfectCoherence`. Per-bin remainder weight (`remainderWeight`) skips Born
-on quiet bins (`t = 0`) and takes the full remainder (`t = 1`) otherwise.
-An algebraic Armijo line search on the exact quartic
-(`lineDescentStep` / `lineFid_descent`) is the FO-faithful 1D mix after a
-Born / `mixedBinStep` direction; a unit GN step is not a critical point
+apply is rank-`M` TCC (`ihat_tcc`, `recommendTccRank`) or exact rank-1
+autocorrelation under `PerfectCoherence`, optionally LR+D (`lrPlusDiag`).
+Per-bin remainder weight (`remainderWeight`) skips Born on quiet bins
+(`t = 0`) and takes the full remainder (`t = 1`) otherwise. An algebraic
+Armijo line search on the exact quartic (`lineDescentStep` /
+`lineFid_descent`) is the FO-faithful 1D mix after a Born /
+`mixedBinStep` direction; a unit GN step is not a critical point
 (`lineCubic_exactGN`) and can raise energy
-(`exists_unit_step_energy_increase`). Competing maps (TIE, coherent GS /
+(`exists_unit_step_energy_increase`). The GN Hessian drops the remainder
+coupling (`exists_quadA2_ne_gn`). Competing maps (TIE, coherent GS /
 `R_CTF`, single-defocus Wiener, linearized CTF, radial 1D kernel, 1D
-Jacobi–Anger as a 2D inverse) fail as identities on concrete columns.
+Jacobi–Anger as a 2D inverse, forgetful Kaczmarz) fail as identities on
+concrete columns.
 
 Hermitian kernel plus Hermitian data on an odd embedding recovers the
 dropped partner: `δ(-ξ) = conj v(ξ)` (`mixed2D_conj_partner`).
