@@ -5,10 +5,14 @@ the discrete inverse is stated against that kernel.
 The inverse note is [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf).
 
 This is the Lean-ready statement list for the **Fourier-diagonal Tikhonov
-estimator** of the linearized FO/CTF slice (optionally one Gauss–Newton
-step). Encoding: `LeemFO/Inverse/Tikhonov.lean`,
+estimator** of the linearized FO/CTF slice and the **mixed large-phase
+2D inverse** (TCC apply + Born homotopy + exact quartic line search).
+Encoding: `LeemFO/Inverse/Tikhonov.lean`,
 `LeemFO/Inverse/LinearInverse.lean`, `LeemFO/Inverse/Pipeline.lean`,
-`LeemFO/Inverse/Modes.lean`.
+`LeemFO/Inverse/Modes.lean`, `LeemFO/Inverse/LowRank.lean`,
+`LeemFO/Inverse/Homotopy.lean`, `LeemFO/Inverse/LineSearch.lean`,
+`LeemFO/Inverse/Plane2.lean`, `LeemFO/Inverse/Mix.lean`.
+The 2D working kernel is `LeemFO/Forward/Kernel2.lean`.
 
 The object is finite-dimensional throughout. After a formal discrete Fourier
 transform, each spatial-frequency bin is a map $`\kappa \to \mathbb{C}`$ of defocus
@@ -287,15 +291,186 @@ system; unique minimizer for $`\alpha>0`$; bias–noise identity.
 
 ---
 
-## Optional Gauss–Newton step
+### T10. Two-dimensional kernel and stage-1 map
+
+The 1D kernel $`R_{\mathrm{FO}}(q,q')`$ takes signed scalars. The 2D
+working kernel $`R_{\mathrm{FO}2}(\mathbf{q},\mathbf{q}')`$ uses the disk
+aperture, radial $`\chi_{S2}`$, and $`\mathbf{q}\cdot\mathbf{q}'`$ in
+$`E_S`$. On the CTF slice $`\mathbf{q}'=0`$ it agrees with
+$`R_{\mathrm{FO}}(\lVert\mathbf{q}\rVert,0)`$. Off axis it is **not**
+$`R_{\mathrm{FO}}(\lVert\mathbf{q}\rVert,\lVert\mathbf{q}'\rVert)`$.
+
+**Lean.** `R_FO2`, `R_FO2_eq_R_FO_axis`, `R_FO2_eq_R_FO_conj_axis`,
+`R_FO2_hermitian`, `R_FO2_dc`, `exists_R_FO2_ne_R_FO_of_norms`,
+`exists_aS2_ne_radial_aS`.
+
+Odd embeddings $`\mathrm{qmap2}(-\xi)=-\mathrm{qmap2}\,\xi`$ force
+$`\mathrm{qmap2}\,0=0`$ (`qmap2_zero`). Stage 1 on the disk is the
+vacuum $`2\times 2`$ solve of the 2D slices
+$`h_k=R_{\mathrm{FO}2}(\mathbf{q},0,\Delta z_k)`$,
+$`g_k=R_{\mathrm{FO}2}(0,-\mathbf{q},\Delta z_k)`$.
+
+**Lean.** `sliceH2`, `sliceG2`, `stage1Pair2`, `stage1Pair2_unique`,
+`vacuumGN_eq_stage1Pair2`, `ihatJac_vacuum_R_FO2_dc`.
+
+---
+
+### T11. Rank-1 / finite TCC apply
+
+If $`R(q,q')=h(q)\overline{h(q')}`$ then
+$`\hat I(R,\Psi)=\mathrm{autocorr}(h\odot\Psi)`$ (no $`1/\lvert G\rvert`$
+factor, matching `ihat`). A finite Hopkins sum is a weighted sum of
+those autocorrelations. Under `PerfectCoherence` the sampled coherent
+kernel (1D or 2D) is exactly rank-1. A truncated TCC is controlled by
+the $`\ell^1`$ mass of the remainder.
+
+**Lean.** `rank1Kernel`, `tccKernel`, `ihat_rank1`, `ihat_tcc`,
+`ihatJac_tcc`, `ihat_R0`, `ihat_R_FO_of_perfect`, `ihat_R0_2`,
+`ihat_R_FO2_of_perfect`, `ihat_twoSource`, `ihat_tcc_trunc_bound`.
+
+---
+
+### T12. Exact quadratic homotopy (no cubic remainder)
+
+For real $`t`$,
+
+```math
+\hat I(\mathrm{vac}+t\cdot\delta)
+=
+\hat I(\mathrm{vac})
++ t\,DI_{\mathrm{vac}}[\delta]
++ t^2\,\hat I(\delta).
+```
+
+There is no cubic term (`ihat_homotopy_cubic_zero`). The Born model
+$`\hat I(\mathrm{vac})+DI_{\mathrm{vac}}[\delta]+t\,\hat I(\delta)`$
+interpolates the vacuum linearization ($`t=0`$) and full FO ($`t=1`$).
+At a Born fixed point the vacuum-Jacobian normal equations hold for the
+nonlinear residual (`born_fixed_point_normal`).
+
+**Lean.** `ihat_homotopy`, `ihat_homotopy_at`, `bornModel`,
+`bornHomotopyPair_t0`, `born_fixed_point_normal`,
+`exists_bornModel_t_disagree` (global $`t`$ is not interchangeable
+across occupied bins).
+
+---
+
+### T13. Mixed 2D estimator
+
+Init is vacuum $`2\times 2`$ Tikhonov. Each later step applies a damped
+Born update of the pair $`(u,v)`$ (`mixedBinStep`) with schedules
+$`t,\mathrm{damp}`$. `mixedSpectrum` stores only $`u=\delta(\xi)`$;
+`mixedSpectrumPair` / `mixed2D` carry both coordinates. Per-bin
+remainder weight uses $`t=0`$ on quiet bins and $`t=1`$ on loud bins
+(`remainderWeight`, `mixedSpectrumMix`, `mixed2DMix`).
+
+On $`R_{\mathrm{FO}2}`$, for $`\xi\neq 0`$, the $`n=0`$ iterate is
+`stage1Pair2`.
+
+**Lean.** `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`,
+`mixedSpectrum_eq_pair_fst`, `mixed2D`, `mixedSpectrum2_zero_eq_stage1Pair2`,
+`mixedSpectrumMix_skip_step`, `mixedSpectrumMix_born_bin`.
+
+Nonlinear uniqueness is false (`ihat_gauge`). Iterative convergence is
+not encoded (`picard_unique_of_lip` is only an algebraic contraction
+implication).
+
+---
+
+### T14. Hermitian partner recovery
+
+If $`h'=\overline{g}`$, $`g'=\overline{h}`$, $`y'=\overline{y}`$, then
+
+```math
+(\hat u',\hat v')=\bigl(\overline{\hat v},\,\overline{\hat u}\bigr).
+```
+
+Hermitian kernels give Hermitian intensities (`ihat_hermitian`). On an
+odd embedding with Hermitian data,
+$`\delta(-\xi)=\overline{v(\xi)}`$ is recovered from
+`mixed2D n ξ`.snd (`mixed2D_conj_partner`). This is **not** automatic
+on a general finite group.
+
+**Lean.** `tikhonovXhat2_conj_swap`, `ihat_hermitian`,
+`sliceG2_eq_conj_sliceH2`, `mixed2D_conj_partner`,
+`mixedSpectrum_eq_conj_pair_snd`.
+
+---
+
+### T15. Exact quartic line search
+
+Along $`x_0+s\cdot d`$ the residual is `quadPoly` of degree 2, so the
+stack fidelity `lineFid` is a real quartic (`lineFid_quadEnergy`). The
+formal $`s`$-derivative is `lineCubic`. A unit Gauss–Newton step
+($`B=-A`$) has cubic value $`4\lVert C\rVert^2-2\operatorname{Re}(\overline A C)`$,
+not identically zero (`lineCubic_exactGN`). Roots of the cubic are not
+constructed (no Cardano).
+
+**Lean.** `quadPoly`, `norm_sq_quadPoly`, `lineResidual_quadPoly`,
+`lineFid_quadEnergy`, `quadEnergy_shift`, `lineCubic_exactGN`,
+`lineCubic_exactGN_one_not_identically_zero`.
+
+---
+
+### T16. Cost: TCC / hybrid / rank-1 line search versus dense $`KN^2`$
+
+Same discipline as T7 (`dftCost` is a definition, not an FFT theorem).
+
+- Rank-$`M`$ apply: `tccApplyCost` $`=KM\cdot 2\cdot N\log_2 N`$. For
+  $`M\le 8`$, $`N=128`$ this is strictly cheaper than dense
+  $`KN^2`$ (`tccApplyCost_lt_dense_128`).
+- One Born step = that apply plus $`N`$ of the $`2\times 2`$ solves
+  (`bornStepCost_lt_dense_128`).
+- Stage 1 plus $`T`$ Born steps: `hybridCost_lt_dense_succ`.
+- Exact line search costs three TCC applies plus $`O(KN)`$ coefficient
+  assembly. Under coherent rank-1 ($`M=1`$) that is still cheaper than
+  dense at $`N=128`$ (`lineSearchCost_lt_dense_128_rank1`). Rank
+  $`M=8`$ line search is **not** cheaper than dense (three applies
+  exceed $`KN^2`$).
+
+**Lean.** `tccApplyCost`, `bornStepCost`, `mixedCost`, `hybridCost`,
+`lineSearchCost`, `quarticCoeffCost`.
+
+---
+
+### T17. Rejected maps (concrete witnesses)
+
+Competing numerical methods fail as identities on named NAC columns
+`nacPC` / `nacCoh`.
+
+| Map | Why it is not FO-faithful | Lean |
+|---|---|---|
+| TIE / Fresnel multiplier | wrong PDE; nonzero outside the aperture where FO is blind | `exists_interior_R_FO_ne_tie`, `R_FO_ne_tie_outside` |
+| Coherent GS / separable CTF | $`R_{\mathrm{CTF}}=R_{\mathrm{FO}}\Gamma_C\Gamma_S`$ and $`\Gamma_S\neq 1`$ off axis | `exists_R_CTF_ne_R_FO`, `exists_off_axis_gammaS_ne_one` |
+| Partial-coherence $`R_0`$ | spatial envelope is not 1 | `exists_R_FO_ne_R0` |
+| Single-defocus Wiener | vacuum $`2\times 2`$ always has a kernel | `exists_one_defocus_pair_kernel` |
+| Weak-phase CTF $`\sin(2\pi\chi_S)`$ | can vanish while the FO slice does not | `exists_weakPhase_sin_zero_R_FO_ne_zero` |
+| Radial 1D kernel as 2D | $`\mathbf{q}\cdot\mathbf{q}'`$ in $`E_S`$ | `exists_R_FO2_ne_R_FO_of_norms` |
+| Jacobi–Anger as a 2D inverse | Bessel ladder $`M`$ vs bilinear $`M^2`$ pairs | `exists_modeSet_lt_modePairs` |
+| Unit GN as exact line critical point | quartic cubic is not identically 0 at $`s=1`$ | `lineCubic_exactGN_one_not_identically_zero` |
+
+Dense Gauss–Newton about a generic background is FO-faithful but is
+**not** Fourier-diagonal (T6) and is not $`O(KN\log N)`$ without a
+further Jacobian approximation.
+
+---
+
+## Mixed large-phase 2D inverse (recommended)
 
 From vacuum, one GN step **equals** T1 / the $`2\times 2`$ solve (T6, T9:
-`vacuumGN_eq_stage1Pair`). From a general $`x_0`$, one GN
-step is Tikhonov for the Jacobian `ihatJac R x0`; the ignored term is
-exactly `ihat R δ`. That Jacobian is Fourier-diagonal iff $`x_0`$ is
-supported at DC (vacuum). Encode the expansion (`ihat_add`); do not
-encode local quadratic convergence of GN (needs a Lipschitz Hessian
-estimate in a Banach space of images).
+`vacuumGN_eq_stage1Pair` / T10 `vacuumGN_eq_stage1Pair2`). For large
+$`\varphi`$ the recommended 2D estimator is that stage-1 init, then
+remainder-corrected Born steps whose apply is rank-$`M`$ TCC or
+coherent rank-1 autocorrelation, optionally mixed with per-bin skip
+(`remainderWeight`) and an exact quartic line search on the Born
+direction (T11–T15). The mix is FO-faithful because bilinear FO is
+exactly quadratic, and cheaper than a dense pair apply at $`N=128`$,
+$`M\le 8`$ for the Born loop (T16). From a general $`x_0`$, one GN
+step uses `ihatJac R x0`, which is **not** Fourier-diagonal.
+
+Do not encode local quadratic convergence of GN / Born (needs a
+Lipschitz Hessian estimate in a Banach space of images). Do not encode
+Cardano roots of the line cubic.
 
 ---
 
@@ -307,8 +482,10 @@ estimate in a Banach space of images).
 | Array DFT = continuum FT of the paper | sampling theory |
 | Gaussian / Poisson noise, MSE, Cramér–Rao | no probability space |
 | Frozen-aperture and first-order tilt truncations | already flagged `Approx.` in the forward model |
-| “Fastest among all conceivable inverses” | only DFT-based / dense-bilinear comparisons are proved |
-| Global convergence of nonlinear GN / GS | not an identity |
+| “Fastest among all conceivable inverses” | only DFT-based / dense-bilinear / TCC comparisons are proved |
+| Global convergence of nonlinear GN / GS / Born | not an identity (`picard_unique_of_lip` is only a contraction implication) |
+| Cardano roots of `lineCubic` | algebraic stationarity only |
+| Banach fixed-point existence for Picard | uniqueness under a Lipschitz hypothesis only |
 
 ---
 
@@ -326,3 +503,11 @@ estimate in a Banach space of images).
 | T8 | `one_measurement_not_injective`, `weakPhase_sin_eq_zero`, `exists_interior_weakPhase_zero` |
 | $`2\times 2`$ Gram | `tikhonovJ2`, `tikhonovXhat2`, `gramDet_pos`, `tikhonovJ2_eq_shift`, `tikhonovJ2_min`, `tikhonov2_unique`, `tikhonov2_error` |
 | T9 | `stage1Scalar`, `stage1Pair`, `stage1Scalar_unique`, `stage1Pair_unique`, `vacuumGN_eq_stage1Pair`, `ihatJac_vacuum_slice`, `ihatJac_vacuum_R_FO_dc`, `stage2Skip`, `rFO`, `sinusoidJ`, `R_FO_hermitian`, `R_FO_dc` |
+| T10 | `R_FO2`, `stage1Pair2`, `qmap2_zero`, `vacuumGN_eq_stage1Pair2`, `exists_R_FO2_ne_R_FO_of_norms` |
+| T11 | `ihat_rank1`, `ihat_tcc`, `ihat_R0`, `ihat_R_FO_of_perfect`, `ihat_R_FO2_of_perfect`, `ihat_tcc_trunc_bound`, `ihat_twoSource` |
+| T12 | `ihat_homotopy`, `ihat_homotopy_cubic_zero`, `bornModel`, `born_fixed_point_normal` |
+| T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixedSpectrumMix`, `remainderWeight` |
+| T14 | `tikhonovXhat2_conj_swap`, `ihat_hermitian`, `mixed2D_conj_partner` |
+| T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `lineCubic_exactGN` |
+| T16 | `tccApplyCost_lt_dense_128`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1` |
+| T17 | `exists_interior_R_FO_ne_tie`, `exists_R_CTF_ne_R_FO`, `exists_one_defocus_pair_kernel`, `exists_modeSet_lt_modePairs`, `exists_weakPhase_sin_zero_R_FO_ne_zero` |

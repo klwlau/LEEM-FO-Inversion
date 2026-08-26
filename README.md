@@ -95,5 +95,6 @@ Forward proofs live in `LeemFO/Forward/`; inverse proofs live in `LeemFO/Inverse
 | `LeemFO/Inverse/Pipeline.lean` | Stage-1 map `stage1Scalar`/`stage1Pair`, vacuum GN glue, algebraic `stage2Skip` |
 | `LeemFO/Inverse/LowRank.lean` | Rank-1 / TCC apply of bilinear FO, hybrid cost vs dense $`KN^2`$ |
 | `LeemFO/Inverse/Homotopy.lean` | Exact quadratic homotopy, Born remainder correction, mixed spectrum iterate |
+| `LeemFO/Inverse/LineSearch.lean` | Exact quartic line energy of bilinear FO (`lineFid`, `lineCubic`) |
 | `LeemFO/Inverse/Plane2.lean` | 2D stage-1 map `stage1Pair2` on $`R_{\mathrm{FO}2}`$ |
-| `LeemFO/Inverse/Mix.lean` | Mixed TCC–Born estimator; TIE / GS / radial-1D / remainder witnesses |
+| `LeemFO/Inverse/Mix.lean` | Mixed TCC–Born estimator; TIE / GS / Wiener / radial-1D / remainder witnesses |

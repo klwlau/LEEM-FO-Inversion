@@ -7,6 +7,7 @@ import LeemFO.Inverse.Homotopy
 import LeemFO.Inverse.Plane2
 import LeemFO.Inverse.Modes
 import LeemFO.Forward.Kernel2
+import LeemFO.Forward.Ratios
 import Mathlib.Data.ZMod.Basic
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
@@ -18,9 +19,11 @@ then remainder-corrected Born steps (`mixed2D` / `mixedSpectrum2`) whose
 apply is rank-`M` TCC (`ihat_tcc`) or exact rank-1 autocorrelation under
 `PerfectCoherence`. Per-bin remainder weight (`remainderWeight`) skips Born
 on quiet bins (`t = 0`) and takes the full remainder (`t = 1`) otherwise.
-Bilinear FO is exactly quadratic, so the homotopy in `t` has no cubic
-term. Competing maps (TIE, coherent GS, linearized CTF, radial 1D kernel,
-1D Jacobi–Anger as a 2D inverse) fail as identities on concrete columns.
+An exact quartic line search (`lineFid_quadEnergy`) is the FO-faithful
+1D mix after a Born direction; a unit GN step is not a critical point
+(`lineCubic_exactGN`). Competing maps (TIE, coherent GS / `R_CTF`,
+single-defocus Wiener, linearized CTF, radial 1D kernel, 1D Jacobi–Anger
+as a 2D inverse) fail as identities on concrete columns.
 
 Hermitian kernel plus Hermitian data on an odd embedding recovers the
 dropped partner: `δ(-ξ) = conj v(ξ)` (`mixed2D_conj_partner`).
@@ -131,6 +134,66 @@ theorem exists_R_FO_ne_R0 :
       simpa using h
     exact hE (mul_left_cancel₀ hR0 heq)
 
+set_option linter.flexible false in
+/-- Coherent Gerchberg–Saxton / separable CTF is not the FO pair kernel. -/
+theorem exists_R_CTF_ne_R_FO :
+    ∃ p : LEEM, ∃ q q' Δz : ℝ,
+      |q| ≤ p.qAp ∧ |q'| ≤ p.qAp ∧
+      p.R_CTF q q' Δz ≠ p.R_FO q q' Δz := by
+  refine ⟨nacPC, 1, 1, 1, by simp [nacPC], by simp [nacPC], ?_⟩
+  have hR : nacPC.R_FO 1 1 1 = 1 := nacPC.R_FO_diag (by simp [nacPC])
+  have hC : nacPC.gammaC 1 1 = 1 := by
+    have hσ : nacPC.sigmaE = 0 := by simp [nacPC, LEEM.sigmaE]
+    exact nacPC.gammaC_perfect hσ 1 1
+  have hS : nacPC.gammaS 1 1 1 ≠ 1 := by
+    have hder : deriv (nacPC.chiS · 1) 1 = 1 := by
+      rw [nacPC.deriv_chiS]
+      simp [nacPC]
+    refine nacPC.gammaS_ne_one_of_dot (q := 1) (q' := 1) (Δz := 1)
+      nacPC_sigmaIll_ne_zero ?_
+    simp [hder]
+  have hCTF :
+      nacPC.R_CTF 1 1 1
+        = nacPC.R_FO 1 1 1 * nacPC.gammaC 1 1 * nacPC.gammaS 1 1 1 :=
+    nacPC.R_CTF_eq_R_FO_mul_gamma 1 1 1
+  rw [hCTF, hR, hC, one_mul, one_mul]
+  exact hS
+
+/-- Single-defocus Wiener: the vacuum `2×2` always has a kernel. -/
+theorem exists_one_defocus_pair_kernel :
+    ∃ u v : ℂ, (u ≠ 0 ∨ v ≠ 0) ∧
+      nacCoh.R_FO 1 0 1 * u + nacCoh.R_FO 0 (-(1 : ℝ)) 1 * v = 0 :=
+  one_measurement_not_injective (nacCoh.R_FO 1 0 1) (nacCoh.R_FO 0 (-1) 1)
+
+set_option linter.flexible false in
+/-- Weak-phase CTF zero on an interior ring; the FO slice is still nonzero. -/
+theorem exists_weakPhase_sin_zero_R_FO_ne_zero :
+    ∃ p : LEEM, ∃ q Δz : ℝ,
+      |q| ≤ p.qAp ∧
+      Real.sin (2 * π * p.chiS q Δz) = 0 ∧
+      p.R_FO q 0 Δz ≠ 0 := by
+  refine ⟨nacCoh, 1, 1, by simp [nacCoh], ?_, ?_⟩
+  · have hn : 2 * nacCoh.chiS 1 1 = (1 : ℤ) := by
+      rw [nacCoh_chiS_half]
+      norm_num
+    exact nacCoh.weakPhase_sin_eq_zero hn
+  · have hR : nacCoh.R_FO 1 0 1 = nacCoh.R0 1 0 1 0 :=
+      nacCoh.R_FO_eq_R0_of_perfect nacCoh_perfect 1 0 1
+    have hR0 : nacCoh.R0 1 0 1 0 = -1 := by
+      unfold LEEM.R0
+      simp [nacCoh, LEEM.waveS_zero, LEEM.waveC_at_zero]
+      exact nacCoh_waveS_neg
+    rw [hR, hR0]
+    exact neg_ne_zero.mpr one_ne_zero
+
+/-- A 1D Bessel ladder is strictly smaller than its bilinear pair set. -/
+theorem exists_modeSet_lt_modePairs :
+    ∃ qap Λ : ℝ,
+      (modeSet qap Λ).card < (modeSet qap Λ ×ˢ modeSet qap Λ).card := by
+  refine ⟨1, 1, card_modeSet_lt_card_modePairs ?_⟩
+  change 1 ≤ Nat.floor ((1 : ℝ) * 1)
+  norm_num
+
 /-- Rank-1 remainder of vacuum linearization is the whole DC image of a
 single occupied sideband. -/
 theorem ihat_single_mode {G : Type*} [AddGroup G] [Fintype G] [DecidableEq G]
@@ -159,6 +222,42 @@ theorem exists_rank1_remainder_ne_zero :
   have hdiag : nacCoh.R_FO 1 1 1 = 1 :=
     nacCoh.R_FO_diag (by simp [nacCoh])
   simp [hdiag]
+
+/-- Global homotopy weight is not interchangeable: distinct `t` disagree
+whenever the bilinear remainder is occupied. -/
+theorem exists_bornModel_t_disagree :
+    ∃ (R : ZMod 2 → ZMod 2 → ℂ) (δ : ZMod 2 → ℂ) (ξ : ZMod 2)
+      (t₁ t₂ : ℝ),
+      t₁ ≠ t₂ ∧ ihat R δ ξ ≠ 0 ∧
+      bornModel R t₁ δ ξ ≠ bornModel R t₂ δ ξ := by
+  let qmap : ZMod 2 → ℝ := fun q => if q = 1 then 1 else 0
+  let δ : ZMod 2 → ℂ := fun q => if q = 1 then 1 else 0
+  let R : ZMod 2 → ZMod 2 → ℂ := fun a b => nacCoh.R_FO (qmap a) (qmap b) 1
+  refine ⟨R, δ, 0, 0, 1, zero_ne_one, ?_, ?_⟩
+  · have hih :
+        ihat R δ 0 = nacCoh.R_FO (qmap 1) (qmap 1) 1 := by
+      simpa [δ] using ihat_single_mode R (1 : ZMod 2)
+    have hq : qmap 1 = 1 := if_pos rfl
+    rw [hih, hq]
+    have hdiag : nacCoh.R_FO 1 1 1 = 1 :=
+      nacCoh.R_FO_diag (by simp [nacCoh])
+    simp [hdiag]
+  · intro heq
+    have hdiff :
+        bornModel R 1 δ 0 - bornModel R 0 δ 0 = ihat R δ 0 := by
+      simp [bornModel]
+    have hzero : ihat R δ 0 = 0 := by
+      have : bornModel R 1 δ 0 - bornModel R 0 δ 0 = 0 := by
+        rw [heq, sub_self]
+      exact hdiff.symm.trans this
+    have hih :
+        ihat R δ 0 = nacCoh.R_FO (qmap 1) (qmap 1) 1 := by
+      simpa [δ] using ihat_single_mode R (1 : ZMod 2)
+    have hq : qmap 1 = 1 := if_pos rfl
+    have hdiag : nacCoh.R_FO 1 1 1 = 1 :=
+      nacCoh.R_FO_diag (by simp [nacCoh])
+    rw [hih, hq, hdiag] at hzero
+    exact one_ne_zero hzero
 
 /-- Off-axis 2D spatial envelope is not the 1D radial formula. -/
 theorem exists_aS2_ne_radial_aS :
@@ -291,21 +390,6 @@ theorem bornRhs_of_perfect2 {κ : Type*} [Fintype κ] (p : LEEM)
                   ξ := by
   funext k
   simp [bornRhs, ihat_R_FO2_of_perfect p hpc]
-
-/-- Stationarity cubic of a real quartic (exact line energy of bilinear FO). -/
-def lineCubic (A1 A2 A3 A4 : ℝ) (s : ℝ) : ℝ :=
-  A1 + 2 * A2 * s + 3 * A3 * s ^ 2 + 4 * A4 * s ^ 3
-
-theorem lineCubic_zero (A1 A2 A3 A4 : ℝ) : lineCubic A1 A2 A3 A4 0 = A1 := by
-  simp [lineCubic]
-
-/-- A unit Gauss–Newton step is not automatically a critical point of the
-exact quartic line energy. -/
-theorem lineCubic_one_not_identically_zero :
-    ¬∀ A1 A2 A3 A4 : ℝ, lineCubic A1 A2 A3 A4 1 = 0 := by
-  intro h
-  have := h 1 0 0 0
-  simp [lineCubic] at this
 
 variable {κ : Type*} [Fintype κ]
 

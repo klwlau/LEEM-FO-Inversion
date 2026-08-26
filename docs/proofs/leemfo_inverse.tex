@@ -63,9 +63,10 @@ objects; they did not recover $\psi_0$.
 We invert that map in two stages: regularized multi-defocus inversion
 on the contrast-transfer slice $\RFO(\mathbf{q},0,\Dz)$, which fills
 zeros of a single-defocus contrast-transfer function (CTF), followed
-by optional Gauss--Newton iteration on the full bilinear kernel,
-omitted when the linearized residual lies at the noise floor
-($\max\abs{\phi}\lesssim 0.3$).
+by a mixed Born homotopy on the bilinear kernel whose apply is a
+rank-$M$ transmission-cross-coefficient (TCC) expansion (exact rank-1
+autocorrelation under perfect coherence), omitted when the linearized
+residual lies at the noise floor ($\max\abs{\phi}\lesssim 0.3$).
 A one-dimensional sinusoid reduces the second stage to Jacobi--Anger
 fitting of the aperture-truncated Bessel ladder.
 Uniqueness of the regularized Fourier-diagonal estimator and its
@@ -119,10 +120,10 @@ phase; and one complex measurement cannot identify the conjugate pair
 $\bigl(X(\mathbf{q}),X(-\mathbf{q})\bigr)$.
 A focal series with non-coincident zeros restores those modes that the
 aperture admits.
-We compare five inverses and recommend a two-stage estimator that
+We compare several inverses and recommend a two-stage estimator that
 uses the Yu~2019 kernel on the CTF slice
-$\RFO(\mathbf{q},0,\Dz)$ and, when required, the full bilinear
-residual.
+$\RFO(\mathbf{q},0,\Dz)$ and, when required, a mixed TCC--Born
+homotopy on the full bilinear residual.
 Selected algebraic properties of the discrete linear stage are
 machine-checked in Lean~4~\cite{deMoura2021} against that kernel
 (\cref{sec:lean,app:formal}).
@@ -271,7 +272,8 @@ Single-image Wiener & one transform & no & no \\
 Transport of intensity & one transform & n/a (wrong PDE) & no \\
 \textbf{Multi-defocus regularized} & \textbf{$K{+}1$ transforms} & \textbf{yes} ($K\ge 2$) & linearized only \\
 Gerchberg--Saxton / HIO & many transforms & if $K\ge 2$ & only if the projector is FO \\
-Nonlinear least squares on FO & pair sums & yes & \textbf{yes} \\
+Dense nonlinear least squares on FO & pair sums $KN^2$ & yes & \textbf{yes} \\
+\textbf{Mixed TCC--Born homotopy} & \textbf{$O(KMN\log N)$} & \textbf{yes} & \textbf{yes} \\
 Jacobi--Anger fit (1D sinusoid) & $O(M^2)$ & n/a (parametric) & \textbf{yes} \\
 \bottomrule
 \end{tabular}
@@ -288,8 +290,15 @@ $\sin(2\pi\chi_S)$ by stacking defoci, and has a unique minimizer for
 every $\alpha>0$ (\cref{thm:unique}).
 
 The FO-faithful estimator initializes that reconstruction and applies
-a few damped Gauss--Newton steps on the bilinear residual (MAL if
-aberrations are unknown).
+a mixed Born homotopy: the bilinear remainder is evaluated with a
+rank-$M$ TCC (Hopkins) expansion, or exactly as an autocorrelation
+when the source is a point, and the same Fourier-diagonal $2\times 2$
+system is solved on the corrected residual.
+An optional exact quartic line search along that direction is
+algebraic (the residual is quadratic in the step).
+Dense Gauss--Newton about a generic background remains FO-faithful
+but is not Fourier-diagonal and is not $O(KN\log N)$.
+MAL applies if aberrations are unknown.
 The nonlinear stage is omitted when the FO residual of the linear
 reconstruction already lies at the noise floor, equivalently
 $\max\abs{\phi}\lesssim 0.3$ at typical LEEM signal-to-noise
@@ -316,7 +325,8 @@ The FO image is then a double sum of $M^2$ Jacobi--Anger terms,
 and least squares on $\varphi$ with
 $J_n'=\tfrac12(J_{n-1}-J_{n+1})$ is $O(M^2)$.
 A general 2D micrograph has no Bessel ladder; the nonlinear stage
-remains Gauss--Newton in the aperture basis.
+is the mixed TCC--Born homotopy in the aperture basis, not a dense
+pair-sum Gauss--Newton loop.
 
 \subsection{Discrete procedure}
 \label{sec:algo}
@@ -332,13 +342,21 @@ $2\times 2$ system is solved at that bin with fixed $\alpha>0$;
 coefficients with $\abs{\mathbf{q}}>\qap$ are set to zero.
 An inverse transform yields $\sigma=\abs{\hat\psi}$ and
 $\phi=\arg(\hat\psi)$ in the vacuum gauge.
+If the bilinear remainder of that reconstruction exceeds a noise floor,
+the same Fourier bins are updated by a mixed Born homotopy: apply
+$\hat I(\delta)$ with a rank-$M$ TCC (or a rank-1 autocorrelation under
+perfect coherence), form the remainder-corrected residual, and re-solve
+the vacuum $2\times 2$ system, optionally with an exact quartic line
+search along that direction and per-bin skip when the remainder is
+quiet.
 Experimental lens current is mapped onto the defocus convention of
 \cref{sec:formation} by one fitted affine transform.
 
 \section{Machine-checked properties of the discrete estimator}
 \label{sec:lean}
 
-Selected algebraic claims for the discrete linear estimator are
+Selected algebraic claims for the discrete linear estimator and the
+mixed TCC--Born / quartic-line stage are
 machine-checked in Lean~4~\cite{deMoura2021,mathlib2020} against the
 FO kernel encoded from Yu~\emph{et al.}~\cite{Yu2019,Lau2026proofs}.
 The statements are finite-dimensional (finite defoci and a finite
@@ -366,15 +384,17 @@ The multi-defocus slice map is the derivative of bilinear FO at
 vacuum; the neglected term is homogeneous of degree two
 (\cref{thm:quad}).
 When that remainder lies above the noise, the nonlinear stage is
-the consistent next estimator; the numerical skip criterion
+the mixed TCC--Born homotopy; the numerical skip criterion
 $\max\abs{\phi}\lesssim 0.3$ is not part of the machine-checked
 fragment.
 
 A modelled operation count, treating a discrete Fourier transform as
 $N\log_2 N$ operations, shows that the linear stage is cheaper than a
-dense pair apply already at $N=128$.
+dense pair apply already at $N=128$, and that a rank-$M\le 8$ TCC
+Born step remains cheaper than one dense apply at that grid.
 Existence of a fast Fourier transform, wall-clock times, Gaussian or
-Poisson statistics, Cram\'er--Rao bounds, Gauss--Newton convergence,
+Poisson statistics, Cram\'er--Rao bounds, Born/Gauss--Newton
+convergence, Cardano roots of the line cubic,
 image alignment and the current-to-defocus map are not claimed.
 
 \section{Conclusions}
@@ -385,10 +405,11 @@ Altman~\cite{Yu2019} for a 2D through-focal intensity series.
 Regularized multi-defocus inversion on the CTF slice fills the zeros
 of a single defocus, is unique for every positive regularization, and
 is first-order consistent with bilinear FO.
-Gauss--Newton iteration on the full kernel is reserved for
-strong-phase objects whose linearized residual exceeds the noise;
-for the one-dimensional sinusoid that exhibits CTF failure it
-collapses to a Bessel fit.
+For strong-phase objects whose linearized residual exceeds the noise,
+a mixed Born homotopy applies the exact quadratic remainder with a
+rank-$M$ TCC (or coherent rank-1 autocorrelation) and keeps the
+Fourier-diagonal $2\times 2$ solve; for the one-dimensional sinusoid
+that exhibits CTF failure it collapses to a Bessel fit.
 These results broaden quantitative LEEM contrast analysis from
 forward matching of a focal series to recovery of the object, with
 the discrete linear stage verified against the same kernel used to
@@ -510,6 +531,12 @@ Gauge, vacuum Jacobian, quadratic remainder & same \\
 $K=1$ not injective; pure-defocus CTF zeros & same \\
 Hermitian kernel; DC $R_{\mathrm{FO}}(0,0)=1$ & \texttt{R\_FO\_hermitian}, \texttt{R\_FO\_dc} \\
 Stage-1 map, vacuum GN glue, algebraic skip & \texttt{LeemFO/Inverse/Pipeline.lean} \\
+2D kernel $R_{\mathrm{FO}2}$, disk aperture & \texttt{LeemFO/Forward/Kernel2.lean} \\
+2D stage-1 map \texttt{stage1Pair2} & \texttt{LeemFO/Inverse/Plane2.lean} \\
+Rank-1 / TCC apply, hybrid cost & \texttt{LeemFO/Inverse/LowRank.lean} \\
+Quadratic homotopy, Born/\texttt{mixed2D} & \texttt{LeemFO/Inverse/Homotopy.lean}, \texttt{Mix.lean} \\
+Exact quartic line energy & \texttt{LeemFO/Inverse/LineSearch.lean} \\
+TIE/GS/Wiener/radial/JA rejects & \texttt{exists\_*\_ne\_*} in \texttt{Mix.lean} \\
 Mode count $M=2\lfloor\qap\Lambda\rfloor+1$ & \texttt{LeemFO/Inverse/Modes.lean} \\
 FO ladder sample, \texttt{sinusoidJ} cost & \texttt{rFO}, \texttt{sinusoidJ} \\
 Jacobi--Anger and Bessel decay & \texttt{LeemFO/Forward/PhaseObject.lean} \\
@@ -517,6 +544,7 @@ Jacobi--Anger and Bessel decay & \texttt{LeemFO/Forward/PhaseObject.lean} \\
 FFT exists / equals the continuum FT & informal \\
 Gaussian/Poisson noise, Cram\'er--Rao & informal \\
 Gauss--Newton local quadratic convergence & informal \\
+Cardano roots of the line cubic; Banach FPT existence & informal \\
 Image alignment, current-to-defocus map & informal \\
 ``Fastest among all conceivable algorithms'' & only DFT versus dense bilinear \\
 \bottomrule

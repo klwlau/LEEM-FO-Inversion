@@ -359,6 +359,23 @@ theorem quarticCoeffCost_lt_dense_128 {K : ℕ} (hK : 1 ≤ K) :
 def lineSearchCost (K M N : ℕ) : ℕ :=
   3 * tccApplyCost K M N + quarticCoeffCost K N
 
+lemma lineSearchCost_formula (K M N : ℕ) :
+    lineSearchCost K M N = 3 * tccApplyCost K M N + 5 * K * N := by
+  simp [lineSearchCost, quarticCoeffCost]
+
+/-- Coherent rank-1 exact line search stays cheaper than a dense pair apply
+at `N = 128`. Rank-`M = 8` does not: three applies exceed `K N²`. -/
+theorem lineSearchCost_lt_dense_128_rank1 {K : ℕ} (hK : 1 ≤ K) :
+    lineSearchCost K 1 128 < denseApplyCost K 128 := by
+  unfold lineSearchCost denseApplyCost quarticCoeffCost
+  rw [tccApplyCost_formula, log2_128]
+  have : 3 * (K * 1 * 2 * 128 * 7) + 5 * K * 128 < K * 128 * 128 := by
+    have hL : 3 * (K * 1 * 2 * 128 * 7) + 5 * K * 128 = 6016 * K := by ring
+    have hR : K * 128 * 128 = 16384 * K := by ring
+    rw [hL, hR]
+    exact Nat.mul_lt_mul_of_pos_right (by decide : 6016 < 16384) hK
+  exact this
+
 theorem reconstructCost_lt_bornStep_8_128 {K : ℕ} (hK : 1 ≤ K) :
     reconstructCost K 128 < bornStepCost K 8 128 := by
   rw [reconstructCost_128, bornStepCost_8_128]

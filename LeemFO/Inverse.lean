@@ -9,5 +9,6 @@ import LeemFO.Inverse.LinearInverse
 import LeemFO.Inverse.Pipeline
 import LeemFO.Inverse.LowRank
 import LeemFO.Inverse.Homotopy
+import LeemFO.Inverse.LineSearch
 import LeemFO.Inverse.Plane2
 import LeemFO.Inverse.Mix

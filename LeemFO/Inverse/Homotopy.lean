@@ -11,10 +11,12 @@ import Mathlib.Tactic.Abel
 # Homotopy / Born inverse for large-phase bilinear FO
 
 Bilinear FO is exactly quadratic: there is no cubic remainder. The real
-ray `vac + t • δ` interpolates the vacuum linearization (`t = 0`, stage 1)
-and the full FO image (`t = 1`). Picard / Born iteration applies the
-Fourier-diagonal `2×2` solve to a remainder-corrected residual; a damped
-mix with schedules `t, damp` is the large-`φ` 2D estimator.
+ray `vac + t • δ` interpolates the vacuum image (`t = 0`) and the full
+FO image (`t = 1`). The remainder-weighted Born model interpolates the
+vacuum linearization (`bornModel` at `t = 0`, stage 1) and full FO
+(`t = 1`). Picard / Born iteration applies the Fourier-diagonal `2×2`
+solve to a remainder-corrected residual; a damped mix with schedules
+`t, damp` is the large-`φ` 2D estimator.
 
 Iterative numerical convergence is not encoded. Uniqueness of the
 nonlinear inverse is false (`ihat_gauge`).
