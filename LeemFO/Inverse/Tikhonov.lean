@@ -768,7 +768,7 @@ theorem exists_kaczmarzSweep_ne_tikhonovXhat2 :
 
 /-- Hence one sweep is not a minimizer of `tikhonovJ2` when `K = 2`. -/
 theorem exists_kaczmarzSweep_not_minimizer :
-    ∃ (α : ℝ) (hα : 0 < α) (h g y : Fin 2 → ℂ),
+    ∃ (α : ℝ) (_ : 0 < α) (h g y : Fin 2 → ℂ),
       ¬ (∀ u' v',
           tikhonovJ2 α h g y (kaczmarzSweep α h g y).1 (kaczmarzSweep α h g y).2
             ≤ tikhonovJ2 α h g y u' v') := by
