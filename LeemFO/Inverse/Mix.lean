@@ -22,9 +22,10 @@ on quiet bins (`t = 0`) and takes the full remainder (`t = 1`) otherwise.
 An algebraic Armijo line search on the exact quartic
 (`lineDescentStep` / `lineFid_descent`) is the FO-faithful 1D mix after a
 Born / `mixedBinStep` direction; a unit GN step is not a critical point
-(`lineCubic_exactGN`) and can raise energy (`exists_unit_step_energy_increase`). Competing maps (TIE, coherent GS / `R_CTF`,
-single-defocus Wiener, linearized CTF, radial 1D kernel, 1D Jacobi–Anger
-as a 2D inverse) fail as identities on concrete columns.
+(`lineCubic_exactGN`) and can raise energy
+(`exists_unit_step_energy_increase`). Competing maps (TIE, coherent GS /
+`R_CTF`, single-defocus Wiener, linearized CTF, radial 1D kernel, 1D
+Jacobi–Anger as a 2D inverse) fail as identities on concrete columns.
 
 Hermitian kernel plus Hermitian data on an odd embedding recovers the
 dropped partner: `δ(-ξ) = conj v(ξ)` (`mixed2D_conj_partner`).
