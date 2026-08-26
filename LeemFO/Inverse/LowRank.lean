@@ -11,9 +11,11 @@ import LeemFO.Forward.CTF
 
 When `R(q,q') = h(q) conj(h(q'))` the discrete intensity `ihat` is the
 cyclic autocorrelation of `h ⊙ Ψ`. A finite Hopkins sum of such terms
-is the algebraic TCC / coherent-mode expansion. Cost is modelled as
-`K M` pairs of DFTs versus a dense `K N²` pair sum (same discipline as
-`dftCost`: no FFT existence theorem).
+is the algebraic TCC / coherent-mode expansion. The LR+D hybrid keeps
+that TCC plus the matrix diagonal of the remainder (`lrPlusDiag`); the
+apply error is then the off-diagonal remainder mass. Cost is modelled as
+`K M` pairs of DFTs (plus `O(KN)` for a diagonal leftover) versus a dense
+`K N²` pair sum (same discipline as `dftCost`: no FFT existence theorem).
 -/
 
 open Complex
@@ -320,6 +322,187 @@ theorem ihat_tcc_trunc_bound {ι : Type*} (R : G → G → ℂ)
       ≤ (∑ q : G, ∑ q' : G, ‖tccRemainder R w h src q q'‖) *
         (∑ q : G, ‖Ψ q‖) ^ 2 :=
   ihat_approx_bound R (tccKernel w h src) Ψ ξ
+
+/-! ## Low-rank + diagonal (LR+D) hybrid apply
+
+Keep the TCC modes and the matrix diagonal of the TCC remainder. By
+`ihat_add_kernel` the apply splits; the discarded error is only the
+off-diagonal remainder mass, which is ≤ the pure-truncation mass of
+`ihat_tcc_trunc_bound`. A diagonal leftover costs `O(KN)`, not `KN²`.
+Under `PerfectCoherence` the coherent rank-1 TCC already matches `R_FO`,
+so the remainder (hence LR+D correction) is identically zero.
+-/
+
+/-- Bilinear kernel that is zero off the matrix diagonal. -/
+def diagKernel (d : G → ℂ) : G → G → ℂ :=
+  fun q q' => if q = q' then d q else 0
+
+/-- Matrix diagonal of a bilinear kernel. -/
+def diagPart (R : G → G → ℂ) : G → G → ℂ :=
+  fun q q' => if q = q' then R q q else 0
+
+/-- Off-diagonal part of a bilinear kernel. -/
+def offDiagPart (R : G → G → ℂ) : G → G → ℂ :=
+  fun q q' => if q = q' then 0 else R q q'
+
+lemma diagPart_add_offDiagPart (R : G → G → ℂ) (q q' : G) :
+    diagPart R q q' + offDiagPart R q q' = R q q' := by
+  by_cases h : q = q' <;> simp [diagPart, offDiagPart, h]
+
+lemma diagPart_eq_diagKernel (R : G → G → ℂ) :
+    diagPart R = diagKernel (fun q => R q q) := by
+  funext q q'
+  rfl
+
+/-- Diagonal apply: weighted power spectrum at `ξ = 0`, else `0`. -/
+theorem ihat_diag (d Ψ : G → ℂ) (ξ : G) :
+    ihat (diagKernel d) Ψ ξ
+      = if ξ = 0 then ∑ q : G, d q * Ψ q * conj (Ψ q) else 0 := by
+  unfold ihat diagKernel
+  by_cases hξ : ξ = 0
+  · subst hξ
+    simp
+  · refine (Finset.sum_eq_zero fun q _ => ?_).trans (if_neg hξ).symm
+    have : q ≠ q - ξ := fun hq => hξ (sub_eq_self.mp hq.symm)
+    simp [this]
+
+theorem ihat_diagPart (R : G → G → ℂ) (Ψ : G → ℂ) (ξ : G) :
+    ihat (diagPart R) Ψ ξ
+      = if ξ = 0 then ∑ q : G, R q q * Ψ q * conj (Ψ q) else 0 := by
+  simpa [diagPart_eq_diagKernel] using ihat_diag (fun q => R q q) Ψ ξ
+
+/-- LR+D kernel: TCC plus the diagonal of its remainder. -/
+def lrPlusDiag {ι : Type*} (R : G → G → ℂ) (w : ι → ℂ) (h : ι → G → ℂ)
+    (src : Finset ι) : G → G → ℂ :=
+  fun q q' =>
+    tccKernel w h src q q' + diagPart (tccRemainder R w h src) q q'
+
+/-- `ihat` is additive in the bilinear kernel, so LR+D splits. -/
+theorem ihat_lrPlusDiag {ι : Type*} (R : G → G → ℂ) (w : ι → ℂ)
+    (h : ι → G → ℂ) (src : Finset ι) (Ψ : G → ℂ) (ξ : G) :
+    ihat (lrPlusDiag R w h src) Ψ ξ
+      = ihat (tccKernel w h src) Ψ ξ
+        + ihat (diagPart (tccRemainder R w h src)) Ψ ξ := by
+  simpa [lrPlusDiag] using
+    ihat_add_kernel (tccKernel w h src)
+      (diagPart (tccRemainder R w h src)) Ψ ξ
+
+lemma lrPlusDiag_add_offDiag {ι : Type*} (R : G → G → ℂ) (w : ι → ℂ)
+    (h : ι → G → ℂ) (src : Finset ι) (q q' : G) :
+    lrPlusDiag R w h src q q'
+      + offDiagPart (tccRemainder R w h src) q q' = R q q' := by
+  have hrem :
+      tccKernel w h src q q' + tccRemainder R w h src q q' = R q q' := by
+    simp [tccRemainder]
+  have hsplit := diagPart_add_offDiagPart (tccRemainder R w h src) q q'
+  simp [lrPlusDiag, ← hsplit, ← hrem, add_assoc]
+
+/-- LR+D truncation error is the off-diagonal remainder mass. -/
+theorem ihat_lrPlusDiag_trunc_bound {ι : Type*} (R : G → G → ℂ)
+    (w : ι → ℂ) (h : ι → G → ℂ) (src : Finset ι) (Ψ : G → ℂ) (ξ : G) :
+    ‖ihat R Ψ ξ - ihat (lrPlusDiag R w h src) Ψ ξ‖
+      ≤ (∑ q : G, ∑ q' : G,
+            ‖offDiagPart (tccRemainder R w h src) q q'‖) *
+        (∑ q : G, ‖Ψ q‖) ^ 2 := by
+  have hR :
+      (fun q q' => R q q')
+        = fun q q' =>
+            lrPlusDiag R w h src q q'
+              + offDiagPart (tccRemainder R w h src) q q' := by
+    funext q q'
+    exact (lrPlusDiag_add_offDiag R w h src q q').symm
+  have hsub :
+      ihat R Ψ ξ - ihat (lrPlusDiag R w h src) Ψ ξ
+        = ihat (offDiagPart (tccRemainder R w h src)) Ψ ξ := by
+    rw [hR, ihat_add_kernel, add_sub_cancel_left]
+  rw [hsub]
+  exact ihat_bound (offDiagPart (tccRemainder R w h src)) Ψ ξ
+
+/-- Off-diagonal ℓ¹ mass never exceeds the full remainder mass. -/
+theorem offDiag_mass_le_tccRemainder {ι : Type*} (R : G → G → ℂ)
+    (w : ι → ℂ) (h : ι → G → ℂ) (src : Finset ι) :
+    (∑ q : G, ∑ q' : G, ‖offDiagPart (tccRemainder R w h src) q q'‖)
+      ≤ ∑ q : G, ∑ q' : G, ‖tccRemainder R w h src q q'‖ := by
+  refine Finset.sum_le_sum fun q _ => Finset.sum_le_sum fun q' _ => ?_
+  by_cases hqq : q = q'
+  · simp [offDiagPart, hqq]
+  · simp [offDiagPart, hqq]
+
+/-- If the TCC remainder vanishes, LR+D (and pure TCC) reproduce `ihat R`. -/
+theorem ihat_lrPlusDiag_of_remainder_zero {ι : Type*} (R : G → G → ℂ)
+    (w : ι → ℂ) (h : ι → G → ℂ) (src : Finset ι)
+    (hrem : tccRemainder R w h src = fun _ _ => 0) (Ψ : G → ℂ) (ξ : G) :
+    ihat (lrPlusDiag R w h src) Ψ ξ = ihat R Ψ ξ := by
+  have htcc : R = tccKernel w h src := by
+    funext q q'
+    simpa [tccRemainder, hrem] using
+      (sub_eq_zero.mp (congrFun (congrFun hrem q) q')).symm
+  simp [lrPlusDiag, hrem, diagPart, htcc]
+
+/-- Sampled coherent FO kernel is exactly the rank-1 TCC on one mode. -/
+theorem R_FO_eq_tccKernel_of_perfect (p : LEEM) (hpc : p.PerfectCoherence)
+    (qmap : G → ℝ) (Δz : ℝ) :
+    (fun a b => p.R_FO (qmap a) (qmap b) Δz)
+      = tccKernel (fun _ : Fin 1 => (1 : ℂ))
+          (fun _ => fun a => p.coherentPupil Δz 0 (qmap a)) Finset.univ := by
+  funext a b
+  rw [p.R_FO_eq_rank1_of_perfect hpc]
+  simp [tccKernel, Fin.sum_univ_one]
+  ring
+
+theorem tccRemainder_R_FO_of_perfect (p : LEEM) (hpc : p.PerfectCoherence)
+    (qmap : G → ℝ) (Δz : ℝ) :
+    tccRemainder (fun a b => p.R_FO (qmap a) (qmap b) Δz)
+      (fun _ : Fin 1 => (1 : ℂ))
+      (fun _ => fun a => p.coherentPupil Δz 0 (qmap a)) Finset.univ
+      = fun _ _ => (0 : ℂ) := by
+  funext a b
+  simp [tccRemainder, R_FO_eq_tccKernel_of_perfect p hpc qmap Δz]
+
+/-- Perfect coherence: LR+D with the coherent pupil is exact (remainder 0). -/
+theorem ihat_lrPlusDiag_R_FO_of_perfect (p : LEEM) (hpc : p.PerfectCoherence)
+    (qmap : G → ℝ) (Δz : ℝ) (Ψ : G → ℂ) (ξ : G) :
+    ihat
+        (lrPlusDiag (fun a b => p.R_FO (qmap a) (qmap b) Δz)
+          (fun _ : Fin 1 => (1 : ℂ))
+          (fun _ => fun a => p.coherentPupil Δz 0 (qmap a)) Finset.univ)
+        Ψ ξ
+      = ihat (fun a b => p.R_FO (qmap a) (qmap b) Δz) Ψ ξ :=
+  ihat_lrPlusDiag_of_remainder_zero _
+    (fun _ : Fin 1 => (1 : ℂ))
+    (fun _ => fun a => p.coherentPupil Δz 0 (qmap a)) Finset.univ
+    (tccRemainder_R_FO_of_perfect p hpc qmap Δz) Ψ ξ
+
+/-- Diagonal leftover apply: one MAC per frequency per defocus. -/
+def diagApplyCost (K N : ℕ) : ℕ := K * N
+
+/-- Rank-`M` TCC plus diagonal leftover. -/
+def lrPlusDiagApplyCost (K M N : ℕ) : ℕ :=
+  tccApplyCost K M N + diagApplyCost K N
+
+lemma lrPlusDiagApplyCost_formula (K M N : ℕ) :
+    lrPlusDiagApplyCost K M N = K * M * 2 * N * N.log2 + K * N := by
+  simp [lrPlusDiagApplyCost, tccApplyCost, diagApplyCost, dftCost]
+  ring
+
+/-- At `N = 128`, LR+D with `M ≤ 8` stays strictly cheaper than dense `KN²`. -/
+theorem lrPlusDiagApplyCost_lt_dense_128 {K M : ℕ} (hK : 1 ≤ K) (hM : M ≤ 8) :
+    lrPlusDiagApplyCost K M 128 < denseApplyCost K 128 := by
+  unfold lrPlusDiagApplyCost diagApplyCost
+  have hM8 : tccApplyCost K M 128 ≤ tccApplyCost K 8 128 := by
+    unfold tccApplyCost dftCost
+    rw [log2_128]
+    have := Nat.mul_le_mul_left K (Nat.mul_le_mul_right (2 * 128 * 7) hM)
+    simpa [mul_assoc, mul_left_comm, mul_comm] using this
+  have hnum : tccApplyCost K 8 128 + K * 128 < denseApplyCost K 128 := by
+    rw [tccApplyCost_8_128, denseApplyCost]
+    have hpow : K * 128 * 128 = 16384 * K := by ring
+    rw [hpow]
+    have : 14464 * K < 16384 * K :=
+      Nat.mul_lt_mul_of_pos_right (by decide : 14464 < 16384) hK
+    convert this using 1
+    ring
+  exact lt_of_le_of_lt (Nat.add_le_add_right hM8 _) hnum
 
 /-- Stage-1 reconstruct plus `T` mixed Born steps. -/
 def hybridCost (T K M N : ℕ) : ℕ :=
