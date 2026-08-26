@@ -400,6 +400,46 @@ theorem lineFid_eq_nlsJfid (R : κ → G → G → ℂ) (y : κ → G → ℂ)
           ‖ihat (R k) (x0 + fun q => (s : ℂ) * d q) ξ - y k ξ‖ ^ 2 :=
   (nlsJfid_line R y x0 d s).symm
 
+/-- Full NLS energy on the ray is fidelity plus the Tikhonov term. The FO
+1D mix stays `lineFid` (bins already use `α` in `mixedBinStep`). -/
+theorem nlsJ_line (α : ℝ) (R : κ → G → G → ℂ) (y : κ → G → ℂ)
+    (x0 d : G → ℂ) (s : ℝ) :
+    nlsJ α R y (x0 + fun q => (s : ℂ) * d q)
+      = lineFid R y x0 d s
+        + α * ∑ q, ‖x0 q + (s : ℂ) * d q‖ ^ 2 := by
+  simp [nlsJ, lineFid_eq_nlsJfid]
+
+theorem lineFid_eq_nlsJ_zero (R : κ → G → G → ℂ) (y : κ → G → ℂ)
+    (x0 d : G → ℂ) (s : ℝ) :
+    lineFid R y x0 d s
+      = nlsJ 0 R y (x0 + fun q => (s : ℂ) * d q) := by
+  simp [nlsJ_line]
+
+/-- Blind kernel: fidelity is flat in `s` while `‖x0+s d‖` is unbounded. -/
+theorem exists_lineFid_flat_unbounded :
+    ∃ (R : Fin 1 → Fin 1 → Fin 1 → ℂ) (y : Fin 1 → Fin 1 → ℂ)
+      (x0 d : Fin 1 → ℂ),
+      (∀ s : ℝ, lineFid R y x0 d s = lineFid R y x0 d 0) ∧
+      (∀ M : ℝ, ∃ s : ℝ, M < ∑ q, ‖x0 q + (s : ℂ) * d q‖ ^ 2) := by
+  refine ⟨fun _ _ _ => 0, fun _ _ => 0, fun _ => 0, fun _ => 1, ?_, ?_⟩
+  · intro s
+    simp [lineFid, lineResidual, ihat, ihatJac]
+  · intro M
+    refine ⟨1 + |M|, ?_⟩
+    have hs : 0 ≤ 1 + |M| := add_nonneg zero_le_one (abs_nonneg M)
+    have hx : 1 ≤ 1 + |M| := le_add_of_nonneg_right (abs_nonneg M)
+    have hlt : M < (1 + |M|) ^ 2 := by
+      have h1 : M ≤ |M| := le_abs_self M
+      have h2 : |M| < 1 + |M| := lt_add_of_pos_left _ zero_lt_one
+      have h3 : 1 + |M| ≤ (1 + |M|) ^ 2 := by
+        have := mul_le_mul_of_nonneg_right hx hs
+        simpa [one_mul, sq] using this
+      linarith
+    convert hlt using 1
+    rw [Fin.sum_univ_one]
+    simp only [mul_one]
+    rw [zero_add, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hs]
+
 def stackA0 (R : κ → G → G → ℂ) (y : κ → G → ℂ) (x0 : G → ℂ) : ℝ :=
   ∑ k, ∑ ξ, quadA0 (lineQuadA (R k) (y k) x0 ξ)
 

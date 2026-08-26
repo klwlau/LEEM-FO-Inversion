@@ -10,6 +10,7 @@ import LeemFO.Forward.Kernel2
 import LeemFO.Forward.Ratios
 import Mathlib.Data.ZMod.Basic
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import Mathlib.Analysis.Real.Pi.Bounds
 
 /-!
 # Mixed 2D inverse: TCC apply + Born homotopy, with rejects
@@ -98,6 +99,33 @@ theorem exists_interior_R_FO_ne_tie :
     simp at this
 
 set_option linter.flexible false in
+/-- Same TIE mismatch on the 2D disk slice. -/
+theorem exists_interior_R_FO2_ne_tie :
+    ∃ p : LEEM, ∃ q : EuclideanSpace ℝ (Fin 2), ∃ Δz : ℝ,
+      ‖q‖ ≤ p.qAp ∧
+      p.R_FO2 q 0 Δz ≠ tieMultiplier p.lam Δz ‖q‖ := by
+  let q := EuclideanSpace.single (0 : Fin 2) (1 : ℝ)
+  refine ⟨nacCoh, q, 1, ?_, ?_⟩
+  · simp [q, nacCoh]
+  · have hn : ‖q‖ = 1 := by simp [q]
+    have hR : nacCoh.R_FO2 q 0 1 = nacCoh.R_FO 1 0 1 := by
+      rw [nacCoh.R_FO2_eq_R_FO_axis, hn]
+    have hR0 : nacCoh.R_FO 1 0 1 = -1 := by
+      have hR' : nacCoh.R_FO 1 0 1 = nacCoh.R0 1 0 1 0 :=
+        nacCoh.R_FO_eq_R0_of_perfect nacCoh_perfect 1 0 1
+      have hR0' : nacCoh.R0 1 0 1 0 = -1 := by
+        unfold LEEM.R0
+        simp [nacCoh, LEEM.waveS_zero, LEEM.waveC_at_zero]
+        exact nacCoh_waveS_neg
+      rw [hR', hR0']
+    have hT : tieMultiplier nacCoh.lam 1 1 = 2 * π * I := by
+      simp [tieMultiplier, nacCoh]
+    rw [hR, hn, hR0, hT]
+    intro h
+    have : (-1 : ℂ).re = (2 * π * I).re := congrArg Complex.re h
+    simp at this
+
+set_option linter.flexible false in
 /-- Partial spatial coherence: FO kernel is not the coherent projector. -/
 theorem exists_R_FO_ne_R0 :
     ∃ p : LEEM, ∃ q q' Δz : ℝ,
@@ -164,6 +192,13 @@ theorem exists_R_CTF_ne_R_FO :
   rw [hCTF, hR, hC, one_mul, one_mul]
   exact hS
 
+/-- HIO / error-reduction use the same misspecified coherent intensity as GS. -/
+theorem exists_hio_kernel_ne_R_FO :
+    ∃ p : LEEM, ∃ q q' Δz : ℝ,
+      |q| ≤ p.qAp ∧ |q'| ≤ p.qAp ∧
+      p.R_CTF q q' Δz ≠ p.R_FO q q' Δz :=
+  exists_R_CTF_ne_R_FO
+
 /-- Single-defocus Wiener: the vacuum `2×2` always has a kernel. -/
 theorem exists_one_defocus_pair_kernel :
     ∃ u v : ℂ, (u ≠ 0 ∨ v ≠ 0) ∧
@@ -209,6 +244,58 @@ theorem ihat_single_mode {G : Type*} [AddGroup G] [Fintype G] [DecidableEq G]
   · simp
   · intro q hq
     simp [hq]
+
+theorem ihat_single_mode_smul {G : Type*} [AddGroup G] [Fintype G]
+    [DecidableEq G] (R : G → G → ℂ) (q0 : G) (c : ℂ) :
+    ihat R (fun q => if q = q0 then c else 0) 0
+      = ((‖c‖ : ℂ) ^ 2) * R q0 q0 := by
+  unfold ihat
+  rw [Fintype.sum_eq_single q0]
+  · simp only [sub_zero]
+    have hc : c * conj c = (‖c‖ : ℂ) ^ 2 := by
+      rw [mul_conj, Complex.normSq_eq_norm_sq, ofReal_pow]
+    calc
+      c * R q0 q0 * conj c = (c * conj c) * R q0 q0 := by ring
+      _ = (‖c‖ : ℂ) ^ 2 * R q0 q0 := by rw [hc]
+  · intro q hq
+    simp [hq]
+
+/-- First-order Rytov increment `i φ` is not the FO object `e^{iφ}-1`. -/
+theorem exists_rytov_inc_ne_fo_phase :
+    ∃ (R : ZMod 2 → ZMod 2 → ℂ) (δRytov δFO : ZMod 2 → ℂ),
+      ihat R δRytov 0 ≠ ihat R δFO 0 := by
+  let qmap : ZMod 2 → ℝ := fun q => if q = 1 then 1 else 0
+  let R : ZMod 2 → ZMod 2 → ℂ :=
+    fun a b => nacCoh.R_FO (qmap a) (qmap b) 1
+  let δRytov : ZMod 2 → ℂ := fun q => if q = 1 then I * π else 0
+  let δFO : ZMod 2 → ℂ :=
+    fun q => if q = 1 then cexp (I * π) - 1 else 0
+  refine ⟨R, δRytov, δFO, ?_⟩
+  have hq : qmap 1 = 1 := if_pos rfl
+  have hdiag : nacCoh.R_FO 1 1 1 = 1 :=
+    nacCoh.R_FO_diag (by simp [nacCoh])
+  have hexp : cexp (I * π) = -1 := by
+    simpa [mul_comm] using Complex.exp_pi_mul_I
+  have hnπ : ‖(I * π : ℂ)‖ = π := by
+    simp [abs_of_pos Real.pi_pos]
+  have hR11 : R 1 1 = 1 := by
+    simp [R, hq, hdiag]
+  have hRyt : ihat R δRytov 0 = ((π ^ 2 : ℝ) : ℂ) := by
+    have h := ihat_single_mode_smul R (1 : ZMod 2) (I * π)
+    rw [show δRytov = (fun q => if q = 1 then I * π else 0) from rfl, h,
+      hnπ, hR11, mul_one, ← ofReal_pow]
+  have hFO : ihat R δFO 0 = ((4 : ℝ) : ℂ) := by
+    have h := ihat_single_mode_smul R (1 : ZMod 2) (cexp (I * π) - 1)
+    have hn : ‖cexp (I * π) - 1‖ = (2 : ℝ) := by
+      rw [hexp]; norm_num
+    rw [show δFO = (fun q => if q = 1 then cexp (I * π) - 1 else 0) from rfl,
+      h, hn, hR11, mul_one]
+    norm_num
+  have hne : (π : ℝ) ^ 2 ≠ 4 := by
+    have : (3 : ℝ) < π := Real.pi_gt_three
+    nlinarith
+  rw [hRyt, hFO]
+  exact ofReal_injective.ne hne
 
 theorem exists_rank1_remainder_ne_zero :
     ∃ p : LEEM, ∃ qmap : ZMod 2 → ℝ, ∃ δ : ZMod 2 → ℂ, ∃ Δz : ℝ,
