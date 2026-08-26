@@ -66,6 +66,18 @@ lemma card_modePairs (qap Λ : ℝ) :
     (modeSet qap Λ ×ˢ modeSet qap Λ).card = (2 * nAperture qap Λ + 1) ^ 2 := by
   rw [card_product, card_modeSet, sq]
 
+/-- A 1D Bessel ladder is strictly smaller than its bilinear pair set when
+at least one harmonic is transmitted. There is no 2D Jacobi–Anger lattice. -/
+theorem card_modeSet_lt_card_modePairs {qap Λ : ℝ}
+    (h : 1 ≤ nAperture qap Λ) :
+    (modeSet qap Λ).card < (modeSet qap Λ ×ˢ modeSet qap Λ).card := by
+  rw [card_modeSet, card_modePairs, pow_two]
+  set n := 2 * nAperture qap Λ + 1
+  have hn : 1 < n := by omega
+  have : 1 * n < n * n :=
+    Nat.mul_lt_mul_of_pos_right hn (Nat.zero_lt_of_lt hn)
+  simpa using this
+
 lemma mem_modeSet_iff {qap Λ : ℝ} {n : ℤ} :
     n ∈ modeSet qap Λ ↔ n.natAbs ≤ nAperture qap Λ := by
   rw [modeSet, mem_Icc]

@@ -33,11 +33,14 @@ Closed-form envelopes of the FO kernel (journal-style note):
 
 Given a 2D through-focal stack we recover $`\psi_0`$ in two stages:
 regularized multi-defocus inversion on the CTF slice (Schiske/Wiener),
-which fills CTF zeros; optional Gauss–Newton iteration on the full
-bilinear FO residual for strong-phase objects; Jacobi–Anger fitting
-for the 1D sinusoid of Yu *et al.* Selected algebraic claims for the
-discrete linear estimator (unique minimizer, bias–noise identity) are
-machine-checked in Lean 4.
+which fills CTF zeros; then, for strong-phase objects, a mixed Born
+homotopy that applies the bilinear remainder with a rank-`M` TCC /
+coherent rank-1 autocorrelation and solves the same Fourier-diagonal
+$`2\times 2`$ system on the corrected residual. That mix is FO-faithful
+(bilinear FO is exactly quadratic) and cheaper than a dense pair apply
+at $`N=128`$, $`M\le 8`$. The 1D sinusoid of Yu *et al.* remains
+Jacobi–Anger fitting. Selected algebraic claims are machine-checked in
+Lean 4.
 
 Inverse note:
 [docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
@@ -79,6 +82,7 @@ Forward proofs live in `LeemFO/Forward/`; inverse proofs live in `LeemFO/Inverse
 | `LeemFO/Forward/EnvelopeChromatic.lean` | Appendix A1: $`E_{C,\mathrm{tot}}`$ and polar form |
 | `LeemFO/Forward/CTF.lean` | $`q'=0`$ recovery and hermiticity |
 | `LeemFO/Forward/Ratios.lean` | $`\Gamma_C,\Gamma_S`$ |
+| `LeemFO/Forward/Kernel2.lean` | 2D kernel $`R_{\mathrm{FO}2}`$, disk aperture, $`\mathbf{q}\cdot\mathbf{q}'`$ in $`E_S`$ |
 | `LeemFO/Forward/PhaseObject.lean` | Jacobi–Anger for $`\mathrm{e}^{\mathrm{i}\varphi\sin\theta}`$ |
 
 ### Inverse
@@ -89,3 +93,7 @@ Forward proofs live in `LeemFO/Forward/`; inverse proofs live in `LeemFO/Inverse
 | `LeemFO/Inverse/Tikhonov.lean` | Fourier-bin Tikhonov: unique min, bias–noise identity, $`2\times 2`$ closed form, $`O(KN\log N)`$ cost model |
 | `LeemFO/Inverse/LinearInverse.lean` | Aperture support of $`R_{\mathrm{FO}}(\cdot,0)`$, gauge, vacuum Jacobian remainder, $`K\ge 2`$ |
 | `LeemFO/Inverse/Pipeline.lean` | Stage-1 map `stage1Scalar`/`stage1Pair`, vacuum GN glue, algebraic `stage2Skip` |
+| `LeemFO/Inverse/LowRank.lean` | Rank-1 / TCC apply of bilinear FO, hybrid cost vs dense $`KN^2`$ |
+| `LeemFO/Inverse/Homotopy.lean` | Exact quadratic homotopy, Born remainder correction, mixed spectrum iterate |
+| `LeemFO/Inverse/Plane2.lean` | 2D stage-1 map `stage1Pair2` on $`R_{\mathrm{FO}2}`$ |
+| `LeemFO/Inverse/Mix.lean` | Mixed TCC–Born estimator; TIE / GS / radial-1D / remainder witnesses |

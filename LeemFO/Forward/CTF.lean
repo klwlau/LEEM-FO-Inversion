@@ -102,6 +102,18 @@ theorem chromaticEnvelope_of_perfect (h : p.PerfectCoherence) (q q' : ℝ) :
   rw [p.sigmaE_of_ΔE_zero h.2]
   exact chromaticEnvelopeClosed_of_sigma_zero _ _
 
+/-- Perfect coherence: working FO kernel collapses to the coherent rank-1 kernel. -/
+theorem R_FO_eq_R0_of_perfect (h : p.PerfectCoherence) (q q' Δz : ℝ) :
+    p.R_FO q q' Δz = p.R0 q q' Δz 0 := by
+  unfold R_FO
+  rw [p.spatialEnvelope_of_perfect h, p.chromaticEnvelope_of_perfect h]
+  simp
+
+theorem R_FO_eq_rank1_of_perfect (h : p.PerfectCoherence) (q q' Δz : ℝ) :
+    p.R_FO q q' Δz
+      = p.coherentPupil Δz 0 q * conj (p.coherentPupil Δz 0 q') := by
+  rw [p.R_FO_eq_R0_of_perfect h, p.R0_eq_rank1]
+
 /-- On the axis `q' = 0`, FO envelopes reduce to the CTF product
 (the paper’s recovery of CTF from FO). -/
 theorem R_FO_eq_R_CTF_axis (q Δz : ℝ) :
@@ -166,5 +178,19 @@ theorem R_FO_dc {Δz : ℝ} (h0 : 0 ≤ p.qAp) : p.R_FO 0 0 Δz = 1 := by
   unfold R_FO
   rw [p.R0_at_zero_energy, hap, hχ, hC, p.waveS_zero]
   simp
+
+/-- Diagonal FO kernel is `1` inside a physical aperture (pure autocorrelation). -/
+theorem R_FO_diag {q Δz : ℝ} (h : |q| ≤ p.qAp) : p.R_FO q q Δz = 1 := by
+  have hap : p.aperture q = 1 := p.aperture_of_le h
+  have hχ : p.spatialEnvelopeClosed q q Δz = 1 := p.spatialEnvelopeClosed_diag q Δz
+  have hC : chromaticEnvelopeClosed p.sigmaE (p.b1 q q) (p.b2 q q) = 1 := by
+    rw [p.b1_zero_diag, p.b2_zero_diag, chromaticEnvelopeClosed_nac]
+    simp
+  have hw : p.waveS q Δz * conj (p.waveS q Δz) = 1 := by
+    rw [p.waveS_mul_conj, sub_self]
+    simp
+  unfold R_FO
+  rw [p.R0_at_zero_energy, hap, hχ, hC]
+  simp [hw]
 
 end LEEM

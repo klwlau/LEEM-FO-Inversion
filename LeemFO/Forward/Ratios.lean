@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Wilson
 -/
 import LeemFO.Forward.CTF
+import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.Convert
 
 /-!
 # Envelope ratios `Γ_C`, `Γ_S` (paper Eqs. (7a)–(7b) and Appendix A2)
@@ -161,5 +163,51 @@ theorem R_CTF_eq_R_FO_mul_gamma (q q' Δz : ℝ) :
   rw [p.spatialCTF_conj q' Δz]
   unfold spatialCTF chromaticCTF
   field_simp [hEs, hEc]
+
+lemma cexp_ofReal_eq_one {x : ℝ} : cexp (x : ℂ) = 1 ↔ x = 0 := by
+  rw [← Complex.ofReal_exp, ← ofReal_one, ofReal_inj, Real.exp_eq_one_iff]
+
+/-- Off-axis FO/CTF mismatch: `Γ_S ≠ 1` whenever illumination is finite and
+both frequencies see a nonzero aberration slope. Coherent GS therefore
+enforces the wrong intensity constraint. -/
+theorem gammaS_ne_one_of_dot {q q' Δz : ℝ} (hσ : p.sigmaIll ≠ 0)
+    (hdot : deriv (p.chiS · Δz) q * deriv (p.chiS · Δz) q' ≠ 0) :
+    p.gammaS q q' Δz ≠ 1 := by
+  rw [p.gammaS_eq_dot]
+  set u := deriv (p.chiS · Δz) q
+  set v := deriv (p.chiS · Δz) q'
+  intro h
+  have hz :
+      (-(4 : ℂ) * π ^ 2 * p.sigmaIll ^ 2 * u * v)
+        = ((-(4 : ℝ) * π ^ 2 * p.sigmaIll ^ 2 * u * v : ℝ) : ℂ) := by
+    push_cast
+    ring
+  rw [hz, cexp_ofReal_eq_one] at h
+  have hgrp : (4 : ℝ) * π ^ 2 * p.sigmaIll ^ 2 * (u * v) = 0 := by
+    linarith
+  rcases mul_eq_zero.mp hgrp with hL | hR
+  · rcases mul_eq_zero.mp hL with hL' | hσ2
+    · rcases mul_eq_zero.mp hL' with h4 | hπ2
+      · exact (by norm_num : (4 : ℝ) ≠ 0) h4
+      · exact Real.pi_ne_zero (sq_eq_zero_iff.mp hπ2)
+    · exact hσ (sq_eq_zero_iff.mp hσ2)
+  · exact hdot hR
+
+/-- Concrete witness: NAC pure defocus, equal off-axis frequencies. -/
+theorem exists_off_axis_gammaS_ne_one :
+    ∃ p : LEEM, ∃ q q' Δz : ℝ,
+      p.qIll ≠ 0 ∧ q ≠ 0 ∧ q' ≠ 0 ∧ p.gammaS q q' Δz ≠ 1 := by
+  let p : LEEM :=
+    { lam := 1, E := 1, C3 := 0, C5 := 0, CC := 0, CCC := 0, C3C := 0,
+      qAp := 1, qIll := 1, ΔE := 0 }
+  refine ⟨p, 1, 1, 1, one_ne_zero, one_ne_zero, one_ne_zero, ?_⟩
+  have hσ : p.sigmaIll ≠ 0 := by
+    unfold sigmaIll
+    exact div_ne_zero one_ne_zero (ne_of_gt fwhmFactor_pos)
+  have hder : deriv (p.chiS · 1) 1 = 1 := by
+    rw [p.deriv_chiS]
+    simp [p]
+  refine p.gammaS_ne_one_of_dot (q := 1) (q' := 1) (Δz := 1) hσ ?_
+  simp [hder]
 
 end LEEM
