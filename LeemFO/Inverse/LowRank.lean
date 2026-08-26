@@ -233,6 +233,26 @@ theorem exists_grid_tcc_cheaper {K M : ℕ} (hK : 1 ≤ K) (hM : M ≤ 8) :
     ∃ N, 128 ≤ N ∧ tccApplyCost K M N < denseApplyCost K N :=
   ⟨128, le_rfl, tccApplyCost_lt_dense_128 hK hM⟩
 
+/-- Modelled TCC–dense crossover at `N = 128`: `M = 9` is still strictly
+cheaper (`2*7*9 = 126 < 128`); `M ≥ 10` is not
+(`denseApplyCost_le_tccApplyCost_128`). The Born policy cap stays 8. -/
+theorem tccApplyCost_lt_dense_128_nine {K M : ℕ} (hK : 1 ≤ K) (hM : M ≤ 9) :
+    tccApplyCost K M 128 < denseApplyCost K 128 := by
+  unfold tccApplyCost denseApplyCost dftCost
+  rw [log2_128]
+  have hcore : 2 * 7 * M < 128 :=
+    lt_of_le_of_lt (Nat.mul_le_mul_left (2 * 7) hM)
+      (by decide : 2 * 7 * 9 < 128)
+  have hKN : 0 < K * 128 := Nat.mul_pos hK (by decide : 0 < 128)
+  have hL : K * M * 2 * (128 * 7) = K * 128 * (2 * 7 * M) := by ring
+  rw [hL]
+  exact Nat.mul_lt_mul_of_pos_left hcore hKN
+
+lemma tccApplyCost_9_128 (K : ℕ) :
+    tccApplyCost K 9 128 = 16128 * K := by
+  rw [tccApplyCost_formula, log2_128]
+  ring
+
 /-- One Born step: rank-`M` apply of `ihat(δ)` plus `N` of the `2×2` bin solves. -/
 def bornStepCost (K M N : ℕ) : ℕ :=
   tccApplyCost K M N + N * binSolveCost K
@@ -516,6 +536,33 @@ theorem lrPlusDiagApplyCost_lt_dense_128 {K M : ℕ} (hK : 1 ≤ K) (hM : M ≤ 
     convert this using 1
     ring
   exact lt_of_le_of_lt (Nat.add_le_add_right hM8 _) hnum
+
+/-- Diagonal leftover is a strictly positive extra `KN` MACs. -/
+theorem tccApplyCost_lt_lrPlusDiagApplyCost {K M N : ℕ}
+    (hK : 0 < K) (hN : 0 < N) :
+    tccApplyCost K M N < lrPlusDiagApplyCost K M N := by
+  unfold lrPlusDiagApplyCost diagApplyCost
+  exact Nat.lt_add_of_pos_right (Nat.mul_pos hK hN)
+
+/-- At `N = 128`, LR+D with `M ≤ 9` stays strictly cheaper than dense `KN²`. -/
+theorem lrPlusDiagApplyCost_lt_dense_128_nine {K M : ℕ}
+    (hK : 1 ≤ K) (hM : M ≤ 9) :
+    lrPlusDiagApplyCost K M 128 < denseApplyCost K 128 := by
+  unfold lrPlusDiagApplyCost diagApplyCost
+  have hM9 : tccApplyCost K M 128 ≤ tccApplyCost K 9 128 := by
+    unfold tccApplyCost dftCost
+    rw [log2_128]
+    have := Nat.mul_le_mul_left K (Nat.mul_le_mul_right (2 * 128 * 7) hM)
+    simpa [mul_assoc, mul_left_comm, mul_comm] using this
+  have hnum : tccApplyCost K 9 128 + K * 128 < denseApplyCost K 128 := by
+    rw [tccApplyCost_9_128, denseApplyCost]
+    have hpow : K * 128 * 128 = 16384 * K := by ring
+    rw [hpow]
+    have : 16256 * K < 16384 * K :=
+      Nat.mul_lt_mul_of_pos_right (by decide : 16256 < 16384) hK
+    convert this using 1
+    ring
+  exact lt_of_le_of_lt (Nat.add_le_add_right hM9 _) hnum
 
 /-- Stage-1 reconstruct plus `T` mixed Born steps. -/
 def hybridCost (T K M N : ℕ) : ℕ :=

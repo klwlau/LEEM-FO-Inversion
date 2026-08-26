@@ -449,8 +449,10 @@ Same discipline as T7 (`dftCost` is a definition, not an FFT theorem).
   dense at $`N=128`$ (`lineSearchCost_lt_dense_128_rank1`). Rank
   $`M=8`$ line search is **not** cheaper than dense (three applies
   exceed $`KN^2`$; `denseApplyCost_le_lineSearchCost_128_rank8`).
-- Large rank: for $`M\ge 10`$ at $`N=128`$ the modelled TCC apply meets
-  or exceeds dense (`denseApplyCost_le_tccApplyCost_128`).
+- Large rank: $`M=9`$ at $`N=128`$ is still strictly cheaper
+  (`tccApplyCost_lt_dense_128_nine`, `lrPlusDiagApplyCost_lt_dense_128_nine`);
+  for $`M\ge 10`$ the modelled TCC apply meets or exceeds dense
+  (`denseApplyCost_le_tccApplyCost_128`). The Born cap stays $`M\le 8`$.
 - Rank-adaptive policy `recommendTccRank`: cost-safe cap
   (`recommendTccCap`: $`M=1`$ under perfect coherence or line search,
   else $`M\le 8`$), then the smallest $`M`$ whose
@@ -485,6 +487,7 @@ Competing numerical methods fail as identities on named NAC columns
 | Jacobi–Anger as a 2D inverse | Bessel ladder $`M`$ vs bilinear $`M^2`$ pairs | `exists_modeSet_lt_modePairs` |
 | Unit GN as exact line critical point | quartic cubic is not identically 0 at $`s=1`$ | `lineCubic_exactGN_one_not_identically_zero` |
 | Gauss–Newton Hessian | drops remainder coupling $`2\operatorname{Re}(\overline A C)`$ | `exists_quadA2_ne_gn`, `exists_lineHess0_gn_ne_newton` |
+| Quadratic Newton candidate $`-A_1/(2A_2)`$ | ignores $`A_3,A_4`$; not a cubic root; can raise energy | `exists_newtonCandidate_not_critical`, `exists_newtonCandidate_energy_increase` |
 | Forgetful Kaczmarz sweep | last-row only; not `tikhonovJ2` minimizer for $`K\ge 2`$ | `exists_kaczmarzSweep_ne_tikhonovXhat2`, `exists_kaczmarzSweep_not_minimizer` |
 
 Dense Gauss–Newton about a generic background is FO-faithful but is
@@ -528,6 +531,8 @@ Cardano roots of the line cubic.
 | Global convergence of nonlinear GN / GS / Born | not an identity (`picard_unique_of_lip` is only a contraction implication) |
 | Cardano roots of `lineCubic` | algebraic stationarity only |
 | Banach fixed-point existence for Picard | uniqueness under a Lipschitz hypothesis only |
+| Nesterov / Polyak / Heavy-ball / FISTA rates | not an FO identity; same bucket as GN/Born convergence |
+| Complex-step line search as the 1D quartic | sesquilinear in $`(\sigma,\overline{\sigma})`$, not `quadPoly` |
 
 ---
 
@@ -550,6 +555,6 @@ Cardano roots of the line cubic.
 | T12 | `ihat_homotopy`, `ihat_homotopy_cubic_zero`, `bornModel`, `bornModel_sub`, `bornModel_t1_ne_t0`, `bornModel_t0_ne_full`, `bornRhs_t0`, `bornRhs_sub`, `bornRhs_t1_ne_t0`, `bornRhs_t0_ignores_loud`, `born_fixed_point_normal` |
 | T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixedSpectrumMix`, `remainderWeight` |
 | T14 | `tikhonovXhat2_conj_swap`, `ihat_hermitian`, `mixed2D_conj_partner` |
-| T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `lineCubic_exactGN`, `descentStep`, `quadEnergy_descent`, `lineFid_descent`, `exists_quadA2_ne_gn` |
-| T16 | `tccApplyCost_lt_dense_128`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1`, `recommendTccRank`, `tccKernel_insert_weight_zero`, `denseApplyCost_le_tccApplyCost_128`, `kaczmarzCost` |
+| T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `lineCubic_exactGN`, `descentStep`, `quadEnergy_descent`, `lineFid_descent`, `exists_quadA2_ne_gn`, `exists_newtonCandidate_not_critical` |
+| T16 | `tccApplyCost_lt_dense_128`, `tccApplyCost_lt_dense_128_nine`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1`, `recommendTccRank`, `tccKernel_insert_weight_zero`, `denseApplyCost_le_tccApplyCost_128`, `kaczmarzCost` |
 | T17 | `exists_interior_R_FO_ne_tie`, `exists_R_CTF_ne_R_FO`, `exists_one_defocus_pair_kernel`, `exists_modeSet_lt_modePairs`, `exists_weakPhase_sin_zero_R_FO_ne_zero`, `exists_kaczmarzSweep_ne_tikhonovXhat2` |

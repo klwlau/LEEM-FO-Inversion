@@ -358,6 +358,31 @@ theorem exists_unit_step_energy_increase :
           < quadEnergy A0 A1 A2 A3 A4 1 := by
   refine ⟨0, -1, 0, 0, 2, by norm_num, by norm_num [quadEnergy]⟩
 
+/-- Quadratic Newton candidate using only `A1, A2` (drops `A3, A4`). -/
+noncomputable def newtonCandidate (A1 A2 : ℝ) : ℝ := -A1 / (2 * A2)
+
+/-- That candidate is not a root of the exact cubic when `A4 ≠ 0`. -/
+theorem exists_newtonCandidate_not_critical :
+    ∃ A1 A2 A3 A4 : ℝ, A2 ≠ 0 ∧
+      lineCubic A1 A2 A3 A4 (newtonCandidate A1 A2) ≠ 0 := by
+  refine ⟨-2, 1, 0, 1, one_ne_zero, ?_⟩
+  have hs : newtonCandidate (-2) 1 = 1 := by
+    simp [newtonCandidate]
+  rw [hs]
+  simp [lineCubic]
+
+/-- The same candidate can raise energy even when `A1 < 0`. -/
+theorem exists_newtonCandidate_energy_increase :
+    ∃ A0 A1 A2 A3 A4 : ℝ,
+      A1 < 0 ∧ A2 ≠ 0 ∧
+        quadEnergy A0 A1 A2 A3 A4 0
+          < quadEnergy A0 A1 A2 A3 A4 (newtonCandidate A1 A2) := by
+  refine ⟨0, -2, 1, 0, 2, by norm_num, one_ne_zero, ?_⟩
+  have hs : newtonCandidate (-2) 1 = 1 := by
+    simp [newtonCandidate]
+  rw [hs]
+  norm_num [quadEnergy]
+
 end
 
 variable {κ : Type*} [Fintype κ]
