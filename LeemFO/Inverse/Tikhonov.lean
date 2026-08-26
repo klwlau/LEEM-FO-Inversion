@@ -719,7 +719,7 @@ def kaczmarzSweep {K : ℕ} (α : ℝ) (h g y : Fin K → ℂ) : ℂ × ℂ :=
     (fun _ k => tikhonovXhat2One α (h k) (g k) (y k)) (0, 0)
 
 lemma list_finRange_two : List.finRange 2 = [0, 1] := by
-  native_decide
+  decide
 
 lemma kaczmarzSweep_one (α : ℝ) (h g y : Fin 1 → ℂ) :
     kaczmarzSweep α h g y = tikhonovXhat2One α (h 0) (g 0) (y 0) := by
@@ -775,10 +775,11 @@ theorem exists_kaczmarzSweep_not_minimizer :
   obtain ⟨α, hα, h, g, y, hne⟩ := exists_kaczmarzSweep_ne_tikhonovXhat2
   refine ⟨α, hα, h, g, y, ?_⟩
   intro hmin
-  have : (kaczmarzSweep α h g y) = tikhonovXhat2 α h g y :=
-    tikhonov2_unique hα h g y (by
-      intro u' v'
-      simpa using hmin u' v')
+  set uv := kaczmarzSweep α h g y
+  have hmin' : ∀ u' v', tikhonovJ2 α h g y uv.1 uv.2 ≤ tikhonovJ2 α h g y u' v' :=
+    hmin
+  have : uv = tikhonovXhat2 α h g y :=
+    tikhonov2_unique hα h g y hmin'
   exact hne this
 
 
