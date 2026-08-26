@@ -359,17 +359,22 @@ theorem ihat_diag (d Ψ : G → ℂ) (ξ : G) :
     ihat (diagKernel d) Ψ ξ
       = if ξ = 0 then ∑ q : G, d q * Ψ q * conj (Ψ q) else 0 := by
   unfold ihat diagKernel
-  by_cases hξ : ξ = 0
+  split_ifs with hξ
   · subst hξ
-    simp
-  · refine (Finset.sum_eq_zero fun q _ => ?_).trans (if_neg hξ).symm
-    have : q ≠ q - ξ := fun hq => hξ (sub_eq_self.mp hq.symm)
-    simp [this]
+    refine Finset.sum_congr rfl fun q _ => ?_
+    simp only [sub_zero, if_true]
+    ring
+  · refine Finset.sum_eq_zero fun q _ => ?_
+    have hne : q ≠ q - ξ := by
+      intro heq
+      exact hξ (sub_eq_self.mp heq.symm)
+    simp [hne]
 
 theorem ihat_diagPart (R : G → G → ℂ) (Ψ : G → ℂ) (ξ : G) :
     ihat (diagPart R) Ψ ξ
       = if ξ = 0 then ∑ q : G, R q q * Ψ q * conj (Ψ q) else 0 := by
-  simpa [diagPart_eq_diagKernel] using ihat_diag (fun q => R q q) Ψ ξ
+  rw [diagPart_eq_diagKernel]
+  exact ihat_diag (fun q => R q q) Ψ ξ
 
 /-- LR+D kernel: TCC plus the diagonal of its remainder. -/
 def lrPlusDiag {ι : Type*} (R : G → G → ℂ) (w : ι → ℂ) (h : ι → G → ℂ)
@@ -383,19 +388,16 @@ theorem ihat_lrPlusDiag {ι : Type*} (R : G → G → ℂ) (w : ι → ℂ)
     ihat (lrPlusDiag R w h src) Ψ ξ
       = ihat (tccKernel w h src) Ψ ξ
         + ihat (diagPart (tccRemainder R w h src)) Ψ ξ := by
-  simpa [lrPlusDiag] using
-    ihat_add_kernel (tccKernel w h src)
-      (diagPart (tccRemainder R w h src)) Ψ ξ
+  unfold lrPlusDiag
+  exact ihat_add_kernel (tccKernel w h src)
+    (diagPart (tccRemainder R w h src)) Ψ ξ
 
 lemma lrPlusDiag_add_offDiag {ι : Type*} (R : G → G → ℂ) (w : ι → ℂ)
     (h : ι → G → ℂ) (src : Finset ι) (q q' : G) :
     lrPlusDiag R w h src q q'
       + offDiagPart (tccRemainder R w h src) q q' = R q q' := by
-  have hrem :
-      tccKernel w h src q q' + tccRemainder R w h src q q' = R q q' := by
-    simp [tccRemainder]
-  have hsplit := diagPart_add_offDiagPart (tccRemainder R w h src) q q'
-  simp [lrPlusDiag, ← hsplit, ← hrem, add_assoc]
+  unfold lrPlusDiag
+  rw [add_assoc, diagPart_add_offDiagPart, tccRemainder, add_sub_cancel]
 
 /-- LR+D truncation error is the off-diagonal remainder mass. -/
 theorem ihat_lrPlusDiag_trunc_bound {ι : Type*} (R : G → G → ℂ)
@@ -404,16 +406,17 @@ theorem ihat_lrPlusDiag_trunc_bound {ι : Type*} (R : G → G → ℂ)
       ≤ (∑ q : G, ∑ q' : G,
             ‖offDiagPart (tccRemainder R w h src) q q'‖) *
         (∑ q : G, ‖Ψ q‖) ^ 2 := by
-  have hR :
-      (fun q q' => R q q')
-        = fun q q' =>
-            lrPlusDiag R w h src q q'
-              + offDiagPart (tccRemainder R w h src) q q' := by
-    funext q q'
-    exact (lrPlusDiag_add_offDiag R w h src q q').symm
   have hsub :
       ihat R Ψ ξ - ihat (lrPlusDiag R w h src) Ψ ξ
         = ihat (offDiagPart (tccRemainder R w h src)) Ψ ξ := by
+    have hR :
+        ihat R Ψ ξ
+          = ihat (fun q q' =>
+              lrPlusDiag R w h src q q'
+                + offDiagPart (tccRemainder R w h src) q q') Ψ ξ := by
+      congr 1
+      funext q q'
+      exact (lrPlusDiag_add_offDiag R w h src q q').symm
     rw [hR, ihat_add_kernel, add_sub_cancel_left]
   rw [hsub]
   exact ihat_bound (offDiagPart (tccRemainder R w h src)) Ψ ξ
@@ -433,11 +436,14 @@ theorem ihat_lrPlusDiag_of_remainder_zero {ι : Type*} (R : G → G → ℂ)
     (w : ι → ℂ) (h : ι → G → ℂ) (src : Finset ι)
     (hrem : tccRemainder R w h src = fun _ _ => 0) (Ψ : G → ℂ) (ξ : G) :
     ihat (lrPlusDiag R w h src) Ψ ξ = ihat R Ψ ξ := by
-  have htcc : R = tccKernel w h src := by
+  have hker : lrPlusDiag R w h src = R := by
     funext q q'
-    simpa [tccRemainder, hrem] using
-      (sub_eq_zero.mp (congrFun (congrFun hrem q) q')).symm
-  simp [lrPlusDiag, hrem, diagPart, htcc]
+    have hpoint : R q q' - tccKernel w h src q q' = 0 := by
+      simpa [tccRemainder] using congrFun (congrFun hrem q) q'
+    have htcc : tccKernel w h src q q' = R q q' :=
+      (sub_eq_zero.mp hpoint).symm
+    simp [lrPlusDiag, diagPart, hrem, htcc]
+  rw [hker]
 
 /-- Sampled coherent FO kernel is exactly the rank-1 TCC on one mode. -/
 theorem R_FO_eq_tccKernel_of_perfect (p : LEEM) (hpc : p.PerfectCoherence)
@@ -447,8 +453,10 @@ theorem R_FO_eq_tccKernel_of_perfect (p : LEEM) (hpc : p.PerfectCoherence)
           (fun _ => fun a => p.coherentPupil Δz 0 (qmap a)) Finset.univ := by
   funext a b
   rw [p.R_FO_eq_rank1_of_perfect hpc]
-  simp [tccKernel, Fin.sum_univ_one]
-  ring
+  change p.coherentPupil Δz 0 (qmap a) * conj (p.coherentPupil Δz 0 (qmap b))
+      = tccKernel (fun _ : Fin 1 => (1 : ℂ))
+          (fun _ => fun a => p.coherentPupil Δz 0 (qmap a)) Finset.univ a b
+  simp [tccKernel]
 
 theorem tccRemainder_R_FO_of_perfect (p : LEEM) (hpc : p.PerfectCoherence)
     (qmap : G → ℝ) (Δz : ℝ) :
@@ -456,8 +464,9 @@ theorem tccRemainder_R_FO_of_perfect (p : LEEM) (hpc : p.PerfectCoherence)
       (fun _ : Fin 1 => (1 : ℂ))
       (fun _ => fun a => p.coherentPupil Δz 0 (qmap a)) Finset.univ
       = fun _ _ => (0 : ℂ) := by
+  rw [R_FO_eq_tccKernel_of_perfect p hpc qmap Δz]
   funext a b
-  simp [tccRemainder, R_FO_eq_tccKernel_of_perfect p hpc qmap Δz]
+  simp [tccRemainder]
 
 /-- Perfect coherence: LR+D with the coherent pupil is exact (remainder 0). -/
 theorem ihat_lrPlusDiag_R_FO_of_perfect (p : LEEM) (hpc : p.PerfectCoherence)
