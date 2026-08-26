@@ -134,6 +134,30 @@ theorem bornModel_convex (R : G → G → ℂ) (t : ℝ) (δ : G → ℂ) (ξ : 
   rw [ihat_add]
   ring
 
+/-- Distinct homotopy weights disagree by exactly the bilinear remainder. -/
+theorem bornModel_sub (R : G → G → ℂ) (t₁ t₂ : ℝ) (δ : G → ℂ) (ξ : G) :
+    bornModel R t₁ δ ξ - bornModel R t₂ δ ξ
+      = ((t₁ - t₂ : ℝ) : ℂ) * ihat R δ ξ := by
+  simp [bornModel]
+  ring
+
+/-- Quiet-bin bias: occupied remainder makes `t = 1` disagree with stage-1. -/
+theorem bornModel_t1_ne_t0 {R : G → G → ℂ} {δ : G → ℂ} {ξ : G}
+    (h : ihat R δ ξ ≠ 0) :
+    bornModel R 1 δ ξ ≠ bornModel R 0 δ ξ := by
+  intro heq
+  have hdiff := bornModel_sub R 1 0 δ ξ
+  simp only [sub_zero, ofReal_one, one_mul] at hdiff
+  have hzero : bornModel R 1 δ ξ - bornModel R 0 δ ξ = 0 := by
+    rw [heq, sub_self]
+  exact h (hdiff ▸ hzero)
+
+/-- Loud / occupied remainder: `t = 0` ignores the exact FO image. -/
+theorem bornModel_t0_ne_full {R : G → G → ℂ} {δ : G → ℂ} {ξ : G}
+    (h : ihat R δ ξ ≠ 0) :
+    bornModel R 0 δ ξ ≠ ihat R (vacuum + δ) ξ := by
+  simpa [bornModel_t1] using (bornModel_t1_ne_t0 h).symm
+
 /-- Exact line residual: bilinear FO along `x0 + s • d` is quadratic in `s`. -/
 def lineResidual (R : G → G → ℂ) (y : G → ℂ) (x0 d : G → ℂ) (s : ℝ)
     (ξ : G) : ℂ :=
@@ -187,6 +211,42 @@ def bornRhs (R : κ → G → G → ℂ) (y : κ → G → ℂ) (t : ℝ) (δ : 
     (ξ : G) : κ → ℂ :=
   fun k => yLin R y ξ k - (t : ℂ) * ihat (R k) δ ξ
 
+/-- `t = 0` recovers the stage-1 linear contrast (ignores bilinear remainder). -/
+theorem bornRhs_t0 (R : κ → G → G → ℂ) (y : κ → G → ℂ) (δ : G → ℂ) (ξ : G) :
+    bornRhs R y 0 δ ξ = yLin R y ξ := by
+  funext k
+  simp [bornRhs]
+
+/-- Distinct weights shift the Born RHS by exactly the weighted remainder. -/
+theorem bornRhs_sub (R : κ → G → G → ℂ) (y : κ → G → ℂ) (t₁ t₂ : ℝ)
+    (δ : G → ℂ) (ξ : G) (k : κ) :
+    bornRhs R y t₁ δ ξ k - bornRhs R y t₂ δ ξ k
+      = ((t₂ - t₁ : ℝ) : ℂ) * ihat (R k) δ ξ := by
+  simp [bornRhs]
+  ring
+
+/-- Quiet-bin bias: forcing `t = 1` changes the RHS whenever any defocus
+remainder is occupied (even below a noise floor `η`). -/
+theorem bornRhs_t1_ne_t0 {R : κ → G → G → ℂ} {y : κ → G → ℂ} {δ : G → ℂ}
+    {ξ : G} {k : κ} (h : ihat (R k) δ ξ ≠ 0) :
+    bornRhs R y 1 δ ξ ≠ bornRhs R y 0 δ ξ := by
+  intro heq
+  have : yLin R y ξ k - ihat (R k) δ ξ = yLin R y ξ k := by
+    have hpt := congrArg (fun f : κ → ℂ => f k) heq
+    simpa [bornRhs] using hpt
+  exact h (sub_eq_self.mp this)
+
+/-- Loud bin: stage-1 (`t = 0`) drops a remainder larger than `η`. -/
+theorem bornRhs_t0_ignores_loud {R : κ → G → G → ℂ} {y : κ → G → ℂ}
+    {δ : G → ℂ} {ξ : G} {k : κ} {η : ℝ}
+    (hloud : η < ‖ihat (R k) δ ξ‖) :
+    bornRhs R y 0 δ ξ k = yLin R y ξ k ∧
+      bornRhs R y 1 δ ξ k = yLin R y ξ k - ihat (R k) δ ξ ∧
+      η < ‖bornRhs R y 0 δ ξ k - bornRhs R y 1 δ ξ k‖ := by
+  refine ⟨by simp [bornRhs], by simp [bornRhs], ?_⟩
+  have hdiff := bornRhs_sub R y 0 1 δ ξ k
+  simpa [hdiff, sub_zero, ofReal_one, one_mul] using hloud
+
 def bornHomotopyPair (α : ℝ) (h g : κ → ℂ) (R : κ → G → G → ℂ)
     (y : κ → G → ℂ) (t : ℝ) (δ : G → ℂ) (ξ : G) : ℂ × ℂ :=
   tikhonovXhat2 α h g (bornRhs R y t δ ξ)
@@ -195,10 +255,7 @@ theorem bornHomotopyPair_t0 (α : ℝ) (h g : κ → ℂ) (R : κ → G → G �
     (y : κ → G → ℂ) (δ : G → ℂ) (ξ : G) :
     bornHomotopyPair α h g R y 0 δ ξ
       = tikhonovXhat2 α h g (yLin R y ξ) := by
-  unfold bornHomotopyPair
-  congr 1
-  funext k
-  simp [bornRhs]
+  simp [bornHomotopyPair, bornRhs_t0]
 
 lemma tikhonov2Rhs_sub (h y₁ y₂ : κ → ℂ) :
     tikhonov2Rhs h (y₁ - y₂) = tikhonov2Rhs h y₁ - tikhonov2Rhs h y₂ := by
