@@ -15,8 +15,12 @@ ray `vac + t • δ` interpolates the vacuum image (`t = 0`) and the full
 FO image (`t = 1`). The remainder-weighted Born model interpolates the
 vacuum linearization (`bornModel` at `t = 0`, stage 1) and full FO
 (`t = 1`). Picard / Born iteration applies the Fourier-diagonal `2×2`
-solve to a remainder-corrected residual; a damped mix with schedules
-`t, damp` is the large-`φ` 2D estimator.
+solve to a remainder-corrected residual.
+
+The large-`φ` 2D estimator is per-bin `remainderWeight ∈ {0,1}`
+(`mixedSpectrumMix` / `mixed2DMix`): quiet `t = 0` (stage 1), loud
+`t = 1` (full FO). Schedules `t, damp` on `mixedSpectrum` are the
+general API, not the recommended skip policy.
 
 Iterative numerical convergence is not encoded. Uniqueness of the
 nonlinear inverse is false (`ihat_gauge`).

@@ -368,17 +368,19 @@ mix (not global $`t`$ and not fractional $`\min(1,\|\hat I(\delta)\|/\eta)`$).
 ### T13. Mixed 2D estimator
 
 Init is vacuum $`2\times 2`$ Tikhonov. Each later step applies a damped
-Born update of the pair $`(u,v)`$ (`mixedBinStep`) with schedules
-$`t,\mathrm{damp}`$. `mixedSpectrum` stores only $`u=\delta(\xi)`$;
-`mixedSpectrumPair` / `mixed2D` carry both coordinates. Per-bin
-remainder weight uses $`t=0`$ on quiet bins and $`t=1`$ on loud bins
-(`remainderWeight`, `mixedSpectrumMix`, `mixed2DMix`).
+Born update of the pair $`(u,v)`$ (`mixedBinStep`). `mixedSpectrum`
+stores only $`u=\delta(\xi)`$; `mixedSpectrumPair` / `mixed2D` carry
+both coordinates and expose schedules $`t,\mathrm{damp}`$ as a general
+API. The recommended mix is per-bin $`t=0`$ on quiet bins and $`t=1`$
+on loud bins (`remainderWeight`, `mixedSpectrumMix`, `mixed2DMix`).
 
 On $`R_{\mathrm{FO}2}`$, for $`\xi\neq 0`$, the $`n=0`$ iterate is
-`stage1Pair2`.
+`stage1Pair2` (`mixed2D_zero_eq_stage1Pair2`; the first coordinate
+alone is `mixedSpectrum2_zero_eq_stage1Pair2`).
 
 **Lean.** `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`,
-`mixedSpectrum_eq_pair_fst`, `mixed2D`, `mixedSpectrum2_zero_eq_stage1Pair2`,
+`mixedSpectrum_eq_pair_fst`, `mixed2D`, `mixed2DMix`,
+`mixed2D_zero_eq_stage1Pair2`, `mixedSpectrum2_zero_eq_stage1Pair2`,
 `mixedSpectrumMix_skip_step`, `mixedSpectrumMix_born_bin`.
 
 Nonlinear uniqueness is false (`ihat_gauge`). Iterative convergence is
@@ -506,19 +508,21 @@ further Jacobian approximation.
 ## Mixed large-phase 2D inverse (recommended)
 
 From vacuum, one GN step **equals** T1 / the $`2\times 2`$ solve (T6, T9:
-`vacuumGN_eq_stage1Pair` / T10 `vacuumGN_eq_stage1Pair2`). For large
-$`\varphi`$ the recommended 2D estimator is that stage-1 init, then
-remainder-corrected Born steps whose apply is rank-$`M`$ TCC
-(`recommendTccRank`: $`M=1`$ if perfectly coherent or if using the
+`vacuumGN_eq_stage1Pair` / T10 `vacuumGN_eq_stage1Pair2`). Default
+$`K=2`$ independent defoci (`exists_one_defocus_pair_kernel` rejects
+$`K=1`$). For large $`\varphi`$ the recommended 2D estimator is that
+stage-1 init, then remainder-corrected Born steps whose apply is rank-$`M`$
+TCC (`recommendTccRank`: $`M=1`$ if perfectly coherent or if using the
 quartic line search, else $`M\le 8`$) or coherent rank-1
-autocorrelation, optionally LR+D, mixed with per-bin skip
-(`remainderWeight`) and algebraic Armijo on the exact quartic
-(`lineDescentStep`). The mix is FO-faithful because bilinear FO is
-exactly quadratic, and cheaper than a dense pair apply at $`N=128`$,
-$`M\le 8`$ for the Born loop (T16). From a general $`x_0`$, one GN
-step uses `ihatJac R x0`, which is **not** Fourier-diagonal. Do not
-replace the batch $`2\times 2`$ by Kaczmarz; do not use the GN Hessian
-in place of the exact quartic.
+autocorrelation. LR+D is optional tighter fidelity, not cheaper
+(`tccApplyCost_lt_lrPlusDiagApplyCost`). Skip is per-bin
+(`remainderWeight` / `mixed2DMix`); line search is algebraic Armijo on
+the exact quartic (`lineDescentStep`). The mix is FO-faithful because
+bilinear FO is exactly quadratic, and cheaper than a dense pair apply
+at $`N=128`$, $`M\le 8`$ for the Born loop (T16). From a general
+$`x_0`$, one GN step uses `ihatJac R x0`, which is **not**
+Fourier-diagonal. Do not replace the batch $`2\times 2`$ by Kaczmarz or
+Landweber/CGLS; do not use the GN Hessian in place of the exact quartic.
 
 Do not encode local quadratic convergence of GN / Born (needs a
 Lipschitz Hessian estimate in a Banach space of images). Do not encode
@@ -549,6 +553,14 @@ Cardano roots of the line cubic.
 | Two-source special case in `recommendTccRank` | `ihat_twoSource` is `ihat_tcc` at $`M=2`$ |
 | 3-point $`\{0,\texttt{descentStep},1\}`$ min | same `lineSearchCost`; not required (T15 Armijo) |
 | Odd $`\lvert G\rvert`$ as a partner hypothesis | partner uses odd $`qmap`$, not odd group order |
+| Landweber / CGLS / CG as bin solvers | Cramer `tikhonovXhat2` is exact; Krylov rates are informal |
+| Richardson–Lucy / Poisson EM | no probability space; not bilinear FO |
+| TV / Split-Bregman / $`\ell^1`$ penalty | drops Cramer uniqueness; same informal bucket as ADMM |
+| MAL / phase diversity as the large-$`\varphi`$ inverse | only when $`\chi`$ is unknown; not cheaper than the known-$`\chi`$ mix |
+| Polar / $`\lVert q\rVert`$-only 2D kernel | $`R_{\mathrm{FO}2}`$ needs $`\mathbf{q}\cdot\mathbf{q}'`$ (`exists_R_FO2_ne_R_FO_of_norms`) |
+| Contrast-norm $`y/\langle I\rangle`$ or $`y_k-y_0`$ layer | experiment convention; mix uses raw $`y`$ and `yLin` |
+| Formal `recommendK` / “$`K>2`$ always better” | $`K=1`$ rejected; $`K=2`$ default; extra $`K`$ is SNR / common zeros |
+| LR+D as the default apply | optional tighter bound; strictly costlier than `ihat_tcc` |
 
 ---
 
@@ -569,7 +581,7 @@ Cardano roots of the line cubic.
 | T10 | `R_FO2`, `stage1Pair2`, `qmap2_zero`, `vacuumGN_eq_stage1Pair2`, `exists_R_FO2_ne_R_FO_of_norms` |
 | T11 | `ihat_rank1`, `ihat_tcc`, `ihat_R0`, `ihat_R_FO_of_perfect`, `ihat_R_FO2_of_perfect`, `ihat_tcc_trunc_bound`, `ihat_twoSource`, `lrPlusDiag` |
 | T12 | `ihat_homotopy`, `ihat_homotopy_cubic_zero`, `bornModel`, `bornModel_sub`, `bornModel_t1_ne_t0`, `bornModel_t0_ne_full`, `bornRhs_t0`, `bornRhs_sub`, `bornRhs_t1_ne_t0`, `bornRhs_t0_ignores_loud`, `born_fixed_point_normal` |
-| T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixedSpectrumMix`, `remainderWeight` |
+| T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixed2DMix`, `mixedSpectrumMix`, `remainderWeight`, `mixed2D_zero_eq_stage1Pair2` |
 | T14 | `tikhonovXhat2_conj_swap`, `ihat_hermitian`, `mixed2D_conj_partner` |
 | T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `descentStep`, `nlsJ_line`, `lineFid_eq_nlsJ_zero`, `exists_lineFid_flat_unbounded`, `exists_newtonCandidate_not_critical` |
 | T16 | `tccApplyCost_lt_dense_128`, `tccApplyCost_lt_dense_128_nine`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1`, `recommendTccRank`, `tccKernel_insert_weight_zero`, `denseApplyCost_le_tccApplyCost_128`, `kaczmarzCost` |
