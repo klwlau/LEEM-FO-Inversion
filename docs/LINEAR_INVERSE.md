@@ -579,6 +579,11 @@ Cardano roots of the line cubic.
 | $`\Delta E=0`$ as rank-1 apply | chromatic 1 is not `PerfectCoherence` (`exists_R_FO_ne_R0`) |
 | Defocus interpolant on $`\Delta z`$ | $`\kappa`$ is given; missing frames shrink the index |
 | Always-on quartic line search ($`M=1`$) | Born $`M\le 8`$ is the cheaper 2D default; Armijo is optional |
+| Energy-filtered / spectroscopic stack as $`\kappa`$ | inverse index is defocus; not this through-focal kernel |
+| SPLEEM / magnetic contrast | scalar `objectWave`; different channel |
+| Deprecate `mixed2D` in favor of `mixed2DMix` | Mix is skip policy; `mixed2D` stays the general pair API |
+| Restrict `mixed2D` to `modeSet` / `nAperture` | 1D JA ladder; outside-disk bins already vanish (T4) |
+| DC-bin special case in Mix | off-DC `yLin`; partner at $`0`$ is $`v=\overline u`$; no Im-pin |
 
 ---
 
