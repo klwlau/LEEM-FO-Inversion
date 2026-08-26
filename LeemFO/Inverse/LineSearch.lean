@@ -12,6 +12,11 @@ Along a real ray `x0 + s • d` the FO residual is quadratic in `s`
 (`lineResidual`). The stack fidelity is therefore a real quartic.
 Stationarity is the cubic `lineCubic`; a unit Gauss–Newton step is not
 automatically a root. Roots of that cubic are not constructed (no Cardano).
+
+When `A1 = lineCubic _ _ _ _ 0 < 0`, an algebraic Armijo step
+`descentStep` built from `|A2|+|A3|+|A4|` guarantees strict decrease of
+`quadEnergy` (and of `lineFid` after a Born / `mixedBinStep` direction).
+A unit step `s = 1` need not decrease energy even when `A1 < 0`.
 -/
 
 set_option linter.unusedSectionVars false
@@ -174,6 +179,154 @@ theorem lineCubic_exactGN_one_not_identically_zero :
   rw [hval] at hf
   simp at hf
 
+/-- Envelope of the quadratic–quartic coefficients used for a constructive
+step size (no Cardano). -/
+def quadHigherAbs (A2 A3 A4 : ℝ) : ℝ :=
+  |A2| + |A3| + |A4|
+
+lemma quadHigherAbs_nonneg (A2 A3 A4 : ℝ) :
+    0 ≤ quadHigherAbs A2 A3 A4 :=
+  add_nonneg (abs_nonneg _) (add_nonneg (abs_nonneg _) (abs_nonneg _))
+
+lemma quadHigherAbs_denom_pos (A2 A3 A4 : ℝ) :
+    0 < 2 * (1 + quadHigherAbs A2 A3 A4) :=
+  mul_pos two_pos (add_pos_of_pos_of_nonneg one_pos (quadHigherAbs_nonneg _ _ _))
+
+/-- Algebraic Armijo step when `lineCubic` at `0` is negative.
+Uses `|A2|+|A3|+|A4|`; capped by `1` so higher powers are dominated. -/
+def descentStep (A1 A2 A3 A4 : ℝ) : ℝ :=
+  min 1 (|A1| / (2 * (1 + quadHigherAbs A2 A3 A4)))
+
+theorem descentStep_nonneg (A1 A2 A3 A4 : ℝ) :
+    0 ≤ descentStep A1 A2 A3 A4 :=
+  le_min zero_le_one (div_nonneg (abs_nonneg _) (quadHigherAbs_denom_pos _ _ _).le)
+
+theorem descentStep_le_one (A1 A2 A3 A4 : ℝ) :
+    descentStep A1 A2 A3 A4 ≤ 1 :=
+  min_le_left _ _
+
+theorem descentStep_pos (A1 A2 A3 A4 : ℝ) (hA1 : A1 < 0) :
+    0 < descentStep A1 A2 A3 A4 :=
+  lt_min one_pos (div_pos (abs_pos_of_neg hA1) (quadHigherAbs_denom_pos _ _ _))
+
+lemma descentStep_mul_bound (A1 A2 A3 A4 : ℝ) :
+    descentStep A1 A2 A3 A4 * (1 + quadHigherAbs A2 A3 A4)
+      ≤ |A1| / 2 := by
+  have hle :
+      descentStep A1 A2 A3 A4
+        ≤ |A1| / (2 * (1 + quadHigherAbs A2 A3 A4)) :=
+    min_le_right _ _
+  have h1B : 0 ≤ 1 + quadHigherAbs A2 A3 A4 :=
+    add_nonneg zero_le_one (quadHigherAbs_nonneg _ _ _)
+  have hmul := mul_le_mul_of_nonneg_right hle h1B
+  have hcancel :
+      |A1| / (2 * (1 + quadHigherAbs A2 A3 A4)) * (1 + quadHigherAbs A2 A3 A4)
+        = |A1| / 2 := by
+    have hne : (2 * (1 + quadHigherAbs A2 A3 A4) : ℝ) ≠ 0 :=
+      ne_of_gt (quadHigherAbs_denom_pos _ _ _)
+    field
+  exact hcancel ▸ hmul
+
+lemma quadEnergy_diff_bound (A2 A3 A4 s : ℝ)
+    (hs0 : 0 ≤ s) (hs1 : s ≤ 1) :
+    |A2 * s ^ 2 + A3 * s ^ 3 + A4 * s ^ 4|
+      ≤ s ^ 2 * quadHigherAbs A2 A3 A4 := by
+  have hs2 : 0 ≤ s ^ 2 := sq_nonneg s
+  have hs3 : s ^ 3 ≤ s ^ 2 :=
+    pow_le_pow_of_le_one hs0 hs1 (by decide : 2 ≤ 3)
+  have hs4 : s ^ 4 ≤ s ^ 2 :=
+    pow_le_pow_of_le_one hs0 hs1 (by decide : 2 ≤ 4)
+  have hterm2 : |A2 * s ^ 2| = s ^ 2 * |A2| := by
+    rw [abs_mul, abs_of_nonneg hs2, mul_comm]
+  have hterm3 : |A3 * s ^ 3| ≤ s ^ 2 * |A3| := by
+    rw [abs_mul, abs_of_nonneg (pow_nonneg hs0 3), mul_comm]
+    exact mul_le_mul_of_nonneg_left hs3 (abs_nonneg _)
+  have hterm4 : |A4 * s ^ 4| ≤ s ^ 2 * |A4| := by
+    rw [abs_mul, abs_of_nonneg (pow_nonneg hs0 4), mul_comm]
+    exact mul_le_mul_of_nonneg_left hs4 (abs_nonneg _)
+  calc
+    |A2 * s ^ 2 + A3 * s ^ 3 + A4 * s ^ 4|
+        ≤ |A2 * s ^ 2| + |A3 * s ^ 3| + |A4 * s ^ 4| :=
+      abs_add_three _ _ _
+    _ ≤ s ^ 2 * |A2| + s ^ 2 * |A3| + s ^ 2 * |A4| := by
+      rw [hterm2]
+      exact add_le_add (add_le_add le_rfl hterm3) hterm4
+    _ = s ^ 2 * quadHigherAbs A2 A3 A4 := by
+      simp only [quadHigherAbs, mul_add, add_assoc]
+
+/-- Expansion of the quartic increment at the origin via `quadEnergy_shift`. -/
+theorem quadEnergy_sub_zero (A0 A1 A2 A3 A4 s : ℝ) :
+    quadEnergy A0 A1 A2 A3 A4 s - quadEnergy A0 A1 A2 A3 A4 0
+      = s * A1 + A2 * s ^ 2 + A3 * s ^ 3 + A4 * s ^ 4 := by
+  have h := quadEnergy_shift A0 A1 A2 A3 A4 0 s
+  simp only [add_zero, zero_mul, one_mul, lineCubic_zero,
+    zero_pow (by decide : (2 : ℕ) ≠ 0),
+    zero_pow (by decide : (3 : ℕ) ≠ 0)] at h
+  linarith [h]
+
+/-- Armijo decrease: the constructive step cuts at least half the linear
+drop predicted by `A1 = lineCubic _ _ _ _ 0`. -/
+theorem quadEnergy_armijo (A0 A1 A2 A3 A4 : ℝ) (hA1 : A1 < 0) :
+    quadEnergy A0 A1 A2 A3 A4 (descentStep A1 A2 A3 A4)
+      ≤ quadEnergy A0 A1 A2 A3 A4 0
+          + (1 / 2) * descentStep A1 A2 A3 A4 * A1 := by
+  let s := descentStep A1 A2 A3 A4
+  have hs0 : 0 ≤ s := descentStep_nonneg A1 A2 A3 A4
+  have hs1 : s ≤ 1 := descentStep_le_one A1 A2 A3 A4
+  have hdiff := quadEnergy_sub_zero A0 A1 A2 A3 A4 s
+  have hbound := quadEnergy_diff_bound A2 A3 A4 s hs0 hs1
+  have hrest :
+      A2 * s ^ 2 + A3 * s ^ 3 + A4 * s ^ 4
+        ≤ s ^ 2 * quadHigherAbs A2 A3 A4 :=
+    (abs_le.mp hbound).2
+  have hmulB := descentStep_mul_bound A1 A2 A3 A4
+  have hsB :
+      s * quadHigherAbs A2 A3 A4 ≤ s * (1 + quadHigherAbs A2 A3 A4) :=
+    mul_le_mul_of_nonneg_left
+      (le_add_of_nonneg_left zero_le_one) hs0
+  have hs2B : s ^ 2 * quadHigherAbs A2 A3 A4 ≤ s * (|A1| / 2) := by
+    have : s * quadHigherAbs A2 A3 A4 ≤ |A1| / 2 :=
+      le_trans hsB hmulB
+    calc
+      s ^ 2 * quadHigherAbs A2 A3 A4
+          = s * (s * quadHigherAbs A2 A3 A4) := by ring
+      _ ≤ s * (|A1| / 2) := mul_le_mul_of_nonneg_left this hs0
+  have hA1abs : s * A1 = -(s * |A1|) := by
+    rw [abs_of_neg hA1]
+    ring
+  have hhalf :
+      s * A1 + A2 * s ^ 2 + A3 * s ^ 3 + A4 * s ^ 4
+        ≤ (1 / 2) * s * A1 := by
+    have : s * A1 + s ^ 2 * quadHigherAbs A2 A3 A4
+        ≤ (1 / 2) * s * A1 := by
+      have hpos : 0 ≤ s * (|A1| / 2) :=
+        mul_nonneg hs0 (div_nonneg (abs_nonneg _) two_pos.le)
+      nlinarith [hA1abs, hs2B, hpos]
+    linarith [hrest, this]
+  linarith [hdiff, hhalf]
+
+theorem quadEnergy_descent (A0 A1 A2 A3 A4 : ℝ) (hA1 : A1 < 0) :
+    quadEnergy A0 A1 A2 A3 A4 (descentStep A1 A2 A3 A4)
+      < quadEnergy A0 A1 A2 A3 A4 0 := by
+  have harm := quadEnergy_armijo A0 A1 A2 A3 A4 hA1
+  have hs : 0 < descentStep A1 A2 A3 A4 :=
+    descentStep_pos A1 A2 A3 A4 hA1
+  have hdrop : (1 / 2 : ℝ) * descentStep A1 A2 A3 A4 * A1 < 0 :=
+    mul_neg_of_pos_of_neg (mul_pos (by norm_num : (0 : ℝ) < 1 / 2) hs) hA1
+  exact lt_of_le_of_lt harm (lt_add_of_neg_right _ hdrop)
+
+/-- A unit step can raise the quartic even when the directional derivative
+`A1` is negative. -/
+theorem exists_unit_step_energy_increase :
+    ∃ (A0 A1 A2 A3 A4 : ℝ),
+      A1 < 0 ∧
+        quadEnergy A0 A1 A2 A3 A4 0
+          < quadEnergy A0 A1 A2 A3 A4 1 := by
+  refine ⟨0, -1, 0, 0, 2, ?_, ?_⟩
+  · norm_num
+  · simp [quadEnergy]
+    norm_num
+
 end
 
 variable {κ : Type*} [Fintype κ]
@@ -243,5 +396,37 @@ theorem lineFid_shift (R : κ → G → G → ℂ) (y : κ → G → ℂ)
         + h ^ 3 * (stackA3 R x0 d + 4 * stackA4 R d * s)
         + h ^ 4 * stackA4 R d := by
   simp [lineFid_quadEnergy, stackLineCubic, quadEnergy_shift]
+
+theorem stackLineCubic_zero (R : κ → G → G → ℂ) (y : κ → G → ℂ)
+    (x0 d : G → ℂ) :
+    stackLineCubic R y x0 d 0 = stackA1 R y x0 d := by
+  simp [stackLineCubic, lineCubic_zero]
+
+/-- FO-faithful line step after a Born / `mixedBinStep` direction:
+algebraic Armijo descent on `lineFid` (no Cardano). -/
+def lineDescentStep (R : κ → G → G → ℂ) (y : κ → G → ℂ)
+    (x0 d : G → ℂ) : ℝ :=
+  descentStep (stackA1 R y x0 d) (stackA2 R y x0 d)
+    (stackA3 R x0 d) (stackA4 R d)
+
+theorem lineDescentStep_pos (R : κ → G → G → ℂ) (y : κ → G → ℂ)
+    (x0 d : G → ℂ) (hA1 : stackA1 R y x0 d < 0) :
+    0 < lineDescentStep R y x0 d :=
+  descentStep_pos _ _ _ _ hA1
+
+theorem lineFid_armijo (R : κ → G → G → ℂ) (y : κ → G → ℂ)
+    (x0 d : G → ℂ) (hA1 : stackA1 R y x0 d < 0) :
+    lineFid R y x0 d (lineDescentStep R y x0 d)
+      ≤ lineFid R y x0 d 0
+          + (1 / 2) * lineDescentStep R y x0 d * stackA1 R y x0 d := by
+  simp only [lineFid_quadEnergy, lineDescentStep]
+  exact quadEnergy_armijo _ _ _ _ _ hA1
+
+theorem lineFid_descent (R : κ → G → G → ℂ) (y : κ → G → ℂ)
+    (x0 d : G → ℂ) (hA1 : stackA1 R y x0 d < 0) :
+    lineFid R y x0 d (lineDescentStep R y x0 d)
+      < lineFid R y x0 d 0 := by
+  simp only [lineFid_quadEnergy, lineDescentStep]
+  exact quadEnergy_descent _ _ _ _ _ hA1
 
 end
