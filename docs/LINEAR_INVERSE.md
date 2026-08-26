@@ -559,7 +559,7 @@ Cardano roots of the line cubic.
 | MAL / phase diversity as the large-$`\varphi`$ inverse | only when $`\chi`$ is unknown; not cheaper than the known-$`\chi`$ mix |
 | Polar / $`\lVert q\rVert`$-only 2D kernel | $`R_{\mathrm{FO}2}`$ needs $`\mathbf{q}\cdot\mathbf{q}'`$ (`exists_R_FO2_ne_R_FO_of_norms`) |
 | Contrast-norm $`y/\langle I\rangle`$ or $`y_k-y_0`$ layer | experiment convention; mix uses raw $`y`$ and `yLin` |
-| Formal `recommendK` / “$`K>2`$ always better” | $`K=1`$ rejected; $`K=2`$ default; extra $`K`$ is SNR / common zeros |
+| Formal K-count policy / “$`K>2`$ always better” | $`K=1`$ rejected; $`K=2`$ default; extra $`K`$ is SNR / common zeros |
 | LR+D as the default apply | optional tighter bound; strictly costlier than `ihat_tcc` |
 | L-BFGS / BFGS / Levenberg–Marquardt | secant/damped-GN model is not the FO quartic (`exists_quadA2_ne_gn`) |
 | Anderson / DIIS mixing | numerical accelerator; not an FO identity |
@@ -568,7 +568,7 @@ Cardano roots of the line cubic.
 | Ptychography / WDD | different experiment; not this through-focal kernel |
 | Multi-slice / dynamical scattering | different propagator than bilinear `ihat` |
 | Near-perfect coherence as $`M=1`$ | rank-1 apply needs `PerfectCoherence` (`exists_R_FO_ne_R0`) |
-| Formal `recommendT` / “$`T=1`$ because quadratic” | quadratic FO is the *model*, not one-step exactness |
+| Formal Born-iterate-count policy / “$`T=1`$ because quadratic” | quadratic FO is the *model*, not one-step exactness |
 
 ---
 
