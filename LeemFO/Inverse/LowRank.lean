@@ -390,4 +390,145 @@ theorem reconstructCost_lt_bornStep_8_128 {K : ℕ} (hK : 1 ≤ K) :
     omega
   exact this
 
+
+/-! ## Zero-weight padding and rank-adaptive `M` -/
+
+/-- An unused Hopkins mode with weight `0` does not change the TCC kernel
+(padding the source list is free algebraically). -/
+theorem tccKernel_insert_weight_zero {ι : Type*} [DecidableEq ι]
+    (w : ι → ℂ) (h : ι → G → ℂ) (src : Finset ι) (m : ι) (hw : w m = 0) :
+    tccKernel w h (insert m src) = tccKernel w h src := by
+  funext q q'
+  by_cases hm : m ∈ src
+  · simp [tccKernel, Finset.insert_eq_of_mem hm]
+  · simp [tccKernel, Finset.sum_insert hm, hw]
+
+/-- Consequently `ihat` is unchanged by zero-weight padding. -/
+theorem ihat_tcc_insert_weight_zero {ι : Type*} [DecidableEq ι]
+    (w : ι → ℂ) (h : ι → G → ℂ) (src : Finset ι) (m : ι) (hw : w m = 0)
+    (Ψ : G → ℂ) (ξ : G) :
+    ihat (tccKernel w h (insert m src)) Ψ ξ
+      = ihat (tccKernel w h src) Ψ ξ := by
+  rw [tccKernel_insert_weight_zero w h src m hw]
+
+/-- Dropping modes with weight `0` leaves the TCC kernel unchanged. -/
+theorem tccKernel_filter_ne_zero {ι : Type*} [DecidableEq ι]
+    (w : ι → ℂ) (h : ι → G → ℂ) (src : Finset ι) :
+    tccKernel w h (src.filter fun m => w m ≠ 0) = tccKernel w h src := by
+  funext q q'
+  refine (Finset.sum_filter_of_ne (s := src)
+    (f := fun m => w m * h m q * conj (h m q')) ?_).symm
+  intro m _ hterm
+  exact fun hw => hterm (by simp [hw])
+
+lemma tccApplyCost_mono {K M₁ M₂ N : ℕ} (hM : M₁ ≤ M₂) :
+    tccApplyCost K M₁ N ≤ tccApplyCost K M₂ N := by
+  simp only [tccApplyCost, dftCost]
+  simpa [mul_assoc, mul_left_comm, mul_comm] using
+    Nat.mul_le_mul_right (2 * N * N.log2) (Nat.mul_le_mul_left K hM)
+
+/-- At `N = 128`, once `M ≥ 10` the modelled TCC apply meets or exceeds dense
+`K N²` (large rank approaches the dense pair-sum cost). -/
+theorem denseApplyCost_le_tccApplyCost_128 {K M : ℕ} (hM : 10 ≤ M) :
+    denseApplyCost K 128 ≤ tccApplyCost K M 128 := by
+  unfold tccApplyCost denseApplyCost dftCost
+  rw [log2_128]
+  have hcore : 128 ≤ 2 * 7 * M :=
+    le_trans (by decide : 128 ≤ 2 * 7 * 10) (Nat.mul_le_mul_left (2 * 7) hM)
+  have hL : K * M * 2 * (128 * 7) = K * 128 * (2 * 7 * M) := by ring
+  rw [hL]
+  exact Nat.mul_le_mul_left (K * 128) hcore
+
+/-- Exact line search at rank `M = 8` is not cheaper than a dense apply at
+`N = 128` (three TCC applies already exceed `K N²`). -/
+theorem denseApplyCost_le_lineSearchCost_128_rank8 {K : ℕ} :
+    denseApplyCost K 128 ≤ lineSearchCost K 8 128 := by
+  unfold lineSearchCost denseApplyCost quarticCoeffCost
+  rw [tccApplyCost_formula, log2_128]
+  have hL : 3 * (K * 8 * 2 * 128 * 7) + 5 * K * 128 = 43648 * K := by ring
+  have hR : K * 128 * 128 = 16384 * K := by ring
+  rw [hL, hR]
+  exact Nat.mul_le_mul_right K (by decide : 16384 ≤ 43648)
+
+/-- Cost-safe Hopkins-rank cap at the `N = 128` design point:
+* perfect coherence → exact `M = 1` (`ihat_R_FO_of_perfect`);
+* exact line search → `M = 1` (`lineSearchCost_lt_dense_128_rank1`;
+  rank 8 is not cheaper: `denseApplyCost_le_lineSearchCost_128_rank8`);
+* Born / hybrid apply → `M ≤ 8` (`tccApplyCost_lt_dense_128`). -/
+def recommendTccCap (perfectCoherence lineSearch : Bool) : ℕ :=
+  if perfectCoherence then 1
+  else if lineSearch then 1
+  else 8
+
+/-- Smallest `M ∈ {1,…,Mcap}` with `truncOk M`, else `Mcap`.
+Interpret `truncOk M` as the `ihat_tcc_trunc_bound` proxy meeting the
+tolerance: `(∑∑‖R - tcc_M‖) * (∑‖Ψ‖)² ≤ ε`. -/
+def chooseTccRank (Mcap : ℕ) (truncOk : ℕ → Bool) : ℕ :=
+  ((Finset.Icc 1 Mcap).filter truncOk).min.getD Mcap
+
+/-- Rank-adaptive policy: cost-safe cap, then minimal truncation that meets
+the error budget. Zero-weight padding of unused slots is free
+(`tccKernel_insert_weight_zero`). -/
+def recommendTccRank (perfectCoherence lineSearch : Bool)
+    (truncOk : ℕ → Bool) : ℕ :=
+  chooseTccRank (recommendTccCap perfectCoherence lineSearch) truncOk
+
+lemma recommendTccCap_perfect (lineSearch : Bool) :
+    recommendTccCap true lineSearch = 1 := by
+  simp [recommendTccCap]
+
+lemma recommendTccCap_lineSearch :
+    recommendTccCap false true = 1 := by
+  simp [recommendTccCap]
+
+lemma recommendTccCap_born :
+    recommendTccCap false false = 8 := by
+  simp [recommendTccCap]
+
+lemma chooseTccRank_le (Mcap : ℕ) (truncOk : ℕ → Bool) :
+    chooseTccRank Mcap truncOk ≤ Mcap := by
+  simp only [chooseTccRank]
+  cases hmin : ((Finset.Icc 1 Mcap).filter truncOk).min with
+  | none => simp [hmin, Option.getD]
+  | some M =>
+    have hmem : M ∈ (Finset.Icc 1 Mcap).filter truncOk :=
+      Finset.mem_of_min hmin
+    have hIcc : M ∈ Finset.Icc 1 Mcap := Finset.mem_of_mem_filter hmem
+    exact (Finset.mem_Icc.mp hIcc).2
+
+lemma recommendTccRank_le_cap (perfectCoherence lineSearch : Bool)
+    (truncOk : ℕ → Bool) :
+    recommendTccRank perfectCoherence lineSearch truncOk
+      ≤ recommendTccCap perfectCoherence lineSearch :=
+  chooseTccRank_le _ _
+
+/-- Born/hybrid policy stays strictly cheaper than dense apply at `N = 128`. -/
+theorem tccApplyCost_recommend_lt_dense_born {K : ℕ} (hK : 1 ≤ K)
+    (truncOk : ℕ → Bool) :
+    tccApplyCost K (recommendTccRank false false truncOk) 128
+      < denseApplyCost K 128 := by
+  have hM : recommendTccRank false false truncOk ≤ 8 := by
+    simpa [recommendTccCap_born] using
+      recommendTccRank_le_cap false false truncOk
+  exact tccApplyCost_lt_dense_128 hK hM
+
+/-- Perfect-coherence or line-search policy uses at most `M = 1`, so exact
+line search stays under dense at `N = 128`. -/
+theorem lineSearchCost_recommend_lt_dense {K : ℕ} (hK : 1 ≤ K)
+    (perfectCoherence : Bool) (truncOk : ℕ → Bool) :
+    lineSearchCost K (recommendTccRank perfectCoherence true truncOk) 128
+      < denseApplyCost K 128 := by
+  have hcap : recommendTccCap perfectCoherence true = 1 := by
+    cases perfectCoherence <;> simp [recommendTccCap]
+  have hle : recommendTccRank perfectCoherence true truncOk ≤ 1 := by
+    simpa [hcap] using recommendTccRank_le_cap perfectCoherence true truncOk
+  have hcost :
+      lineSearchCost K (recommendTccRank perfectCoherence true truncOk) 128
+        ≤ lineSearchCost K 1 128 := by
+    simp only [lineSearchCost]
+    exact Nat.add_le_add_right
+      (Nat.mul_le_mul_left 3 (tccApplyCost_mono (K := K) (N := 128) hle)) _
+  exact lt_of_le_of_lt hcost (lineSearchCost_lt_dense_128_rank1 hK)
+
+
 end
