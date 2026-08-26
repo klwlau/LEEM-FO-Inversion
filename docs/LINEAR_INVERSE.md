@@ -406,9 +406,19 @@ formal $`s`$-derivative is `lineCubic`. A unit Gauss–Newton step
 not identically zero (`lineCubic_exactGN`). Roots of the cubic are not
 constructed (no Cardano).
 
+When $`A_1=\texttt{lineCubic}(\cdot)(0)<0`$, the algebraic Armijo step
+`descentStep` (built from $`\lvert A_2\rvert+\lvert A_3\rvert+\lvert A_4\rvert`$)
+gives $`\texttt{quadEnergy}(s)<\texttt{quadEnergy}(0)`$
+(`quadEnergy_descent`); a unit step need not decrease energy
+(`exists_unit_step_energy_increase`). After a Born / `mixedBinStep`
+direction the FO-faithful 1D mix is `lineDescentStep` /
+`lineFid_descent`.
+
 **Lean.** `quadPoly`, `norm_sq_quadPoly`, `lineResidual_quadPoly`,
 `lineFid_quadEnergy`, `quadEnergy_shift`, `lineCubic_exactGN`,
-`lineCubic_exactGN_one_not_identically_zero`.
+`lineCubic_exactGN_one_not_identically_zero`, `descentStep`,
+`quadEnergy_armijo`, `quadEnergy_descent`,
+`exists_unit_step_energy_increase`, `lineDescentStep`, `lineFid_descent`.
 
 ---
 
@@ -508,6 +518,6 @@ Cardano roots of the line cubic.
 | T12 | `ihat_homotopy`, `ihat_homotopy_cubic_zero`, `bornModel`, `born_fixed_point_normal` |
 | T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixedSpectrumMix`, `remainderWeight` |
 | T14 | `tikhonovXhat2_conj_swap`, `ihat_hermitian`, `mixed2D_conj_partner` |
-| T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `lineCubic_exactGN` |
+| T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `lineCubic_exactGN`, `descentStep`, `quadEnergy_descent`, `lineFid_descent` |
 | T16 | `tccApplyCost_lt_dense_128`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1` |
 | T17 | `exists_interior_R_FO_ne_tie`, `exists_R_CTF_ne_R_FO`, `exists_one_defocus_pair_kernel`, `exists_modeSet_lt_modePairs`, `exists_weakPhase_sin_zero_R_FO_ne_zero` |

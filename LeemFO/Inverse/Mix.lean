@@ -19,9 +19,10 @@ then remainder-corrected Born steps (`mixed2D` / `mixedSpectrum2`) whose
 apply is rank-`M` TCC (`ihat_tcc`) or exact rank-1 autocorrelation under
 `PerfectCoherence`. Per-bin remainder weight (`remainderWeight`) skips Born
 on quiet bins (`t = 0`) and takes the full remainder (`t = 1`) otherwise.
-An exact quartic line search (`lineFid_quadEnergy`) is the FO-faithful
-1D mix after a Born direction; a unit GN step is not a critical point
-(`lineCubic_exactGN`). Competing maps (TIE, coherent GS / `R_CTF`,
+An algebraic Armijo line search on the exact quartic
+(`lineDescentStep` / `lineFid_descent`) is the FO-faithful 1D mix after a
+Born / `mixedBinStep` direction; a unit GN step is not a critical point
+(`lineCubic_exactGN`) and can raise energy (`exists_unit_step_energy_increase`). Competing maps (TIE, coherent GS / `R_CTF`,
 single-defocus Wiener, linearized CTF, radial 1D kernel, 1D Jacobi–Anger
 as a 2D inverse) fail as identities on concrete columns.
 
