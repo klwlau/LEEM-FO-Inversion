@@ -11,7 +11,7 @@ step). Encoding: `LeemFO/Inverse/Tikhonov.lean`,
 `LeemFO/Inverse/Modes.lean`. The analytic bilinear inverse (Gram lift,
 small-mode closed forms, 2D kernel degeneracy) is
 `LeemFO/Inverse/Gram.lean`, `SmallMode.lean`, `Degeneracy.lean`,
-`Analytic.lean`, with 2D kernel `LeemFO/Forward/Kernel2.lean`.
+`Analytic.lean`, `Fiber.lean`, with 2D kernel `LeemFO/Forward/Kernel2.lean`.
 
 The object is finite-dimensional throughout. After a formal discrete Fourier
 transform, each spatial-frequency bin is a map $`\kappa \to \mathbb{C}`$ of defocus
@@ -314,7 +314,7 @@ real part, then `vacuumGaugePsi (gram Ψ) = Ψ`. Global phase is quotiented:
 `gram_eq_of_phase`).
 
 **Lean.** `vacuumGaugePsi`, `vacuumGaugePsi_recovers`, `analyticPsi_recovers`,
-`analyticPsi_unique`.
+`analyticPsi_unique`, `analyticPsi_unique_of_dc_column`.
 
 ### T11. DC-column split
 
@@ -339,13 +339,19 @@ rule at $`\alpha=0`$ recovers $`(X(\xi,0),X(0,-\xi))`$ exactly.
 $`\{0,\xi\}`$ with $`2\xi\neq 0`$: the conjugate branch drops and
 $`\hat I(\xi)=R(\xi,0)X(\xi,0)`$ (scalar Tikhonov at $`\alpha=0`$ inverts it).
 Support at $`\{-\xi,0,\xi\}`$ with $`2\xi\neq 0`$ and $`3\xi\neq 0`$: the
-remainder vanishes, so the vacuum $`2\times 2`$ is exact. The two-mode
-amplitude quadratic $`s(T-s)=\lvert Z\rvert^2`$ has roots
+remainder vanishes, so the vacuum $`2\times 2`$ is exact. A non-collinear
+3-wave object $`\{0,u,v\}`$ (with $`2u\neq 0`$, $`2u\neq v`$, $`v\neq -u`$)
+likewise has vanishing remainder and conjugate branch at frequency $`u`$,
+so $`\hat I(u)=R(u,0)X(u,0)`$; the same holds at $`v`$ under the swapped
+hypotheses. The two-mode amplitude quadratic $`s(T-s)=\lvert Z\rvert^2`$ has roots
 `twoModePlus`/`twoModeMinus`; the larger (specular) root is `twoModePlus`.
 
 **Lean.** `ihat_of_dc_support`, `bilinearRemainder_twoMode`, `ihat_twoMode`,
 `analyticPair_twoMode`, `bilinearRemainder_threeMode`, `ihat_threeMode_axis`,
-`analyticPair_threeMode`, `twoMode_roots_pair`, `twoMode_specular`.
+`analyticPair_threeMode`, `bilinearRemainder_twoAxis`, `ihat_twoAxis`,
+`ihat_twoAxis_v`, `ihat_twoAxis_dc`, `analyticPair_twoAxis`,
+`analyticPair_twoAxis_v`, `twoAxis_dcCol_unique`, `twoAxis_dcCol_unique_v`,
+`twoMode_roots_pair`, `twoMode_specular`.
 
 ### T13. Hermitian intensity and rank-1 pupil
 
@@ -386,6 +392,45 @@ remainder knowledge, small-mode support, or injective off-DC slices plus a
 full Gram/vacuum gauge. It is **not** an inverse of unrestricted 2D Yu
 `R_FO2` on a general lattice: pure defocus is degenerate in the
 perpendicular directions, and the DC slice has rank one.
+
+### T15. Vandermonde fiber masses
+
+**Statement.** Under perfect coherence and pure defocus ($`C_3=C_5=0`$),
+sampled bilinear FO at lag $`\xi`$ is a mixture of cisoids whose frequencies
+are $`\omega(q,q-\xi)=\pi\lambda(\lVert\mathbf{q}\rVert^2-\lVert\mathbf{q}-\boldsymbol{\xi}\rVert^2)`$.
+Grouping $`q`$ by a fiber index, $`n`$ equally spaced defoci
+$`\Delta z_k=\delta k`$ yield the Vandermonde system
+
+```math
+\hat I(\xi,\delta k)=\sum_{j} M_j\,z_j^k,\qquad
+z_j=\mathrm{e}^{\mathrm{i}\omega_j\delta},
+```
+
+for the fiber masses $`M_j`$. Distinct nodes ($`z_j`$ injective) recover
+$`M`$ uniquely by right-multiplication with the inverse Vandermonde. If
+each fiber carries at most one occupied pair (transversal support) and
+those frequencies lie inside the aperture, then $`M_{\mathrm{idx}(q)}=X(q,q-\xi)`$.
+In particular the vacuum-column entry $`X(\xi,0)`$ is the mass of the
+fiber containing $`(\xi,0)`$ (`recoveredMasses_eq_gram_vacuum`). Collecting
+every DC-column entry together with $`X(0,0)`$ determines a vacuum-gauged
+$`\Psi`$ (`analyticPsi_unique_of_dc_column`); $`X(0,0)`$ itself is not an
+off-DC fiber mass.
+
+Householder partners across $`\boldsymbol{\xi}`$ share a cisoid node
+(`defocusOmega_reflect`), so they remain a single mass: the inverse
+recovers fibers, not individual lattice points on an iso-$`\omega`$ line.
+
+**Lean.** `cisoidMass`, `cisoidNode`, `recoveredMasses`,
+`cisoidMasses_unique`, `recoveredMasses_eq`, `ihat_eq_cisoidMass`,
+`ihat_eq_vandermondeRow`, `cisoidMass_unique_of_ihat`,
+`recoveredMasses_eq_cisoidMass`, `transversalSupport`,
+`cisoidMass_eq_gram_of_transversal`,
+`recoveredMasses_eq_gram_of_transversal`,
+`recoveredMasses_eq_gram_vacuum`, `gram_eq_of_transversal_ihat`.
+
+**Tightness.** This is the analytic 2D inverse on **transversal** support
+with distinct cisoid nodes. It is **not** an inverse of unrestricted Yu
+$`R_{\mathrm{FO2}}`$ on a general 2D lattice.
 
 ---
 
@@ -428,8 +473,9 @@ estimate in a Banach space of images).
 | T8 | `one_measurement_not_injective`, `weakPhase_sin_eq_zero`, `exists_interior_weakPhase_zero` |
 | $`2\times 2`$ Gram | `tikhonovJ2`, `tikhonovXhat2`, `gramDet_pos`, `tikhonovJ2_eq_shift`, `tikhonovJ2_min`, `tikhonov2_unique`, `tikhonov2_error` |
 | T9 | `stage1Scalar`, `stage1Pair`, `stage1Scalar_unique`, `stage1Pair_unique`, `vacuumGN_eq_stage1Pair`, `ihatJac_vacuum_slice`, `ihatJac_vacuum_R_FO_dc`, `stage2Skip`, `rFO`, `sinusoidJ`, `R_FO_hermitian`, `R_FO_dc` |
-| T10 | `gram`, `vacuumGaugePsi_recovers`, `analyticPsi_recovers`, `analyticPsi_unique`, `gram_eq_of_phase` |
+| T10 | `gram`, `vacuumGaugePsi_recovers`, `analyticPsi_recovers`, `analyticPsi_unique`, `analyticPsi_unique_of_dc_column`, `gram_eq_of_phase` |
 | T11 | `ihat_eq_gram`, `ihat_dc_split`, `twoColumn_recovers`, `analyticPair_of_remainder`, `dcPair_unique_of_remainder` |
-| T12 | `ihat_twoMode`, `analyticPair_twoMode`, `ihat_threeMode_axis`, `analyticPair_threeMode`, `twoMode_specular` |
+| T12 | `ihat_twoMode`, `analyticPair_twoMode`, `ihat_threeMode_axis`, `analyticPair_threeMode`, `ihat_twoAxis`, `ihat_twoAxis_v`, `ihat_twoAxis_dc`, `analyticPair_twoAxis`, `analyticPair_twoAxis_v`, `twoAxis_dcCol_unique`, `twoAxis_dcCol_unique_v`, `twoMode_specular` |
 | T13 | `ihat_hermitian`, `ihat_of_rank1`, `dcSlice_not_injective`, `offDiagGram_eq_of_sliceInjective` |
 | T14 | `R_FO2`, `R_FO2_pureDefocus_perp`, `reflectLine`, `sampledR`, `ihat_sampledR_perfect` |
+| T15 | `cisoidMass`, `recoveredMasses`, `cisoidMasses_unique`, `recoveredMasses_eq_gram_of_transversal`, `recoveredMasses_eq_gram_vacuum`, `gram_eq_of_transversal_ihat` |

@@ -7,11 +7,12 @@ import LeemFO.Inverse.Gram
 import Mathlib.Tactic.Linarith
 
 /-!
-# Exact inverses on one, two and three Fourier modes
+# Exact inverses on one, two, three Fourier modes and two-axis 3-wave objects
 
 Finite-support specialisations of the Gram inverse. On two modes the intensities
 $`I(0)`$ and $`I(\xi)`$ determine a quadratic for the pair of amplitudes; the
-specular root is the one with larger DC.
+specular root is the one with larger DC. A non-collinear 3-wave object
+`{0, u, v}` inverts by a scalar CTF slice at each diffracted frequency.
 -/
 
 open Complex Real
@@ -180,6 +181,77 @@ theorem ihat_threeMode_axis (R : G → G → ℂ) (Ψ : G → ℂ) {ξ : G}
     ihat R Ψ ξ
       = R ξ 0 * gram Ψ ξ 0 + R 0 (-ξ) * gram Ψ 0 (-ξ) := by
   rw [ihat_dc_split (hξ := hξ), bilinearRemainder_threeMode R Ψ hξ h2 h3 hΨ]
+  ring
+
+/-- Two non-collinear diffracted beams: leftover index `v` misses `v - u`. -/
+theorem bilinearRemainder_twoAxis (R : G → G → ℂ) (Ψ : G → ℂ) {u v : G}
+    (hu : u ≠ 0) (_hv : v ≠ 0) (huv : u ≠ v) (h2 : u + u ≠ v)
+    (hΨ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Ψ q = 0) :
+    bilinearRemainder R Ψ u = 0 := by
+  unfold bilinearRemainder
+  refine Finset.sum_eq_zero fun q _ => ?_
+  split_ifs with hq
+  · rfl
+  · have hq0 : q ≠ 0 := fun h => hq (Or.inl h)
+    have hqu : q ≠ u := fun h => hq (Or.inr h)
+    by_cases hqv : q = v
+    · rw [hqv]
+      have hmiss : Ψ (v - u) = 0 := by
+        have h0' : v - u ≠ 0 := sub_ne_zero.mpr huv.symm
+        have hu' : v - u ≠ u := fun hz => h2 (sub_eq_iff_eq_add.mp hz).symm
+        have hv' : v - u ≠ v := fun hz => hu (sub_eq_self.mp hz)
+        exact hΨ _ h0' hu' hv'
+      simp [gram, hmiss]
+    · simp [gram, hΨ q hq0 hqu hqv]
+
+/-- 2D three-wave object `{0, u, v}` at frequency `u`: conjugate branch and remainder drop. -/
+theorem ihat_twoAxis (R : G → G → ℂ) (Ψ : G → ℂ) {u v : G}
+    (hu : u ≠ 0) (hv : v ≠ 0) (huv : u ≠ v) (h2u : u + u ≠ 0) (h2 : u + u ≠ v)
+    (hneg : v ≠ -u)
+    (hΨ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Ψ q = 0) :
+    ihat R Ψ u = R u 0 * gram Ψ u 0 := by
+  have hconj : gram Ψ 0 (-u) = 0 := by
+    have hn0 : -u ≠ 0 := neg_ne_zero.mpr hu
+    have hnu : -u ≠ u := fun hz => h2u (neg_eq_iff_add_eq_zero.mp hz)
+    have hnv : -u ≠ v := fun hz => hneg hz.symm
+    simp [gram, hΨ (-u) hn0 hnu hnv]
+  rw [ihat_dc_split (hξ := hu), bilinearRemainder_twoAxis R Ψ hu hv huv h2 hΨ, hconj]
+  simp only [mul_zero, add_zero]
+
+/-- Same 3-wave object at the second diffracted frequency `v`. -/
+theorem ihat_twoAxis_v (R : G → G → ℂ) (Ψ : G → ℂ) {u v : G}
+    (hu : u ≠ 0) (hv : v ≠ 0) (huv : u ≠ v) (h2v : v + v ≠ 0) (h2vu : v + v ≠ u)
+    (hneg : u ≠ -v)
+    (hΨ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Ψ q = 0) :
+    ihat R Ψ v = R v 0 * gram Ψ v 0 := by
+  refine ihat_twoAxis R Ψ hv hu huv.symm h2v h2vu hneg ?_
+  intro q hq0 hqv hqu
+  exact hΨ q hq0 hqu hqv
+
+/-- DC intensity of a 3-wave object is the sum of the three diagonal Gram entries. -/
+theorem ihat_twoAxis_dc (R : G → G → ℂ) (Ψ : G → ℂ) {u v : G}
+    (hu : u ≠ 0) (hv : v ≠ 0) (huv : u ≠ v)
+    (hΨ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Ψ q = 0) :
+    ihat R Ψ 0
+      = R 0 0 * gram Ψ 0 0 + R u u * gram Ψ u u + R v v * gram Ψ v v := by
+  rw [ihat_eq_gram]
+  simp only [sub_zero]
+  rw [← Finset.sum_add_sum_compl (insert v ({0, u} : Finset G))]
+  have hmemv : v ∉ ({0, u} : Finset G) := by
+    simp only [Finset.mem_insert, Finset.mem_singleton, not_or]
+    exact ⟨hv, huv.symm⟩
+  have htrip :
+      ∑ q ∈ insert v ({0, u} : Finset G), R q q * gram Ψ q q
+        = R v v * gram Ψ v v
+          + (R 0 0 * gram Ψ 0 0 + R u u * gram Ψ u u) := by
+    rw [Finset.sum_insert hmemv, Finset.sum_pair hu.symm]
+  have hrest :
+      ∑ q ∈ (insert v ({0, u} : Finset G))ᶜ, R q q * gram Ψ q q = 0 := by
+    refine Finset.sum_eq_zero fun q hq => ?_
+    have hq' : q ≠ v ∧ q ≠ 0 ∧ q ≠ u := by
+      simpa [Finset.mem_compl, Finset.mem_insert, Finset.mem_singleton, not_or] using hq
+    simp [gram, hΨ q hq'.2.1 hq'.2.2 hq'.1]
+  rw [htrip, hrest, add_zero]
   ring
 
 end

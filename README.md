@@ -39,10 +39,12 @@ for the 1D sinusoid of Yu *et al.* The bilinear inverse is encoded
 analytically as a Gram lift plus vacuum-gauge factor: each
 difference-frequency slice is linear in $`X(q,q-\xi)`$, the vacuum
 $`2\times 2`$ inverts the DC column once the off-axis remainder is known
-or vanishes (1–3 Fourier modes), and a radial pure-defocus 2D kernel
-cannot separate frequencies with the same projection onto $`\xi`$.
+or vanishes (1–3 Fourier modes, two-axis 3-wave objects), an equally
+spaced pure-defocus series inverts iso-$`\omega`$ fiber masses by a
+Vandermonde system, and a radial pure-defocus 2D kernel cannot
+separate frequencies with the same projection onto $`\xi`$.
 Selected algebraic claims (unique Tikhonov minimizer, remainder-corrected
-Cramer formula, small-mode identities, 2D degeneracy) are machine-checked
+Cramer formula, small-mode identities, fiber masses, 2D degeneracy) are machine-checked
 in Lean 4. This is **not** an unconditional inverse of the Yu kernel on
 an unrestricted 2D lattice.
 
@@ -98,6 +100,7 @@ Forward proofs live in `LeemFO/Forward/`; inverse proofs live in `LeemFO/Inverse
 | `LeemFO/Inverse/LinearInverse.lean` | Aperture support of $`R_{\mathrm{FO}}(\cdot,0)`$, gauge, vacuum Jacobian remainder, $`K\ge 2`$ |
 | `LeemFO/Inverse/Pipeline.lean` | Stage-1 map `stage1Scalar`/`stage1Pair`, vacuum GN glue, algebraic `stage2Skip` |
 | `LeemFO/Inverse/Gram.lean` | Rank-1 Gram lift of bilinear FO, vacuum-gauge factor, remainder-corrected 2×2 |
-| `LeemFO/Inverse/SmallMode.lean` | Closed-form inverse on 1/2/3 Fourier modes |
+| `LeemFO/Inverse/SmallMode.lean` | Closed-form inverse on 1/2/3 Fourier modes and two-axis 3-wave objects |
 | `LeemFO/Inverse/Degeneracy.lean` | Householder reflection; pure-defocus 2D kernel depends on $`\mathbf{q}`$ only through $`\mathbf{q}\cdot\boldsymbol{\xi}`$ |
 | `LeemFO/Inverse/Analytic.lean` | Analytic reconstruction map, uniqueness, sampled 2D Yu kernel on a finite group |
+| `LeemFO/Inverse/Fiber.lean` | Vandermonde inverse of iso-$`\omega`$ fiber masses; Gram recovery on transversal support (Householder partners stay glued) |

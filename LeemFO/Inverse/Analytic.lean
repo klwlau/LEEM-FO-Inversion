@@ -14,9 +14,9 @@ import LeemFO.Inverse.Pipeline
 The reconstruction map is the vacuum-gauge factor of the Gram of the object.
 Each difference-frequency slice of a through-focal series is a linear image
 of that Gram; the vacuum 2×2 is the exact remainder-corrected inverse of the
-DC column. Small-mode objects invert in closed form. A radial pure-defocus
-kernel cannot separate perpendicular frequencies. The DC slice itself is not
-injective (`dcSlice_not_injective`).
+DC column. Small-mode and two-axis 3-wave objects invert in closed form. A
+radial pure-defocus kernel cannot separate perpendicular frequencies. The DC
+slice itself is not injective (`dcSlice_not_injective`).
 
 Stage-1 Tikhonov (`stage1Pair`) is this map linearised at vacuum (remainder
 dropped). The identities below keep the remainder and invert it when it is
@@ -59,6 +59,20 @@ theorem analyticPsi_unique {Ψ Φ : G → ℂ} (h0 : Ψ 0 ≠ 0)
   have hΨ := analyticPsi_recovers Ψ h0 himΨ hreΨ
   have hΦ := analyticPsi_recovers Φ hΦ0 himΦ hreΦ
   rw [← hΨ, ← hΦ, h]
+
+/-- Vacuum gauge uses only the DC column, so matching columns recover the object. -/
+theorem analyticPsi_unique_of_dc_column {Ψ Φ : G → ℂ} (h0 : Ψ 0 ≠ 0)
+    (himΨ : (Ψ 0).im = 0) (hreΨ : 0 ≤ (Ψ 0).re)
+    (hΦ0 : Φ 0 ≠ 0) (himΦ : (Φ 0).im = 0) (hreΦ : 0 ≤ (Φ 0).re)
+    (hcol : ∀ q, gram Ψ q 0 = gram Φ q 0) :
+    Ψ = Φ := by
+  have hΨ := analyticPsi_recovers Ψ h0 himΨ hreΨ
+  have hΦ := analyticPsi_recovers Φ hΦ0 himΦ hreΦ
+  have hmap : analyticPsi (gram Ψ) = analyticPsi (gram Φ) := by
+    unfold analyticPsi vacuumGaugePsi
+    funext q
+    simp only [hcol]
+  rw [← hΨ, ← hΦ, hmap]
 
 /-- Remainder-corrected measurements equal the vacuum 2×2 model. -/
 theorem remainderCorrected_eq_twoColumn (R : κ → G → G → ℂ) (Ψ : G → ℂ)
@@ -107,6 +121,88 @@ theorem analyticPair_twoMode (R : κ → G → G → ℂ) (Ψ : G → ℂ) {ξ :
   apply eq_of_sub_eq_zero
   rw [herr]
   simp [ofReal_zero]
+
+/-- Two-axis 3-wave object `{0, u, v}`: scalar CTF slice inverts the vacuum column at `u`. -/
+theorem analyticPair_twoAxis (R : κ → G → G → ℂ) (Ψ : G → ℂ) {u v : G}
+    (hu : u ≠ 0) (hv : v ≠ 0) (huv : u ≠ v)
+    (h2u : u + u ≠ 0) (h2 : u + u ≠ v) (hneg : v ≠ -u)
+    (hΨ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Ψ q = 0)
+    (hD : tikhonovDenom (0 : ℝ) (fun k => R k u 0) ≠ 0) :
+    tikhonovXhat 0 (fun k => R k u 0)
+        (fun k => ihat (R k) Ψ u)
+      = gram Ψ u 0 := by
+  have hy : (fun k : κ => ihat (R k) Ψ u)
+      = fun k => R k u 0 * gram Ψ u 0 := by
+    funext k
+    exact ihat_twoAxis (R k) Ψ hu hv huv h2u h2 hneg hΨ
+  rw [hy]
+  have hy0 : (fun k : κ => R k u 0 * gram Ψ u 0)
+      = fun k => R k u 0 * gram Ψ u 0 + (0 : ℂ) := by
+    funext k
+    rw [add_zero]
+  rw [hy0]
+  have herr :=
+    tikhonov_error (α := (0 : ℝ)) (fun k => R k u 0) (gram Ψ u 0)
+      (fun _ => (0 : ℂ)) hD
+  apply eq_of_sub_eq_zero
+  rw [herr]
+  simp [ofReal_zero]
+
+/-- Same 3-wave object: scalar CTF slice at the second diffracted frequency `v`. -/
+theorem analyticPair_twoAxis_v (R : κ → G → G → ℂ) (Ψ : G → ℂ) {u v : G}
+    (hu : u ≠ 0) (hv : v ≠ 0) (huv : u ≠ v)
+    (h2v : v + v ≠ 0) (h2vu : v + v ≠ u) (hneg : u ≠ -v)
+    (hΨ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Ψ q = 0)
+    (hD : tikhonovDenom (0 : ℝ) (fun k => R k v 0) ≠ 0) :
+    tikhonovXhat 0 (fun k => R k v 0)
+        (fun k => ihat (R k) Ψ v)
+      = gram Ψ v 0 := by
+  have hy : (fun k : κ => ihat (R k) Ψ v)
+      = fun k => R k v 0 * gram Ψ v 0 := by
+    funext k
+    exact ihat_twoAxis_v (R k) Ψ hu hv huv h2v h2vu hneg hΨ
+  rw [hy]
+  have hy0 : (fun k : κ => R k v 0 * gram Ψ v 0)
+      = fun k => R k v 0 * gram Ψ v 0 + (0 : ℂ) := by
+    funext k
+    rw [add_zero]
+  rw [hy0]
+  have herr :=
+    tikhonov_error (α := (0 : ℝ)) (fun k => R k v 0) (gram Ψ v 0)
+      (fun _ => (0 : ℂ)) hD
+  apply eq_of_sub_eq_zero
+  rw [herr]
+  simp [ofReal_zero]
+
+/-- Equal through-focal data at `u` recover the vacuum Gram entry of a 3-wave object. -/
+theorem twoAxis_dcCol_unique (R : κ → G → G → ℂ) {Ψ Φ : G → ℂ} {u v : G}
+    (hu : u ≠ 0) (hv : v ≠ 0) (huv : u ≠ v)
+    (h2u : u + u ≠ 0) (h2 : u + u ≠ v) (hneg : v ≠ -u)
+    (hΨ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Ψ q = 0)
+    (hΦ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Φ q = 0)
+    (hD : tikhonovDenom (0 : ℝ) (fun k => R k u 0) ≠ 0)
+    (heq : ∀ k, ihat (R k) Ψ u = ihat (R k) Φ u) :
+    gram Ψ u 0 = gram Φ u 0 := by
+  have hΨ' := analyticPair_twoAxis R Ψ hu hv huv h2u h2 hneg hΨ hD
+  have hΦ' := analyticPair_twoAxis R Φ hu hv huv h2u h2 hneg hΦ hD
+  have hy : (fun k : κ => ihat (R k) Ψ u) = fun k => ihat (R k) Φ u :=
+    funext heq
+  rw [← hΨ', ← hΦ', hy]
+
+/-- Equal through-focal data at `v` recover the other vacuum Gram entry. -/
+theorem twoAxis_dcCol_unique_v (R : κ → G → G → ℂ) {Ψ Φ : G → ℂ} {u v : G}
+    (hu : u ≠ 0) (hv : v ≠ 0) (huv : u ≠ v)
+    (h2v : v + v ≠ 0) (h2vu : v + v ≠ u) (hneg : u ≠ -v)
+    (hΨ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Ψ q = 0)
+    (hΦ : ∀ q, q ≠ 0 → q ≠ u → q ≠ v → Φ q = 0)
+    (hD : tikhonovDenom (0 : ℝ) (fun k => R k v 0) ≠ 0)
+    (heq : ∀ k, ihat (R k) Ψ v = ihat (R k) Φ v) :
+    gram Ψ v 0 = gram Φ v 0 := by
+  have hΨ' := analyticPair_twoAxis_v R Ψ hu hv huv h2v h2vu hneg hΨ hD
+  have hΦ' := analyticPair_twoAxis_v R Φ hu hv huv h2v h2vu hneg hΦ hD
+  have hy : (fun k : κ => ihat (R k) Ψ v) = fun k => ihat (R k) Φ v :=
+    funext heq
+  rw [← hΨ', ← hΦ', hy]
 
 /-- Three-mode objects invert by the vacuum 2×2 (no remainder). -/
 theorem analyticPair_threeMode (R : κ → G → G → ℂ) (Ψ : G → ℂ) {ξ : G}
