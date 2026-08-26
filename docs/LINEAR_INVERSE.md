@@ -189,6 +189,33 @@ $`K N^2`$, for every $`K\ge 1`$.
 Neither is cache/architecture cost, nor that a DFT of the physical
 continuous Fourier transform equals the array DFT.
 
+### T7b. Reject Kaczmarz / row-action for the linear $`2\times 2`$
+
+**Statement.** Forgetful cyclic per-defocus updates (`kaczmarzSweep`): at each
+defocus replace $`(u,v)`$ by the single-row closed form `tikhonovXhat2One`.
+One sweep equals the last defocus alone, so
+
+```math
+\texttt{kaczmarzSweep}=\texttt{tikhonovXhat2}
+\quad\text{on }\mathrm{Fin}\,1,
+```
+
+but there exist $`K=2`$ data with $`\alpha>0`$ for which one sweep is **not**
+the unique minimizer of `tikhonovJ2` (`exists_kaczmarzSweep_ne_tikhonovXhat2`,
+`exists_kaczmarzSweep_not_minimizer`). Modelled cost:
+`kaczmarzCost T K := T·K·binSolveCost 1`; for $`T\ge 1`$, $`K\ge 1`$ one has
+`binSolveCost K ≤ kaczmarzCost T K`, and for $`K\ge 2`$ even one sweep is
+strictly dearer than the batch Cramer solve.
+
+**Recommendation.** Reject sequential row-action as the stage-1 $`2\times 2`$
+solver; use batch `tikhonovXhat2`. A useful mix is nonlinear (Born / homotopy)
+iteration that still calls the batch $`2\times 2`$ per bin.
+
+**Lean.** `tikhonovXhat2One`, `kaczmarzSweep`,
+`kaczmarzSweep_eq_tikhonovXhat2_one`, `exists_kaczmarzSweep_ne_tikhonovXhat2`,
+`exists_kaczmarzSweep_not_minimizer`, `kaczmarzCost`,
+`binSolveCost_le_kaczmarzCost`, `binSolveCost_lt_kaczmarzCost_one_sweep`.
+
 ### T8. Why this is asymptotically the cheapest CTF-zero-filling method
 ($`K \ge 2`$)
 
@@ -323,6 +350,7 @@ estimate in a Banach space of images).
 | T5 | `ihat_gauge`, `objectWave_phase_shift` |
 | T6 | `ihat_add`, `ihatJac_vacuum`, `ihat_quadratic_remainder`, `ihat_bound` |
 | T7 | `dftCost`, `reconstructCost`, `reconstructCost_le`, `reconstructCost_lt_dense_128` |
+| T7b | `kaczmarzSweep`, `exists_kaczmarzSweep_ne_tikhonovXhat2`, `binSolveCost_le_kaczmarzCost` |
 | T8 | `one_measurement_not_injective`, `weakPhase_sin_eq_zero`, `exists_interior_weakPhase_zero` |
 | $`2\times 2`$ Gram | `tikhonovJ2`, `tikhonovXhat2`, `gramDet_pos`, `tikhonovJ2_eq_shift`, `tikhonovJ2_min`, `tikhonov2_unique`, `tikhonov2_error` |
 | T9 | `stage1Scalar`, `stage1Pair`, `stage1Scalar_unique`, `stage1Pair_unique`, `vacuumGN_eq_stage1Pair`, `ihatJac_vacuum_slice`, `ihatJac_vacuum_R_FO_dc`, `stage2Skip`, `rFO`, `sinusoidJ`, `R_FO_hermitian`, `R_FO_dc` |
