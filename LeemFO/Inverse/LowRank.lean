@@ -391,6 +391,7 @@ theorem reconstructCost_lt_bornStep_8_128 {K : ℕ} (hK : 1 ≤ K) :
   exact this
 
 
+
 /-! ## Zero-weight padding and rank-adaptive `M` -/
 
 /-- An unused Hopkins mode with weight `0` does not change the TCC kernel
@@ -415,11 +416,17 @@ theorem ihat_tcc_insert_weight_zero {ι : Type*} [DecidableEq ι]
 theorem tccKernel_filter_ne_zero {ι : Type*} [DecidableEq ι]
     (w : ι → ℂ) (h : ι → G → ℂ) (src : Finset ι) :
     tccKernel w h (src.filter fun m => w m ≠ 0) = tccKernel w h src := by
+  classical
   funext q q'
-  refine (Finset.sum_filter_of_ne (s := src)
-    (f := fun m => w m * h m q * conj (h m q')) ?_).symm
-  intro m _ hterm
-  exact fun hw => hterm (by simp [hw])
+  change (∑ m ∈ src.filter fun m => w m ≠ 0, w m * h m q * conj (h m q')) =
+    ∑ m ∈ src, w m * h m q * conj (h m q')
+  refine Finset.sum_subset (Finset.filter_subset (fun m => w m ≠ 0) src) ?_
+  intro m hm hnot
+  have hw : w m = 0 := by
+    have : ¬ (w m ≠ 0) := by
+      simpa [Finset.mem_filter, hm] using hnot
+    exact not_not.mp this
+  simp [hw]
 
 lemma tccApplyCost_mono {K M₁ M₂ N : ℕ} (hM : M₁ ≤ M₂) :
     tccApplyCost K M₁ N ≤ tccApplyCost K M₂ N := by
@@ -460,11 +467,11 @@ def recommendTccCap (perfectCoherence lineSearch : Bool) : ℕ :=
   else if lineSearch then 1
   else 8
 
-/-- Smallest `M ∈ {1,…,Mcap}` with `truncOk M`, else `Mcap`.
+/-- Smallest `M ∈ {1,…,Mcap}` with `truncOk M = true`, else `Mcap`.
 Interpret `truncOk M` as the `ihat_tcc_trunc_bound` proxy meeting the
 tolerance: `(∑∑‖R - tcc_M‖) * (∑‖Ψ‖)² ≤ ε`. -/
 def chooseTccRank (Mcap : ℕ) (truncOk : ℕ → Bool) : ℕ :=
-  ((Finset.Icc 1 Mcap).filter truncOk).min.getD Mcap
+  (((List.range Mcap).map (fun n => n + 1)).filter truncOk).headD Mcap
 
 /-- Rank-adaptive policy: cost-safe cap, then minimal truncation that meets
 the error budget. Zero-weight padding of unused slots is free
@@ -488,13 +495,18 @@ lemma recommendTccCap_born :
 lemma chooseTccRank_le (Mcap : ℕ) (truncOk : ℕ → Bool) :
     chooseTccRank Mcap truncOk ≤ Mcap := by
   simp only [chooseTccRank]
-  cases hmin : ((Finset.Icc 1 Mcap).filter truncOk).min with
-  | none => simp [hmin, Option.getD]
-  | some M =>
-    have hmem : M ∈ (Finset.Icc 1 Mcap).filter truncOk :=
-      Finset.mem_of_min hmin
-    have hIcc : M ∈ Finset.Icc 1 Mcap := Finset.mem_of_mem_filter hmem
-    exact (Finset.mem_Icc.mp hIcc).2
+  set xs := ((List.range Mcap).map (fun n => n + 1)).filter truncOk
+  have hsub : ∀ M ∈ xs, M ≤ Mcap := by
+    intro M hM
+    have hmem : M ∈ (List.range Mcap).map (fun n => n + 1) :=
+      List.mem_of_mem_filter hM
+    obtain ⟨n, hn, rfl⟩ := List.mem_map.mp hmem
+    have : n < Mcap := List.mem_range.mp hn
+    omega
+  match xs with
+  | [] => simp
+  | M :: _ =>
+    simpa using hsub M (by simp)
 
 lemma recommendTccRank_le_cap (perfectCoherence lineSearch : Bool)
     (truncOk : ℕ → Bool) :
@@ -529,6 +541,5 @@ theorem lineSearchCost_recommend_lt_dense {K : ℕ} (hK : 1 ≤ K)
     exact Nat.add_le_add_right
       (Nat.mul_le_mul_left 3 (tccApplyCost_mono (K := K) (N := 128) hle)) _
   exact lt_of_le_of_lt hcost (lineSearchCost_lt_dense_128_rank1 hK)
-
 
 end
