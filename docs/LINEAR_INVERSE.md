@@ -349,9 +349,14 @@ At a Born fixed point the vacuum-Jacobian normal equations hold for the
 nonlinear residual (`born_fixed_point_normal`).
 
 **Lean.** `ihat_homotopy`, `ihat_homotopy_at`, `bornModel`,
-`bornHomotopyPair_t0`, `born_fixed_point_normal`,
-`exists_bornModel_t_disagree` (global $`t`$ is not interchangeable
-across occupied bins).
+`bornModel_sub`, `bornModel_t1_ne_t0`, `bornModel_t0_ne_full`,
+`bornRhs_t0`, `bornRhs_sub`, `bornRhs_t1_ne_t0`,
+`bornRhs_t0_ignores_loud`, `bornHomotopyPair_t0`,
+`born_fixed_point_normal`, `exists_bornModel_t_disagree` (global
+$`t`$ is not interchangeable across occupied bins). Quiet $`t=1`$
+biases the stage-1 RHS; loud $`t=0`$ ignores the exact remainder.
+Per-bin $`0/1`$ `remainderWeight` is the recommended large-$`\varphi`$
+mix (not global $`t`$ and not fractional $`\min(1,\|\hat I(\delta)\|/\eta)`$).
 
 ---
 
@@ -505,7 +510,7 @@ Cardano roots of the line cubic.
 | T9 | `stage1Scalar`, `stage1Pair`, `stage1Scalar_unique`, `stage1Pair_unique`, `vacuumGN_eq_stage1Pair`, `ihatJac_vacuum_slice`, `ihatJac_vacuum_R_FO_dc`, `stage2Skip`, `rFO`, `sinusoidJ`, `R_FO_hermitian`, `R_FO_dc` |
 | T10 | `R_FO2`, `stage1Pair2`, `qmap2_zero`, `vacuumGN_eq_stage1Pair2`, `exists_R_FO2_ne_R_FO_of_norms` |
 | T11 | `ihat_rank1`, `ihat_tcc`, `ihat_R0`, `ihat_R_FO_of_perfect`, `ihat_R_FO2_of_perfect`, `ihat_tcc_trunc_bound`, `ihat_twoSource` |
-| T12 | `ihat_homotopy`, `ihat_homotopy_cubic_zero`, `bornModel`, `born_fixed_point_normal` |
+| T12 | `ihat_homotopy`, `ihat_homotopy_cubic_zero`, `bornModel`, `bornModel_sub`, `bornModel_t1_ne_t0`, `bornModel_t0_ne_full`, `bornRhs_t0`, `bornRhs_sub`, `bornRhs_t1_ne_t0`, `bornRhs_t0_ignores_loud`, `born_fixed_point_normal` |
 | T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixedSpectrumMix`, `remainderWeight` |
 | T14 | `tikhonovXhat2_conj_swap`, `ihat_hermitian`, `mixed2D_conj_partner` |
 | T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `lineCubic_exactGN` |
