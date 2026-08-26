@@ -13,7 +13,11 @@ When `R(q,q') = h(q) conj(h(q'))` the discrete intensity `ihat` is the
 cyclic autocorrelation of `h ⊙ Ψ`. A finite Hopkins sum of such terms
 is the algebraic TCC / coherent-mode expansion. Cost is modelled as
 `K M` pairs of DFTs versus a dense `K N²` pair sum (same discipline as
-`dftCost`: no FFT existence theorem).
+`dftCost`: no FFT existence theorem). Rank-adaptive `M` is chosen by
+`recommendTccRank` from the `ihat_tcc_trunc_bound` proxy versus the
+cost-safe caps `M=1` (perfect coherence / line search) and `M≤8`
+(Born/hybrid at `N=128`); zero-weight padding is free
+(`tccKernel_insert_weight_zero`).
 -/
 
 open Complex
