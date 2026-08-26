@@ -561,6 +561,14 @@ Cardano roots of the line cubic.
 | Contrast-norm $`y/\langle I\rangle`$ or $`y_k-y_0`$ layer | experiment convention; mix uses raw $`y`$ and `yLin` |
 | Formal `recommendK` / “$`K>2`$ always better” | $`K=1`$ rejected; $`K=2`$ default; extra $`K`$ is SNR / common zeros |
 | LR+D as the default apply | optional tighter bound; strictly costlier than `ihat_tcc` |
+| L-BFGS / BFGS / Levenberg–Marquardt | secant/damped-GN model is not the FO quartic (`exists_quadA2_ne_gn`) |
+| Anderson / DIIS mixing | numerical accelerator; not an FO identity |
+| Weighted LS / VST / $`1/\lvert h\rvert^2`$ | statistical; unweighted `tikhonovJ2` / `nlsJ` |
+| Huber / truncated least squares | breaks `lineFid_quadEnergy` |
+| Ptychography / WDD | different experiment; not this through-focal kernel |
+| Multi-slice / dynamical scattering | different propagator than bilinear `ihat` |
+| Near-perfect coherence as $`M=1`$ | rank-1 apply needs `PerfectCoherence` (`exists_R_FO_ne_R0`) |
+| Formal `recommendT` / “$`T=1`$ because quadratic” | quadratic FO is the *model*, not one-step exactness |
 
 ---
 
