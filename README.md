@@ -33,20 +33,28 @@ Closed-form envelopes of the FO kernel (journal-style note):
 
 Given a 2D through-focal stack we recover $`\psi_0`$ in two stages:
 regularized multi-defocus inversion on the CTF slice (Schiske/Wiener),
-which fills CTF zeros; then, for strong-phase objects, a mixed Born
-homotopy that applies the bilinear remainder with a rank-`M` TCC /
-coherent rank-1 autocorrelation (optionally LR+D) and solves the same
-Fourier-diagonal $`2\times 2`$ system on the corrected residual, with
-per-bin remainder skip and algebraic Armijo on the exact quartic line
-energy. Rank policy: $`M=1`$ if perfectly coherent or if using the
-line search, else $`M\le 8`$ at $`N=128`$. That mix is FO-faithful
-(bilinear FO is exactly quadratic) and cheaper than a dense pair apply
-at those ranks. The 1D sinusoid of Yu *et al.* remains Jacobi–Anger
-fitting. Selected algebraic claims are machine-checked in Lean 4.
+which fills CTF zeros and initializes the mix; then, for strong-phase
+objects, a mixed Born homotopy that applies the bilinear remainder with
+a rank-`M` TCC / coherent rank-1 autocorrelation (optionally LR+D) and
+solves the same Fourier-diagonal $`2\times 2`$ system on the corrected
+residual, with per-bin remainder skip $`t\in\{0,1\}`$ and optional
+algebraic Armijo on the exact quartic line energy.
+Rank policy: $`M=1`$ if perfectly coherent or if using the
+line search, else $`M\le 8`$ at $`N=128`$.
+That mix is FO-faithful (bilinear FO is exactly quadratic) and cheaper
+than a dense pair apply at those ranks.
+The 1D sinusoid of Yu *et al.* remains Jacobi–Anger fitting.
+Every competing inverse examined, with Pick / Not-pick reasons, is
+recorded in the selection note.
+Selected algebraic claims are machine-checked in Lean 4.
 
 Inverse note:
 [docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
 ([source](docs/proofs/leemfo_inverse.tex)).
+
+Algorithm selection (all methods explored):
+[docs/proofs/leemfo_mix.pdf](docs/proofs/leemfo_mix.pdf)
+([source](docs/proofs/leemfo_mix.tex)).
 
 Theorem list:
 [docs/LINEAR_INVERSE.md](docs/LINEAR_INVERSE.md).
@@ -66,6 +74,7 @@ To rebuild the PDFs (TeX Live with `latexmk`):
 cd docs/proofs
 latexmk -pdf leemfo_proofs.tex
 latexmk -pdf leemfo_inverse.tex
+latexmk -pdf leemfo_mix.tex
 ```
 
 ## Layout

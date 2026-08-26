@@ -48,7 +48,7 @@
 \title{Through-focal inversion of LEEM intensities\\
 with the Fourier-optics kernel}
 \author{Wilson Lau}
-\date{25 August 2026}
+\date{26 August 2026}
 
 \begin{document}
 \maketitle
@@ -60,17 +60,25 @@ $\psi_0=\sigma\,\ee^{\ii\phi}$, based on the Fourier-optics (FO) kernel
 of Yu, Lau and Altman~\cite{Yu2019}.
 Prior FO studies compared predicted and measured contrast for prescribed
 objects; they did not recover $\psi_0$.
-We invert that map in two stages: regularized multi-defocus inversion
-on the contrast-transfer slice $\RFO(\mathbf{q},0,\Dz)$, which fills
-zeros of a single-defocus contrast-transfer function (CTF), followed
-by a mixed Born homotopy on the bilinear kernel whose apply is a
-rank-$M$ transmission-cross-coefficient (TCC) expansion (exact rank-1
-autocorrelation under perfect coherence), omitted when the linearized
-residual lies at the noise floor ($\max\abs{\phi}\lesssim 0.3$).
+We invert that map in two stages.
+Stage~1 is regularized multi-defocus inversion on the
+contrast-transfer slice $\RFO(\mathbf{q},0,\Dz)$, which fills zeros of
+a single-defocus contrast-transfer function (CTF) and is the unique
+vacuum $2\times 2$ Tikhonov solve for $\alpha>0$.
+For $\phi\not\ll 1$ the large-phase estimator is a mixed
+transmission-cross-coefficient (TCC)--Born homotopy: rank-$M$ TCC
+apply (exact rank-1 autocorrelation under perfect coherence),
+remainder-corrected Born on the same Fourier-diagonal $2\times 2$,
+per-bin skip $t\in\{0,1\}$, and optional algebraic Armijo on the exact
+quartic line energy.
 A one-dimensional sinusoid reduces the second stage to Jacobi--Anger
-fitting of the aperture-truncated Bessel ladder.
-Uniqueness of the regularized Fourier-diagonal estimator and its
-bias--noise identity are machine-checked in Lean~4 against that kernel.
+fitting of the aperture-truncated Bessel ladder, not a two-dimensional
+dispatcher.
+Uniqueness of the regularized Fourier-diagonal estimator, the
+quadratic homotopy, the TCC apply and the quartic line energy are
+machine-checked in Lean~4 against that kernel.
+The catalogue of every competing inverse examined, with Pick / Not-pick
+reasons, is the companion selection note~\cite{Lau2026mix}.
 This work extends quantitative evaluation of LEEM contrast from forward
 matching of a focal series to recovery of the object that produced it.
 \end{abstract}
@@ -122,11 +130,13 @@ A focal series with non-coincident zeros restores those modes that the
 aperture admits.
 We compare several inverses and recommend a two-stage estimator that
 uses the Yu~2019 kernel on the CTF slice
-$\RFO(\mathbf{q},0,\Dz)$ and, when required, a mixed TCC--Born
-homotopy on the full bilinear residual.
-Selected algebraic properties of the discrete linear stage are
+$\RFO(\mathbf{q},0,\Dz)$ as initialization and as the quiet-bin
+branch, and a mixed TCC--Born homotopy on the full bilinear residual
+for loud bins.
+Selected algebraic properties of the discrete estimator are
 machine-checked in Lean~4~\cite{deMoura2021} against that kernel
 (\cref{sec:lean,app:formal}).
+Every method examined is recorded in~\cite{Lau2026mix}.
 
 \section{Image formation}
 \label{sec:formation}
@@ -255,8 +265,12 @@ Nonlinear least squares minimizes the bilinear FO residual of the
 stack.
 Each Gauss--Newton step uses the pair kernel, so it sees the mixing
 dropped by~\eqref{eq:xhat}.
-That estimator is FO-faithful for $\phi\not\ll 1$, at the cost of
-pair accumulations rather than a Fourier-diagonal solve.
+That estimator is FO-faithful for $\phi\not\ll 1$, but a dense pair
+apply is $KN^2$ and is not the recommended mix.
+The large-phase 2D estimator is the mixed TCC--Born homotopy of
+\cref{sec:verdict}: the same residual evaluated by a rank-$M$ TCC
+(or a coherent rank-1 autocorrelation) and a Fourier-diagonal
+$2\times 2$ Born step, with per-bin skip $t\in\{0,1\}$.
 If the aberrations themselves are unknown, the same idea stacked over
 extra defoci is the maximum-likelihood (MAL) reconstruction of Coene,
 Thust, Op de Beeck and Van Dyck~\cite{Coene1996}.
@@ -272,9 +286,10 @@ Single-image Wiener & one transform & no & no \\
 Transport of intensity & one transform & n/a (wrong PDE) & no \\
 \textbf{Multi-defocus regularized} & \textbf{$K{+}1$ transforms} & \textbf{yes} ($K\ge 2$) & linearized only \\
 Gerchberg--Saxton / HIO & many transforms & if $K\ge 2$ & only if the projector is FO \\
-Dense nonlinear least squares on FO & pair sums $KN^2$ & yes & \textbf{yes} \\
-\textbf{Mixed TCC--Born homotopy} & \textbf{$O(KMN\log N)$} & \textbf{yes} & \textbf{yes} \\
-Jacobi--Anger fit (1D sinusoid) & $O(M^2)$ & n/a (parametric) & \textbf{yes} \\
+Dense nonlinear least squares on FO & pair sums $KN^2$ & yes & yes (not cheap) \\
+\textbf{Mixed TCC--Born homotopy} & \textbf{$O(KMN\log N)$} & \textbf{yes} & \textbf{yes (2D pick)} \\
+Forgetful Kaczmarz ($K\ge 2$) & $O(K)$ per bin, wrong min & yes if $K\ge 2$ & linearized only, not Tikhonov \\
+Jacobi--Anger fit (1D sinusoid) & $O(M^2)$ & n/a (parametric) & \textbf{yes} (1D only) \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -283,14 +298,16 @@ Jacobi--Anger fit (1D sinusoid) & $O(M^2)$ & n/a (parametric) & \textbf{yes} \\
 \label{sec:verdict}
 
 For a general 2D experimental stack the fastest method that still
-fills CTF zeros is multi-defocus regularized inversion on
-the slice~\eqref{eq:slice}.
+fills CTF zeros in the \emph{linearized} regime is multi-defocus
+regularized inversion on the slice~\eqref{eq:slice}.
 It reads all $KN$ Fourier samples, fills interior zeros of
 $\sin(2\pi\chi_S)$ by stacking defoci, and has a unique minimizer for
 every $\alpha>0$ (\cref{thm:unique}).
+That map is also stage~1 of the large-phase mix and the quiet-bin
+branch.
 
-The FO-faithful estimator initializes that reconstruction and applies
-a mixed Born homotopy: the bilinear remainder is evaluated with a
+For $\phi\not\ll 1$ the FO-faithful 2D estimator initializes that
+reconstruction and applies a mixed Born homotopy: the bilinear remainder is evaluated with a
 rank-$M$ TCC (Hopkins) expansion, or exactly as an autocorrelation
 when the source is a point, optionally with a diagonal leftover
 (LR+D), and the same Fourier-diagonal $2\times 2$ system is solved on
@@ -339,27 +356,36 @@ pair-sum Gauss--Newton loop.
 \subsection{Discrete procedure}
 \label{sec:algo}
 
-The linear stage is the unique minimizer of \cref{thm:unique}.
-After rigid alignment, each plane is mean-subtracted and
-discrete-Fourier transformed; the zero-frequency bin, which carries
-total flux ($\RFO(0,0)=1$), is treated separately.
-For every $\abs{\mathbf{q}}\le\qap$ and every recorded defocus the
-slice~\eqref{eq:linear} is evaluated from the Yu~2019 envelopes.
-The scalar estimator~\eqref{eq:xhat} or the conjugate-pair
-$2\times 2$ system is solved at that bin with fixed $\alpha>0$;
-coefficients with $\abs{\mathbf{q}}>\qap$ are set to zero.
-An inverse transform yields $\sigma=\abs{\hat\psi}$ and
+\begin{enumerate}[leftmargin=*]
+\item Rigid alignment (informal) and mean-subtracted discrete Fourier
+transforms of the stack; the DC bin carries total flux
+($\RFO(0,0)=1$).
+\item For every $\abs{\mathbf{q}}\le\qap$ and recorded defocus, evaluate
+the slice~\eqref{eq:linear} from the Yu~2019 envelopes.
+Default $K=2$ independent defoci; coefficients with
+$\abs{\mathbf{q}}>\qap$ are set to zero.
+\item Stage~1: the conjugate-pair $2\times 2$ Tikhonov solve at each
+bin with fixed $\alpha>0$ (\texttt{stage1Pair2},
+\texttt{tikhonovXhat2}).
+The Hermitian partner at $-\mathbf{q}$ is recovered from an odd
+\texttt{qmap} when the data are Hermitian
+(\texttt{mixed2D\_conj\_partner}).
+\item Per-bin skip: if every defocus remainder at that bin is at most
+$\eta$, keep $t=0$ (stage-1 residual); otherwise $t=1$
+(\texttt{remainderWeight}, \texttt{mixed2DMix}).
+\item Loud bins: apply $\hat I(\delta)$ with rank-$M$ TCC
+(\texttt{ihat\_tcc}, \texttt{recommendTccRank}; exact rank-1 under
+\texttt{PerfectCoherence}), form the remainder-corrected residual, and
+re-solve the vacuum $2\times 2$ (\texttt{mixedBinStep}).
+Rank policy at $N=128$: $M=1$ if perfectly coherent or if a quartic
+line search is used, else $M\le 8$.
+\item Optional algebraic Armijo along that Born direction
+(\texttt{lineDescentStep} on \texttt{lineFid}).
+\item Inverse transform yields $\sigma=\abs{\hat\psi}$ and
 $\phi=\arg(\hat\psi)$ in the vacuum gauge.
-If the bilinear remainder of that reconstruction exceeds a noise floor,
-the same Fourier bins are updated by a mixed Born homotopy: apply
-$\hat I(\delta)$ with a rank-$M$ TCC (or a rank-1 autocorrelation under
-perfect coherence), form the remainder-corrected residual, and re-solve
-the vacuum $2\times 2$ system on loud bins ($t=1$), leaving quiet bins
-at the stage-1 solve ($t=0$).
-An exact quartic line search along a Born direction is optional
-(and forces $M=1$ in the cost model).
+\end{enumerate}
 Experimental lens current is mapped onto the defocus convention of
-\cref{sec:formation} by one fitted affine transform.
+\cref{sec:formation} by one fitted affine transform (informal).
 
 \section{Machine-checked properties of the discrete estimator}
 \label{sec:lean}
@@ -375,8 +401,9 @@ The discrepancy $n_k$ that enters the error identity is deterministic
 probability space is introduced.
 Full statements are collected in \cref{app:formal}.
 
-The reconstruction uses~\eqref{eq:slice}, not a substitute
-propagator.
+Stage~1 uses~\eqref{eq:slice}, not a substitute propagator; for
+$\phi\not\ll 1$ the estimator is the mixed TCC--Born homotopy of
+\cref{sec:algo}, not a dense pair-sum Gauss--Newton loop.
 For $\alpha>0$ the regularized energy at each frequency bin has a
 unique global minimizer~\eqref{eq:xhat} (\cref{thm:unique}).
 If $y_k=h_k x^\star+n_k$, the estimation error is exactly
@@ -414,15 +441,17 @@ We invert the FO image-formation map of Yu, Lau and
 Altman~\cite{Yu2019} for a 2D through-focal intensity series.
 Regularized multi-defocus inversion on the CTF slice fills the zeros
 of a single defocus, is unique for every positive regularization, and
-is first-order consistent with bilinear FO.
-For strong-phase objects whose linearized residual exceeds the noise,
-a mixed Born homotopy applies the exact quadratic remainder with a
-rank-$M$ TCC (or coherent rank-1 autocorrelation), per-bin quiet/loud
-skip, and the Fourier-diagonal $2\times 2$ solve; for the one-dimensional
-sinusoid that exhibits CTF failure it collapses to a Bessel fit.
+is first-order consistent with bilinear FO: it is stage~1 of the mix
+and the quiet-bin branch.
+For $\phi\not\ll 1$ the 2D estimator is the mixed TCC--Born homotopy:
+rank-$M$ TCC (or coherent rank-1) apply, remainder-corrected Born on
+the Fourier-diagonal $2\times 2$, per-bin skip $t\in\{0,1\}$, and
+optional quartic Armijo~\cite{Lau2026mix}.
+For the one-dimensional sinusoid that exhibits CTF failure the second
+stage collapses to a Bessel fit.
 These results broaden quantitative LEEM contrast analysis from
 forward matching of a focal series to recovery of the object, with
-the discrete linear stage verified against the same kernel used to
+the discrete estimator verified against the same kernel used to
 predict the images.
 
 \appendix
@@ -488,6 +517,25 @@ Lean: \texttt{ihat\_add}, \texttt{ihatJac\_vacuum},
 The dropped term is exactly bilinear: linearized inversion is biased by
 $O(\norm{\delta}^2)$, which is the whole image for a strong-phase
 sinusoid~\cite{Yu2017}.
+There is no cubic remainder along the real ray
+(\texttt{ihat\_homotopy\_cubic\_zero}).
+
+\begin{theorem}[Per-bin skip]
+\label{thm:skip}
+The recommended remainder weight is $0$ if every defocus remainder at
+the bin is at most $\eta$, and $1$ otherwise
+(\texttt{remainderWeight\_eq\_zero\_or\_one}).
+The $n=0$ iterate of the recommended mix is the 2D stage-1 map
+(\texttt{mixed2DMix\_zero\_eq\_stage1Pair2}).
+\end{theorem}
+
+\paragraph{Modelled TCC cost.}
+At $N=128$, a rank-$M\le 8$ TCC apply is strictly cheaper than dense
+$KN^2$ (\texttt{tccApplyCost\_lt\_dense\_128}); $M=9$ remains cheaper;
+$M\ge 10$ is not.
+The Born cap stays $M\le 8$.
+Rank-1 quartic line search is cheaper than dense at that grid;
+rank-8 line search is not.
 
 \begin{theorem}[Interior CTF zeros of a pure-defocus column]
 \label{thm:ctfzero}
@@ -508,9 +556,10 @@ equations are invertible even though one measurement is not
 The Cramer closed form is the unique minimizer
 (\texttt{tikhonovXhat2}, \texttt{tikhonov2\_unique}).
 One vacuum Gauss--Newton residual is that $2\times 2$ model, hence the
-closed-form step is \texttt{stage1Pair}
-(\texttt{vacuumGN\_eq\_stage1Pair}).
-The Fourier-domain map is \texttt{LeemFO/Inverse/Pipeline.lean}.
+closed-form 2D step is \texttt{stage1Pair2}
+(\texttt{vacuumGN\_eq\_stage1Pair2} in \texttt{Plane2.lean}).
+The 1D analogue is \texttt{stage1Pair} /
+\texttt{vacuumGN\_eq\_stage1Pair} in \texttt{Pipeline.lean}.
 
 \paragraph{Modelled cost.}
 Set $\mathrm{dftCost}(N):=N\log_2 N$ and
@@ -544,8 +593,8 @@ Stage-1 map, vacuum GN glue, global skip certificate & \texttt{LeemFO/Inverse/Pi
 2D kernel $R_{\mathrm{FO}2}$, disk aperture & \texttt{LeemFO/Forward/Kernel2.lean} \\
 2D stage-1 map \texttt{stage1Pair2} & \texttt{LeemFO/Inverse/Plane2.lean} \\
 Rank-1 / TCC apply, hybrid cost & \texttt{LeemFO/Inverse/LowRank.lean} \\
-Quadratic homotopy, Born/\texttt{mixed2DMix} skip & \texttt{LeemFO/Inverse/Homotopy.lean}, \texttt{Mix.lean} \\
-Exact quartic line energy & \texttt{LeemFO/Inverse/LineSearch.lean} \\
+Quadratic homotopy, Born/\texttt{mixed2DMix} skip & \texttt{Homotopy.lean}, \texttt{Mix.lean}; \texttt{remainderWeight\_eq\_zero\_or\_one} \\
+Exact quartic line energy, \texttt{nlsJ\_line} & \texttt{LeemFO/Inverse/LineSearch.lean} \\
 TIE/GS/HIO/Rytov/Wiener/radial/JA rejects & \texttt{exists\_*\_ne\_*} in \texttt{Mix.lean} \\
 Mode count $M=2\lfloor\qap\Lambda\rfloor+1$ & \texttt{LeemFO/Inverse/Modes.lean} \\
 FO ladder sample, \texttt{sinusoidJ} cost & \texttt{rFO}, \texttt{sinusoidJ} \\
@@ -555,8 +604,10 @@ FFT exists / equals the continuum FT & informal \\
 Gaussian/Poisson noise, Cram\'er--Rao & informal \\
 Gauss--Newton local quadratic convergence & informal \\
 Cardano roots of the line cubic; Banach FPT existence & informal \\
+Nesterov / L-BFGS / Anderson / TV / RL rates & informal; see~\cite{Lau2026mix} \\
 Image alignment, current-to-defocus map & informal \\
 ``Fastest among all conceivable algorithms'' & only DFT versus dense bilinear \\
+Full Pick / Not-pick catalogue & \cite{Lau2026mix} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -712,6 +763,12 @@ Commun.\ ACM \textbf{57}(4) (2014) 66--75.
 W.~Lau,
 \emph{Closed-form envelopes of the Fourier-optics kernel in
 aberration-corrected LEEM},
+unpublished (2026).
+
+\bibitem{Lau2026mix}
+W.~Lau,
+\emph{A mixed TCC--Born inverse of LEEM Fourier optics: algorithm
+selection},
 unpublished (2026).
 
 \end{thebibliography}

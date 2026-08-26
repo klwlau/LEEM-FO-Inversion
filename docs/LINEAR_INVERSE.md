@@ -3,6 +3,8 @@
 This is stage 2 of the project: after the Yu 2019 FO kernel is encoded,
 the discrete inverse is stated against that kernel.
 The inverse note is [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf).
+The algorithm-selection note (every method examined, Pick / Not-pick)
+is [proofs/leemfo_mix.pdf](proofs/leemfo_mix.pdf).
 
 This is the Lean-ready statement list for the **Fourier-diagonal Tikhonov
 estimator** of the linearized FO/CTF slice and the **mixed large-phase
