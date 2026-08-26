@@ -426,10 +426,19 @@ Same discipline as T7 (`dftCost` is a definition, not an FFT theorem).
   assembly. Under coherent rank-1 ($`M=1`$) that is still cheaper than
   dense at $`N=128`$ (`lineSearchCost_lt_dense_128_rank1`). Rank
   $`M=8`$ line search is **not** cheaper than dense (three applies
-  exceed $`KN^2`$).
+  exceed $`KN^2`$; `denseApplyCost_le_lineSearchCost_128_rank8`).
+- Large rank: for $`M\ge 10`$ at $`N=128`$ the modelled TCC apply meets
+  or exceeds dense (`denseApplyCost_le_tccApplyCost_128`).
+- Rank-adaptive policy `recommendTccRank`: cost-safe cap
+  (`recommendTccCap`: $`M=1`$ under perfect coherence or line search,
+  else $`M\le 8`$), then the smallest $`M`$ whose
+  `ihat_tcc_trunc_bound` proxy meets the tolerance. Zero-weight padding
+  of unused modes does not change `ihat`
+  (`tccKernel_insert_weight_zero`, `ihat_tcc_insert_weight_zero`).
 
 **Lean.** `tccApplyCost`, `bornStepCost`, `mixedCost`, `hybridCost`,
-`lineSearchCost`, `quarticCoeffCost`.
+`lineSearchCost`, `quarticCoeffCost`, `recommendTccRank`,
+`tccKernel_insert_weight_zero`.
 
 ---
 
@@ -509,5 +518,5 @@ Cardano roots of the line cubic.
 | T13 | `mixedBinStep`, `mixedSpectrum`, `mixedSpectrumPair`, `mixed2D`, `mixedSpectrumMix`, `remainderWeight` |
 | T14 | `tikhonovXhat2_conj_swap`, `ihat_hermitian`, `mixed2D_conj_partner` |
 | T15 | `quadPoly`, `norm_sq_quadPoly`, `lineFid_quadEnergy`, `lineCubic_exactGN` |
-| T16 | `tccApplyCost_lt_dense_128`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1` |
+| T16 | `tccApplyCost_lt_dense_128`, `hybridCost_lt_dense_succ`, `lineSearchCost_lt_dense_128_rank1`, `recommendTccRank`, `tccKernel_insert_weight_zero`, `denseApplyCost_le_tccApplyCost_128` |
 | T17 | `exists_interior_R_FO_ne_tie`, `exists_R_CTF_ne_R_FO`, `exists_one_defocus_pair_kernel`, `exists_modeSet_lt_modePairs`, `exists_weakPhase_sin_zero_R_FO_ne_zero` |
