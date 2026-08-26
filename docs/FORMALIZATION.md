@@ -1081,7 +1081,7 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | $`\Delta E=2\sqrt{2\ln 2}\,\sigma_E`$ | Thm. | `fwhmFactor`, `gaussian_fwhm`, `sigmaE` |
 | $`q_{\mathrm{ill}}=2\sqrt{2\ln 2}\,\sigma_{\mathrm{ill}}`$ | Thm. | `sigmaIll`, `variance_from_fwhm` |
 | $`s(\mathbf{k})=s(k_x)s(k_y)`$ | Thm. | `gaussian2D_closed` |
-| $`I(\mathbf{r})`$ bilinear inverse FT | Def. | not simulated; kernel `R0`, `R_FO` |
+| $`I(\mathbf{r})`$ bilinear inverse FT | Def. | not simulated; kernel `R0`, `R_FO`; 2D `R0_2`, `R_FO2` |
 | (1)(2) $`R=\int s\,c\,R_0`$ | Def. | envelopes defined as those integrals |
 | (3)(4) Taylor + no mixed $`\mathbf{k}\varepsilon`$ | Approx. | `chiS_taylor`; mixed $`k\varepsilon`$ dropped by definition of `R_FO` |
 | $`\mathbf{a}=\nabla\chi_S(\mathbf{q})-\nabla\chi_S(\mathbf{q}')`$ | Def. | 1D `aS`; `aS_eq_deriv_sub` |
@@ -1094,7 +1094,7 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | closed form (6a)(6b) | Thm. | `chromaticEnvelopeIntegral_eq_closed`, `ecc`, `chromaticEnvelopeClosed` |
 | NAC $`b_2=0`$ | Thm. | `b2_nac`, `chromaticEnvelopeClosed_nac` |
 | AC $`C_3=C_C=0`$ in $`b_1`$ | Thm. | `b1_ac` |
-| hermiticity $`R_0(q',q)=\overline{R_0(q,q')}`$ | Thm. | `R0_hermitian` |
+| hermiticity $`R_0(q',q)=\overline{R_0(q,q')}`$ | Thm. | `R0_hermitian`; 2D `R0_2_hermitian`, `R_FO2_hermitian` |
 | CTF as $`q'=0`$ | Thm. | `spatialCTF`, `chromaticCTF`, `R_FO_eq_R_CTF_axis`; `R_CTF` matches printed (7a) (no chromatic conjugate); `R_CTF_eq_R_FO_mul_gamma` |
 | (7) $`\Gamma_C,\Gamma_S`$ | Def. | `gammaC`, `gammaS`; plotted amplitude `gammaC_abs` |
 | $`\Gamma_S=\mathrm{e}^{-2\kappa uv}`$ | Thm. | `gammaS_eq_dot`, `gammaS_eq_kappa`, `gammaS_ac` |
@@ -1117,14 +1117,21 @@ Wavelength is `LEEM.lam` (Lean reserves `λ`). No `sorry`. Build with `lake buil
 | `LeemFO/Forward/EnvelopeSpatial.lean` | `spatialEnvelopeIntegral` = closed = FWHM |
 | `LeemFO/Forward/EnvelopeChromatic.lean` | quadratic-phase integral, `ecc`, polar form, `chromaticEnvelopeClosed_neg` |
 | `LeemFO/Forward/CTF.lean` | `q'=0` slice, `R0_hermitian`, `R_FO_hermitian`, `R_FO_dc`, `R_FO` vs `R_CTF` |
+| `LeemFO/Forward/Kernel2.lean` | 2D kernel `R_FO2`, `spatialEnvelopeClosed2`, `defocusOmega`, `q·q'` in $`E_S`$ |
 | `LeemFO/Forward/Ratios.lean` | $`\Gamma_C,\Gamma_S`$ identities |
 | `LeemFO/Forward/PhaseObject.lean` | Jacobi–Anger (no `LeemFO.Forward.Basic` import) |
 | `LeemFO/Inverse/Modes.lean` | Aperture-truncated Bessel modes (`nAperture`, `modeSet`, `rFO`, `sinusoidJ`, `discreteFOImage_eq_ihatModes`) |
 | `LeemFO/Inverse/Tikhonov.lean` | Scalar/2×2 Fourier-bin Tikhonov (`tikhonovJ`, `tikhonovXhat2`, `tikhonov2_unique`, `reconstructCost`) |
 | `LeemFO/Inverse/LinearInverse.lean` | Linearized slice identifiability (`R_FO_axis_eq_zero_iff`, `ihat_gauge`, `ihatJac_vacuum`) |
 | `LeemFO/Inverse/Pipeline.lean` | Fourier-domain inverse map (`stage1Scalar`, `stage1Pair`, `vacuumGN_eq_stage1Pair`, `stage2Skip`) |
+| `LeemFO/Inverse/Gram.lean` | Gram lift `ihat_eq_gram`, vacuum gauge, `ihat_dc_split`, `twoColumn_recovers` |
+| `LeemFO/Inverse/SmallMode.lean` | Closed-form 1/2/3-mode inverses (`ihat_twoMode`, `ihat_threeMode_axis`) |
+| `LeemFO/Inverse/Degeneracy.lean` | `reflectLine`, `R_FO2_pureDefocus_perp` |
+| `LeemFO/Inverse/Analytic.lean` | `analyticPsi`, `analyticPair_of_remainder`, `sampledR` |
 
 **Linearized Fourier-diagonal inverse (see [LINEAR_INVERSE.md](LINEAR_INVERSE.md)).** Multi-defocus Tikhonov on the CTF slice $`R_{\mathrm{FO}}(q,0,\Delta z)`$ has a unique minimizer for $`\alpha>0`$, the exact bias–noise identity $`\hat x-x^\star=(\sum \overline h n-\alpha x^\star)/D`$, and the sharp triangle bound. The vacuum $`2\times 2`$ Gram has a Cramer closed form (`tikhonovXhat2`) that is the unique minimizer for $`\alpha>0`$. The reconstruction map is `stage1Scalar` / `stage1Pair` in `Pipeline.lean`. Modes with $`\lvert{q}\rvert>q_{\mathrm{ap}}`$ are identically invisible. Bilinear FO is phase-gauge invariant; its vacuum linearization has an exact quadratic remainder (one Gauss–Newton step from vacuum *is* `stage1Pair`, `vacuumGN_eq_stage1Pair`). Cost is modelled as $`O(KN\log N)`$ DFTs plus $`O(KN)`$ bin solves, without proving FFT existence. $`K=1`$ cannot identify a general complex $`(X(q),\overline{X(-q)})`$ pair; weak-phase CTF zeros of $`\sin(2\pi\chi_S)`$ sit inside a large enough aperture. Stage 2 is skipped when the bilinear remainder is at a noise floor $`\eta`$ (`stage2Skip`); the numerical $`\max\lvert{\varphi}\rvert\lesssim 0.3`$ remains informal. Statistical noise models remain informal.
+
+**Analytic bilinear inverse (T10–T14 in [LINEAR_INVERSE.md](LINEAR_INVERSE.md)).** Intensity is the contraction of the rank-1 Gram $`X(q,q')=\Psi(q)\overline{\Psi(q')}`$ against $`R`$. A vacuum-gauged spectrum is the DC-column factor of $`X`$. For $`\xi\neq 0`$ the exact split is vacuum $`2\times 2`$ plus an off-axis remainder; Cramer at $`\alpha=0`$ inverts the DC column when the remainder is known or vanishes (1–3 Fourier modes). Hermitian $`R`$ implies Hermitian $`\hat I`$. Perfect coherence reduces $`R`$ to a pupil rank-1 factor, so $`\hat I`$ is the autocorrelation of $`\Psi P`$. The 2D kernel `R_FO2` agrees with `R_FO` on the CTF slice and is *not* the radial 1D kernel off axis ($`\mathbf{q}\cdot\mathbf{q}'`$ in $`E_S`$). Pure defocus depends on $`\mathbf{q}`$ only through $`\mathbf{q}\cdot\boldsymbol{\xi}`$, so a Householder reflection across $`\boldsymbol{\xi}`$ is invisible. The DC slice of a unimodular diagonal kernel is not injective. This is **not** an unconditional inverse of unrestricted 2D Yu $`R_{\mathrm{FO2}}`$.
 
 **Inverse (journal-style note: [proofs/leemfo_inverse.pdf](proofs/leemfo_inverse.pdf)).** Lean details stay in [LINEAR_INVERSE.md](LINEAR_INVERSE.md). Scientific verdict: for a 2D experimental through-focal stack the fastest inverse that still fills CTF zeros is Fourier-diagonal multi-defocus Tikhonov on the slice $`R_{\mathrm{FO}}(q,0,\Delta z)`$ (Schiske/Wiener), cost $`O(KN\log N)`$. That map is the Fréchet derivative of bilinear FO at vacuum and is biased for $`\varphi=4\pi A/\lambda_0\not\ll 1`$. Optional stage 2 is Gauss--Newton on bilinear FO, skipped when the stage-1 FO residual is at the noise floor ($`\max\lvert{\varphi}\rvert\lesssim 0.3`$). For the paper's 1D sinusoid, stage 2 collapses to Jacobi--Anger least squares on $`\{J_n(\varphi)\}_{\lvert{n}\rvert\le\lfloor q_{\mathrm{ap}}\Lambda\rfloor}`$, cost $`O(M^2)`$ with $`M=2\lfloor q_{\mathrm{ap}}\Lambda\rfloor+1`$. Gerchberg--Saxton is either misspecified under partial coherence or a slower rewrite of Gauss--Newton. MAL/phase diversity is Gauss--Newton stacked over extra defoci, needed only when aberrations are unknown. Uniqueness of the regularized Fourier-diagonal estimator and its bias–noise identity are machine-checked in Lean 4.
 

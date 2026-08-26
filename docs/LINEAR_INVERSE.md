@@ -8,7 +8,10 @@ This is the Lean-ready statement list for the **Fourier-diagonal Tikhonov
 estimator** of the linearized FO/CTF slice (optionally one Gauss–Newton
 step). Encoding: `LeemFO/Inverse/Tikhonov.lean`,
 `LeemFO/Inverse/LinearInverse.lean`, `LeemFO/Inverse/Pipeline.lean`,
-`LeemFO/Inverse/Modes.lean`.
+`LeemFO/Inverse/Modes.lean`. The analytic bilinear inverse (Gram lift,
+small-mode closed forms, 2D kernel degeneracy) is
+`LeemFO/Inverse/Gram.lean`, `SmallMode.lean`, `Degeneracy.lean`,
+`Analytic.lean`, with 2D kernel `LeemFO/Forward/Kernel2.lean`.
 
 The object is finite-dimensional throughout. After a formal discrete Fourier
 transform, each spatial-frequency bin is a map $`\kappa \to \mathbb{C}`$ of defocus
@@ -287,6 +290,105 @@ system; unique minimizer for $`\alpha>0`$; bias–noise identity.
 
 ---
 
+## Analytic bilinear inverse (Gram lift)
+
+The full FO map is bilinear, not the CTF slice. On a finite abelian frequency
+group $`G`$,
+
+```math
+\hat I(\xi)=\sum_{q\in G}\Psi(q)\,R(q,q-\xi)\,\overline{\Psi(q-\xi)}
+=\sum_{q\in G}R(q,q-\xi)\,X(q,q-\xi),
+```
+
+where $`X(q,q')=\Psi(q)\overline{\Psi(q')}`$ is rank-1. Each through-focal
+slice is a **linear** map in the lag diagonal $`q\mapsto X(q,q-\xi)`$. The
+object is recovered from a Gram by the vacuum-gauge factor
+$`\Psi(q)=X(q,0)/\sqrt{\lVert X(0,0)\rVert}`$ when $`\Psi(0)`$ is real and
+nonnegative.
+
+### T10. Vacuum-gauge factor
+
+**Statement.** If $`\Psi(0)\neq 0`$ has vanishing imaginary part and nonnegative
+real part, then `vacuumGaugePsi (gram Ψ) = Ψ`. Global phase is quotiented:
+`gram (e^{iθ} Ψ) = gram Ψ` and `ihat` is gauge-invariant (`ihat_gauge`,
+`gram_eq_of_phase`).
+
+**Lean.** `vacuumGaugePsi`, `vacuumGaugePsi_recovers`, `analyticPsi_recovers`,
+`analyticPsi_unique`.
+
+### T11. DC-column split
+
+**Statement.** For $`\xi\neq 0`$,
+
+```math
+\hat I(\xi)=R(\xi,0)X(\xi,0)+R(0,-\xi)X(0,-\xi)
++\sum_{q\notin\{0,\xi\}}R(q,q-\xi)X(q,q-\xi).
+```
+
+Subtracting a known remainder reduces bilinear FO to the vacuum $`2\times 2`$.
+If `gramDet 0 h g ≠ 0` with $`h_k=R_k(\xi,0)`$, $`g_k=R_k(0,-\xi)`$, Cramer's
+rule at $`\alpha=0`$ recovers $`(X(\xi,0),X(0,-\xi))`$ exactly.
+
+**Lean.** `ihat_dc_split`, `ihat_sub_remainder`, `twoColumn_recovers`,
+`analyticPair_of_remainder`, `dcPair_unique_of_remainder`,
+`twoColumn_injective`.
+
+### T12. One, two, and three modes
+
+**Statement.** Support at $`\{0\}`$: intensity only at DC. Support at
+$`\{0,\xi\}`$ with $`2\xi\neq 0`$: the conjugate branch drops and
+$`\hat I(\xi)=R(\xi,0)X(\xi,0)`$ (scalar Tikhonov at $`\alpha=0`$ inverts it).
+Support at $`\{-\xi,0,\xi\}`$ with $`2\xi\neq 0`$ and $`3\xi\neq 0`$: the
+remainder vanishes, so the vacuum $`2\times 2`$ is exact. The two-mode
+amplitude quadratic $`s(T-s)=\lvert Z\rvert^2`$ has roots
+`twoModePlus`/`twoModeMinus`; the larger (specular) root is `twoModePlus`.
+
+**Lean.** `ihat_of_dc_support`, `bilinearRemainder_twoMode`, `ihat_twoMode`,
+`analyticPair_twoMode`, `bilinearRemainder_threeMode`, `ihat_threeMode_axis`,
+`analyticPair_threeMode`, `twoMode_roots_pair`, `twoMode_specular`.
+
+### T13. Hermitian intensity and rank-1 pupil
+
+**Statement.** If $`\overline{R(q,q')}=R(q',q)`$ then
+$`\overline{\hat I(\xi)}=\hat I(-\xi)`$. If $`R(q,q')=P(q)\overline{P(q')}`$
+(perfect coherence), then $`\hat I`$ is the Gram autocorrelation of $`\Psi P`$.
+A unimodular diagonal kernel has a rank-1 DC slice (not injective).
+
+**Lean.** `ihat_hermitian`, `ihat_of_rank1`, `dcSlice_not_injective`. Off-DC
+slice injectivity recovers those lag diagonals
+(`offDiagGram_eq_of_sliceInjective`, `lifted_unique_of_sliceInjective`,
+`gram_eq_of_lags`). It does **not** invert the DC slice.
+
+### T14. 2D kernel and pure-defocus degeneracy
+
+**Statement.** The working 2D kernel `R_FO2` uses the disk aperture, radial
+$`\chi_{S2}`$, and vector tilt $`\mathbf{a}=\nabla\chi_S(\mathbf{q})-\nabla\chi_S(\mathbf{q}')`$,
+so $`E_S`$ sees $`\mathbf{q}\cdot\mathbf{q}'`$. On the CTF slice
+$`R_{\mathrm{FO2}}(\mathbf{q},0)=R_{\mathrm{FO}}(\lVert\mathbf{q}\rVert,0)`$;
+off axis it is **not** $`R_{\mathrm{FO}}(\lVert\mathbf{q}\rVert,\lVert\mathbf{q}'\rVert)`$.
+Pure defocus plus perfect coherence is a cisoid of frequency
+$`\omega=\pi\lambda(\lVert\mathbf{q}\rVert^2-\lVert\mathbf{q}'\rVert^2)`$,
+which depends on $`\mathbf{q}`$ only through $`\mathbf{q}\cdot\boldsymbol{\xi}`$.
+Householder reflection across $`\boldsymbol{\xi}`$ preserves $`\omega`$ and
+$`\lVert\mathbf{a}\rVert`$. Frequencies with the same projection onto
+$`\boldsymbol{\xi}`$ (and matching aperture) are indistinguishable.
+
+Sampling `R_FO2` on a finite group via $`\iota:G\to\mathbb{R}^2`$ yields
+`sampledR`; bilinear FO on that group is `ihat (sampledR ι Δz)`.
+
+**Lean.** `R_FO2`, `R_FO2_eq_R_FO_axis`, `R_FO2_pureDefocus_perfect`,
+`defocusOmega_eq_inner`, `defocusOmega_depends_inner`,
+`R_FO2_pureDefocus_perp`, `reflectLine_*`, `sampledR`,
+`ihat_sampledR_perfect`.
+
+**Tightness.** This is a closed-form inverse of bilinear FO **under**
+remainder knowledge, small-mode support, or injective off-DC slices plus a
+full Gram/vacuum gauge. It is **not** an inverse of unrestricted 2D Yu
+`R_FO2` on a general lattice: pure defocus is degenerate in the
+perpendicular directions, and the DC slice has rank one.
+
+---
+
 ## Optional Gauss–Newton step
 
 From vacuum, one GN step **equals** T1 / the $`2\times 2`$ solve (T6, T9:
@@ -326,3 +428,8 @@ estimate in a Banach space of images).
 | T8 | `one_measurement_not_injective`, `weakPhase_sin_eq_zero`, `exists_interior_weakPhase_zero` |
 | $`2\times 2`$ Gram | `tikhonovJ2`, `tikhonovXhat2`, `gramDet_pos`, `tikhonovJ2_eq_shift`, `tikhonovJ2_min`, `tikhonov2_unique`, `tikhonov2_error` |
 | T9 | `stage1Scalar`, `stage1Pair`, `stage1Scalar_unique`, `stage1Pair_unique`, `vacuumGN_eq_stage1Pair`, `ihatJac_vacuum_slice`, `ihatJac_vacuum_R_FO_dc`, `stage2Skip`, `rFO`, `sinusoidJ`, `R_FO_hermitian`, `R_FO_dc` |
+| T10 | `gram`, `vacuumGaugePsi_recovers`, `analyticPsi_recovers`, `analyticPsi_unique`, `gram_eq_of_phase` |
+| T11 | `ihat_eq_gram`, `ihat_dc_split`, `twoColumn_recovers`, `analyticPair_of_remainder`, `dcPair_unique_of_remainder` |
+| T12 | `ihat_twoMode`, `analyticPair_twoMode`, `ihat_threeMode_axis`, `analyticPair_threeMode`, `twoMode_specular` |
+| T13 | `ihat_hermitian`, `ihat_of_rank1`, `dcSlice_not_injective`, `offDiagGram_eq_of_sliceInjective` |
+| T14 | `R_FO2`, `R_FO2_pureDefocus_perp`, `reflectLine`, `sampledR`, `ihat_sampledR_perfect` |
