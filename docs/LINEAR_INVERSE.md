@@ -395,11 +395,12 @@ If $`h'=\overline{g}`$, $`g'=\overline{h}`$, $`y'=\overline{y}`$, then
 (\hat u',\hat v')=\bigl(\overline{\hat v},\,\overline{\hat u}\bigr).
 ```
 
-Hermitian kernels give Hermitian intensities (`ihat_hermitian`). On an
-odd embedding with Hermitian data,
+Hermitian kernels give Hermitian intensities (`ihat_hermitian`). The
+hypotheses are the odd *map* $`q(-\xi)=-q(\xi)`$ plus Hermitian data,
+not odd $`\lvert G\rvert`$. Then
 $`\delta(-\xi)=\overline{v(\xi)}`$ is recovered from
 `mixed2D n ξ`.snd (`mixed2D_conj_partner`). This is **not** automatic
-on a general finite group.
+without those slice-conjugacy hypotheses.
 
 **Lean.** `tikhonovXhat2_conj_swap`, `ihat_hermitian`,
 `sliceG2_eq_conj_sliceH2`, `mixed2D_conj_partner`,
@@ -542,6 +543,12 @@ Cardano roots of the line cubic.
 | Trust-region / dogleg / cubic regularization | quadratic model is not the FO quartic; cubic min is Cardano |
 | Wirtinger / ADMM / PhaseLift convergence | not an FO identity; PC kernel mismatch is `exists_R_FO_ne_R0` |
 | Replace `lineFid` by Tikhonov line energy | bins already use $`\alpha`$; companion is `nlsJ_line` |
+| `Bool` JA dispatcher on `mixed2D` | `sinusoidJ` is 1D-only; 2D stage-2 is Born (`exists_modeSet_lt_modePairs`) |
+| Pin $`\operatorname{Im}(\delta 0)=0`$ for uniqueness | gauge theatre; `ihat_gauge` and $`\alpha\sum\lVert\Psi\rVert^2`$ are phase-invariant |
+| Global or fractional homotopy $`t`$ as skip | exact FO is loud $`t=1`$; quiet is $`t=0`$; per-bin `{0,1}` already |
+| Two-source special case in `recommendTccRank` | `ihat_twoSource` is `ihat_tcc` at $`M=2`$ |
+| 3-point $`\{0,\texttt{descentStep},1\}`$ min | same `lineSearchCost`; not required (T15 Armijo) |
+| Odd $`\lvert G\rvert`$ as a partner hypothesis | partner uses odd $`qmap`$, not odd group order |
 
 ---
 

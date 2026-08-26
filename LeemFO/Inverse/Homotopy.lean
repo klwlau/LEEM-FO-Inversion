@@ -610,8 +610,8 @@ theorem mixedSpectrumMix_born_bin (α : ℝ) (h g : G → κ → ℂ)
         rw [hdamp, ht]
         simp
 
-/-- On an odd embedding the Hermitian partner of the dropped `2×2`
-coordinate is recovered by conjugating `pair.snd` at `ξ`. -/
+/-- Hermitian partner of the dropped `2×2` coordinate is `conj pair.snd`
+at `ξ`, under slice conjugacy (odd `qmap`, not odd `|G|`). -/
 theorem mixedSpectrumPair_conj_partner (α : ℝ) (h g : G → κ → ℂ)
     (R : κ → G → G → ℂ) (y : κ → G → ℂ) (t damp : ℕ → ℝ) (ξ : G)
     (hh : h (-ξ) = fun k => conj (g ξ k))

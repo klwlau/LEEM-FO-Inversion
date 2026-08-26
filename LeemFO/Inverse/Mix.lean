@@ -31,8 +31,9 @@ coupling (`exists_quadA2_ne_gn`). Competing maps (TIE, coherent GS /
 Jacobi–Anger as a 2D inverse, forgetful Kaczmarz) fail as identities on
 concrete columns.
 
-Hermitian kernel plus Hermitian data on an odd embedding recovers the
-dropped partner: `δ(-ξ) = conj v(ξ)` (`mixed2D_conj_partner`).
+Hermitian kernel plus Hermitian data and odd `qmap` (`qmap (-ξ) = -qmap ξ`)
+recover the dropped partner: `δ(-ξ) = conj v(ξ)` (`mixed2D_conj_partner`).
+This does not require odd `Fintype.card G`.
 
 Iterative convergence, Banach fixed-point existence, Cardano line search,
 and uniqueness of the nonlinear inverse are not encoded (`ihat_gauge`;
@@ -577,8 +578,8 @@ theorem mixed2D_zero_eq_stage1Pair2 (p : LEEM) (α : ℝ)
   rw [mixed2D_zero_eq_tikhonovXhat2 p α qmap Δz y t damp hξ,
     p.stage1Pair2_eq_tikhonovXhat2]
 
-/-- Hermitian kernel + Hermitian data on an odd embedding: the dropped
-partner is `conj` of `mixed2D n ξ`.snd. -/
+/-- Hermitian kernel + Hermitian data + odd `qmap`: the dropped
+partner is `conj` of `mixed2D n ξ`.snd. Not a `|G|` oddness hypothesis. -/
 theorem mixed2D_conj_partner (p : LEEM) (hσ : 0 ≤ p.sigmaE) (α : ℝ)
     (qmap : G → EuclideanSpace ℝ (Fin 2))
     (hq : ∀ ξ, qmap (-ξ) = -qmap ξ) (Δz : κ → ℝ) (y : κ → G → ℂ)
