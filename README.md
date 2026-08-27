@@ -35,13 +35,27 @@ Given a 2D through-focal stack we recover $`\psi_0`$ in two stages:
 regularized multi-defocus inversion on the CTF slice (Schiske/Wiener),
 which fills CTF zeros; optional Gauss–Newton iteration on the full
 bilinear FO residual for strong-phase objects; Jacobi–Anger fitting
-for the 1D sinusoid of Yu *et al.* Selected algebraic claims for the
-discrete linear estimator (unique minimizer, bias–noise identity) are
-machine-checked in Lean 4.
+for the 1D sinusoid of Yu *et al.* The bilinear inverse is encoded
+analytically as a Gram lift plus vacuum-gauge factor: each
+difference-frequency slice is linear in $`X(q,q-\xi)`$, the vacuum
+$`2\times 2`$ inverts the DC column once the off-axis remainder is known
+or vanishes (1–3 Fourier modes, two-axis 3-wave objects), an equally
+spaced pure-defocus series inverts iso-$`\omega`$ fiber masses by a
+Vandermonde system, and a radial pure-defocus 2D kernel cannot
+separate frequencies with the same projection onto $`\xi`$.
+Selected algebraic claims (unique Tikhonov minimizer, remainder-corrected
+Cramer formula, small-mode identities, fiber masses, 2D degeneracy) are machine-checked
+in Lean 4. This is **not** an unconditional inverse of the Yu kernel on
+an unrestricted 2D lattice.
 
 Inverse note:
 [docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
 ([source](docs/proofs/leemfo_inverse.tex)).
+
+Analytic bilinear inverse (Gram lift, small-mode and two-axis
+objects, Vandermonde fiber masses), as a sequence of identities:
+[docs/proofs/leemfo_analytic_inverse.pdf](docs/proofs/leemfo_analytic_inverse.pdf)
+([source](docs/proofs/leemfo_analytic_inverse.tex)).
 
 Theorem list:
 [docs/LINEAR_INVERSE.md](docs/LINEAR_INVERSE.md).
@@ -61,6 +75,7 @@ To rebuild the PDFs (TeX Live with `latexmk`):
 cd docs/proofs
 latexmk -pdf leemfo_proofs.tex
 latexmk -pdf leemfo_inverse.tex
+latexmk -pdf leemfo_analytic_inverse.tex
 ```
 
 ## Layout
@@ -78,6 +93,7 @@ Forward proofs live in `LeemFO/Forward/`; inverse proofs live in `LeemFO/Inverse
 | `LeemFO/Forward/EnvelopeSpatial.lean` | Appendix A1: $`E_S`$ |
 | `LeemFO/Forward/EnvelopeChromatic.lean` | Appendix A1: $`E_{C,\mathrm{tot}}`$ and polar form |
 | `LeemFO/Forward/CTF.lean` | $`q'=0`$ recovery and hermiticity |
+| `LeemFO/Forward/Kernel2.lean` | 2D working kernel $`R_{\mathrm{FO2}}`$: disk aperture, $`\mathbf{q}\cdot\mathbf{q}'`$ in $`E_S`$, pure-defocus cisoid |
 | `LeemFO/Forward/Ratios.lean` | $`\Gamma_C,\Gamma_S`$ |
 | `LeemFO/Forward/PhaseObject.lean` | Jacobi–Anger for $`\mathrm{e}^{\mathrm{i}\varphi\sin\theta}`$ |
 
@@ -89,3 +105,8 @@ Forward proofs live in `LeemFO/Forward/`; inverse proofs live in `LeemFO/Inverse
 | `LeemFO/Inverse/Tikhonov.lean` | Fourier-bin Tikhonov: unique min, bias–noise identity, $`2\times 2`$ closed form, $`O(KN\log N)`$ cost model |
 | `LeemFO/Inverse/LinearInverse.lean` | Aperture support of $`R_{\mathrm{FO}}(\cdot,0)`$, gauge, vacuum Jacobian remainder, $`K\ge 2`$ |
 | `LeemFO/Inverse/Pipeline.lean` | Stage-1 map `stage1Scalar`/`stage1Pair`, vacuum GN glue, algebraic `stage2Skip` |
+| `LeemFO/Inverse/Gram.lean` | Rank-1 Gram lift of bilinear FO, vacuum-gauge factor, remainder-corrected 2×2 |
+| `LeemFO/Inverse/SmallMode.lean` | Closed-form inverse on 1/2/3 Fourier modes and two-axis 3-wave objects |
+| `LeemFO/Inverse/Degeneracy.lean` | Householder reflection; pure-defocus 2D kernel depends on $`\mathbf{q}`$ only through $`\mathbf{q}\cdot\boldsymbol{\xi}`$ |
+| `LeemFO/Inverse/Analytic.lean` | Analytic reconstruction map, uniqueness, sampled 2D Yu kernel on a finite group |
+| `LeemFO/Inverse/Fiber.lean` | Vandermonde inverse of iso-$`\omega`$ fiber masses; Gram recovery on transversal support (Householder partners stay glued) |

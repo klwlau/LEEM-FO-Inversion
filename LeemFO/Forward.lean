@@ -9,5 +9,6 @@ import LeemFO.Forward.Aberration
 import LeemFO.Forward.EnvelopeSpatial
 import LeemFO.Forward.EnvelopeChromatic
 import LeemFO.Forward.CTF
+import LeemFO.Forward.Kernel2
 import LeemFO.Forward.Ratios
 import LeemFO.Forward.PhaseObject

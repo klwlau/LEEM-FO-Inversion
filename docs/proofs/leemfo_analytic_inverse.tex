@@ -1,0 +1,767 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{microtype}
+\emergencystretch=3em
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{hyperref}
+\usepackage[nameinlink,capitalize]{cleveref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black,
+  pdftitle={Analytic inversion of two-dimensional Fourier optics in LEEM},
+  pdfauthor={Wilson Lau}
+}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\ee}{\mathrm{e}}
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\conj}[1]{\overline{#1}}
+\newcommand{\abs}[1]{\lvert#1\rvert}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+\newcommand{\qap}{q_{\mathrm{ap}}}
+\newcommand{\Dz}{\Delta z}
+\newcommand{\RFO}{R_{\mathrm{FO}}}
+\newcommand{\RFOII}{R_{\mathrm{FO2}}}
+\newcommand{\RCTF}{R_{\mathrm{CTF}}}
+
+\title{Analytic inversion of two-dimensional Fourier optics\\
+in aberration-corrected LEEM}
+\author{Wilson Lau}
+\date{26 August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We give the closed-form inverse of discrete bilinear Fourier optics
+(FO) for a two-dimensional through-focal LEEM series, against the
+kernel of Yu, Lau and Altman~\cite{Yu2019}.
+Intensity at difference frequency $\xi$ is linear in a lag diagonal of
+the rank-1 Gram $X(q,q')=\Psi(q)\conj{\Psi(q')}$.
+A vacuum-gauged spectrum is the DC-column factor of $X$.
+Subtracting the off-axis remainder reduces each lag to a vacuum
+$2\times 2$ that Cramer's rule inverts at vanishing Tikhonov parameter
+whenever the Gram determinant is nonzero.
+The remainder vanishes on one-, two- and three-mode objects and on
+non-collinear three-wave objects $\{0,u,v\}$.
+Under perfect coherence and pure defocus the kernel is a cisoid whose
+frequency depends on $q$ only through $q\cdot\xi$; equally spaced
+defoci are a Vandermonde system for the iso-$\omega$ fiber masses, which
+become Gram entries on transversal support.
+Householder partners across $\xi$ share a node, so they remain one
+mass.
+The identities are machine-checked in Lean~4.
+This is not an inverse of unrestricted Yu $\RFOII$ on a general
+lattice: the DC slice of a unimodular diagonal kernel has rank one,
+and radial pure defocus cannot separate perpendicular frequencies.
+\end{abstract}
+
+\tableofcontents
+
+\section{Purpose and standing hypotheses}
+\label{sec:purpose}
+
+The forward map is the FO kernel of Yu, Lau and
+Altman~\cite{Yu2019}, in the line of Pang~\emph{et
+al.}~\cite{Pang2009} and Yu~\emph{et al.}~\cite{Yu2017}.
+The companion inverse note~\cite{Lau2026inverse} recommends a
+\emph{linearized} estimator: multi-defocus Tikhonov on the CTF slice
+$\RFO(\mathbf{q},0,\Dz)$, optionally followed by Gauss--Newton on the
+bilinear residual.
+That map is the Fr\'echet derivative of FO at a strong specular beam.
+The present note inverts the \emph{bilinear} map itself, in closed
+form, on a finite abelian frequency group.
+It is a derivation of identities, not an experimental protocol and not
+a substitute for~\cite{Lau2026inverse} on a general micrograph.
+
+Standing discrete data.
+Let $G$ be a finite abelian group of sampled spatial frequencies
+(in Lean: any \texttt{AddCommGroup} with \texttt{Fintype}) and let
+$\kappa$ index a finite through-focal series.
+The object spectrum is $\Psi:G\to\C$.
+A kernel at one defocus is a map $R:G\times G\to\C$; a stack is
+written $R_k$.
+The Yu 2D kernel $\RFOII$ is sampled on $G$ by an embedding
+$\iota:G\to\R^2$ (\texttt{sampledR}).
+Wave aberration $\chi$ is in waves, $W=\ee^{2\pi\ii\chi}$, with
+$\mathbf{q}=\boldsymbol{\alpha}/\lambda$ after acceleration~\cite{Tromp2012,Schramm2012,Lau2026proofs}.
+
+The reconstruction proceeds in seven steps
+(\cref{sec:gram,sec:gauge,sec:split,sec:small,sec:kernel2,sec:fiber,sec:recipe}).
+Each step is an identity; Lean names are given after the statement.
+No probability space, sampling theorem, or Gauss--Newton convergence
+estimate is used.
+
+\section{Step 1: lift intensity to a Gram contraction}
+\label{sec:gram}
+
+The discrete Fourier coefficient of recorded intensity at difference
+frequency $\xi\in G$ is
+\begin{equation}
+\label{eq:ihat}
+\hat I(\xi)
+=\sum_{q\in G}
+\Psi(q)\,R(q,q-\xi)\,\conj{\Psi(q-\xi)}.
+\end{equation}
+Define the rank-1 Gram
+\begin{equation}
+\label{eq:gram}
+X(q,q')
+:=\Psi(q)\,\conj{\Psi(q')}.
+\end{equation}
+Reassociating~\eqref{eq:ihat} yields the linear contraction
+\begin{equation}
+\label{eq:ihatgram}
+\hat I(\xi)
+=\sum_{q\in G}
+R(q,q-\xi)\,X(q,q-\xi).
+\end{equation}
+Thus each fixed-$\xi$ through-focal series is a linear image of the
+lag diagonal $q\mapsto X(q,q-\xi)$.
+Inverting bilinear FO splits into (i)~inverting those linear slices
+for $X$ and (ii)~factoring the Gram for $\Psi$.
+
+Lean: \texttt{ihat}, \texttt{gram}, \texttt{ihat\_eq\_gram}.
+
+\begin{lemma}[Hermitian intensity]
+\label{lem:herm}
+If $\conj{R(q,q')}=R(q',q)$ for all $q,q'$, then
+$\conj{\hat I(\xi)}=\hat I(-\xi)$.
+\end{lemma}
+Lean: \texttt{ihat\_hermitian}, and \texttt{R\_FO2\_hermitian} for the
+Yu kernel (nonnegative energy spread).
+
+\begin{lemma}[Rank-1 pupil]
+\label{lem:rank1}
+If $R(q,q')=P(q)\conj{P(q')}$, then $\hat I$ is the Gram
+autocorrelation of $q\mapsto\Psi(q)P(q)$.
+\end{lemma}
+Lean: \texttt{ihat\_of\_rank1}.
+Perfect coherence of $\RFOII$ is of this form
+(\texttt{R\_FO2\_eq\_rank1\_of\_perfect},
+\texttt{ihat\_sampledR\_perfect}).
+
+\section{Step 2: quotient the global phase}
+\label{sec:gauge}
+
+Intensity is invariant under $\Psi\mapsto\ee^{\ii\theta}\Psi$:
+\begin{equation}
+\label{eq:gauge}
+X(\ee^{\ii\theta}\Psi)=X(\Psi),
+\qquad
+\hat I(R,\ee^{\ii\theta}\Psi)=\hat I(R,\Psi).
+\end{equation}
+Lean: \texttt{gram\_eq\_of\_phase}, \texttt{ihat\_gauge}.
+
+The inverse therefore recovers $\Psi$ only in a gauge.
+The vacuum gauge takes the specular coefficient real and nonnegative,
+\begin{equation}
+\label{eq:vacuum}
+\hat\Psi(q)
+=\frac{X(q,0)}{\sqrt{\norm{X(0,0)}}},
+\end{equation}
+which uses only the DC column of $X$.
+
+\begin{theorem}[Vacuum-gauge recovery]
+\label{thm:vacuum}
+If $\Psi(0)\neq 0$, $\operatorname{Im}\Psi(0)=0$ and
+$\operatorname{Re}\Psi(0)\ge 0$, then~\eqref{eq:vacuum} applied to
+$X(\Psi)$ returns $\Psi$.
+\end{theorem}
+Lean: \texttt{vacuumGaugePsi}, \texttt{vacuumGaugePsi\_recovers},
+\texttt{analyticPsi\_recovers}.
+Without the phase convention one obtains only a unimodular factor
+$\conj{\Psi(0)}/\abs{\Psi(0)}$
+(\texttt{vacuumGaugePsi\_gram}).
+
+\begin{corollary}[Uniqueness from the DC column]
+\label{cor:dccol}
+If two vacuum-gauged spectra (each with nonzero real-nonnegative
+specular coefficient) have the same DC column
+$q\mapsto X(q,0)$, they coincide.
+\end{corollary}
+Lean: \texttt{analyticPsi\_unique\_of\_dc\_column}.
+A full Gram is stronger than needed
+(\texttt{analyticPsi\_unique}).
+
+Consequently it is enough to recover $X(\cdot,0)$, including the
+scalar $X(0,0)$, and then apply~\eqref{eq:vacuum}.
+
+\section{Step 3: split each lag into vacuum $2\times 2$ plus remainder}
+\label{sec:split}
+
+For $\xi\neq 0$ the sum~\eqref{eq:ihatgram} isolates the two vacuum
+pairs $(\xi,0)$ and $(0,-\xi)$:
+\begin{equation}
+\label{eq:split}
+\hat I(\xi)
+=R(\xi,0)\,X(\xi,0)
++R(0,-\xi)\,X(0,-\xi)
++\mathcal{B}(R,\Psi;\xi),
+\end{equation}
+where the bilinear remainder is the leftover sum
+\begin{equation}
+\label{eq:B}
+\mathcal{B}(R,\Psi;\xi)
+=\sum_{q\notin\{0,\xi\}}
+R(q,q-\xi)\,X(q,q-\xi).
+\end{equation}
+Lean: \texttt{ihat\_dc\_split}, \texttt{bilinearRemainder},
+\texttt{ihat\_sub\_remainder}.
+
+Subtracting a known remainder produces the vacuum model
+\begin{equation}
+\label{eq:twocol}
+\hat I(\xi)-\mathcal{B}(R,\Psi;\xi)
+=h\,U+g\,V,
+\end{equation}
+with through-focal columns $h_k=R_k(\xi,0)$,
+$g_k=R_k(0,-\xi)$ and unknowns
+$U=X(\xi,0)$, $V=X(0,-\xi)$.
+
+Write
+\begin{equation}
+\label{eq:gramdet}
+\Delta
+=\Bigl(\sum_k\abs{h_k}^2\Bigr)
+ \Bigl(\sum_k\abs{g_k}^2\Bigr)
+-\Bigl\lvert\sum_k\conj{h_k}\,g_k\Bigr\rvert^2
+\end{equation}
+for the Gram determinant of the $2\times 2$ at vanishing Tikhonov
+parameter $\alpha=0$.
+
+\begin{theorem}[Cramer recovery of the vacuum pair]
+\label{thm:cramer}
+If $\xi\neq 0$ and $\Delta\neq 0$, then the $\alpha=0$ Cramer formula
+applied to the remainder-corrected stack recovers
+$\bigl(X(\xi,0),X(0,-\xi)\bigr)$ exactly.
+Equal remainder-corrected stacks imply equal vacuum pairs.
+\end{theorem}
+Lean: \texttt{twoColumn\_recovers},
+\texttt{analyticPair\_of\_remainder},
+\texttt{dcPair\_unique\_of\_remainder},
+\texttt{twoColumn\_injective}, \texttt{gramDet}.
+
+The linearized stage-1 pair estimator of~\cite{Lau2026inverse} is the
+same Cramer formula with $\mathcal{B}$ replaced by zero
+(\texttt{stage1Pair\_eq\_analyticPair\_linearized}).
+Exact vacuum-column recovery therefore requires either knowledge of
+$\mathcal{B}$ or a support that forces $\mathcal{B}=0$
+(\cref{sec:small}).
+
+\section{Step 4: invert when the remainder vanishes}
+\label{sec:small}
+
+Support restrictions make~\eqref{eq:B} identically zero, so
+\cref{thm:cramer} applies to the raw intensities.
+
+\subsection{One Fourier mode}
+\label{sec:onemode}
+
+If $\Psi(q)=0$ for all $q\neq 0$, then
+\begin{equation}
+\hat I(\xi)
+=
+\begin{cases}
+R(0,0)\,X(0,0), & \xi=0,\\
+0, & \xi\neq 0.
+\end{cases}
+\end{equation}
+Lean: \texttt{ihat\_of\_dc\_support}.
+
+\subsection{Two Fourier modes}
+\label{sec:twomode}
+
+Let $\operatorname{supp}\Psi\subseteq\{0,\xi\}$ with $\xi\neq 0$ and
+$2\xi\neq 0$ (so $-\xi$ is not a mode).
+Then $\mathcal{B}=0$, the conjugate branch $X(0,-\xi)$ vanishes, and
+\begin{equation}
+\label{eq:twomode}
+\hat I(\xi)=R(\xi,0)\,X(\xi,0).
+\end{equation}
+If $\sum_k\abs{R_k(\xi,0)}^2\neq 0$, scalar Tikhonov at $\alpha=0$
+recovers $X(\xi,0)$.
+Lean: \texttt{bilinearRemainder\_twoMode}, \texttt{ihat\_twoMode},
+\texttt{analyticPair\_twoMode}.
+
+The two amplitudes satisfy the quadratic
+$s(T-s)=\abs{Z}^2$ with
+$T=\abs{\Psi(0)}^2+\abs{\Psi(\xi)}^2$ and $Z=X(\xi,0)$.
+The roots are
+\begin{equation}
+\label{eq:quad}
+s_\pm
+=\frac{T\pm\sqrt{T^2-4\abs{Z}^2}}{2};
+\end{equation}
+the specular (larger-DC) root is $s_+$ whenever
+$\abs{\Psi(\xi)}^2\le\abs{\Psi(0)}^2$.
+Lean: \texttt{twoModePlus}, \texttt{twoModeMinus},
+\texttt{twoMode\_roots\_pair}, \texttt{twoMode\_specular}.
+The DC intensity is
+$R(0,0)X(0,0)+R(\xi,\xi)X(\xi,\xi)$
+(\texttt{ihat\_twoMode\_dc}).
+
+\subsection{Three collinear modes}
+\label{sec:threemode}
+
+Let $\operatorname{supp}\Psi\subseteq\{-\xi,0,\xi\}$ with
+$\xi\neq 0$, $2\xi\neq 0$ and $3\xi\neq 0$.
+Every leftover index in~\eqref{eq:B} hits a missing mode, so
+$\mathcal{B}=0$ and
+\begin{equation}
+\label{eq:threemode}
+\hat I(\xi)
+=R(\xi,0)\,X(\xi,0)+R(0,-\xi)\,X(0,-\xi).
+\end{equation}
+\Cref{thm:cramer} applies to the raw stack.
+Lean: \texttt{bilinearRemainder\_threeMode},
+\texttt{ihat\_threeMode\_axis}, \texttt{analyticPair\_threeMode}.
+
+\subsection{Two-axis three-wave object}
+\label{sec:twoaxis}
+
+Let $\operatorname{supp}\Psi\subseteq\{0,u,v\}$ with
+$u\neq 0$, $v\neq 0$, $u\neq v$, $2u\neq 0$, $2u\neq v$ and
+$v\neq -u$.
+(The group hypotheses are the precise content of ``non-collinear'' on
+a general abelian group: $v-u\notin\{0,u,v\}$ and $-\,u\notin\{0,u,v\}$.)
+Then at frequency $u$ the remainder and conjugate branch drop,
+\begin{equation}
+\label{eq:twoaxis}
+\hat I(u)=R(u,0)\,X(u,0).
+\end{equation}
+Scalar Tikhonov at $\alpha=0$ recovers $X(u,0)$ whenever
+$\sum_k\abs{R_k(u,0)}^2\neq 0$.
+The swapped hypotheses at $v$ recover $X(v,0)$.
+{\raggedright
+Lean: \texttt{bilinearRemainder\_twoAxis}, \texttt{ihat\_twoAxis},
+\texttt{ihat\_twoAxis\_v}, \texttt{analyticPair\_twoAxis},
+\texttt{analyticPair\_twoAxis\_v}, \texttt{twoAxis\_dcCol\_unique},
+\texttt{twoAxis\_dcCol\_unique\_v}.
+\par}
+The DC intensity is the sum of the three diagonal Gram entries
+(\texttt{ihat\_twoAxis\_dc}).
+
+Together with a determination of $X(0,0)$ (\cref{sec:dcenergy}) this
+is the full DC column of a three-wave object, hence $\Psi$ by
+\cref{cor:dccol}.
+
+\section{Step 5: pass to the 2D Yu kernel}
+\label{sec:kernel2}
+
+The working 2D kernel uses the disk aperture, radial
+$\chi_{S2}$, and vector tilt
+$\mathbf{a}=\nabla\chi_S(\mathbf{q})-\nabla\chi_S(\mathbf{q}')$, so
+the spatial envelope $E_S$ sees $\mathbf{q}\cdot\mathbf{q}'$~\cite{Yu2019,Lau2026proofs}.
+On the CTF slice
+\begin{equation}
+\label{eq:axis}
+\RFOII(\mathbf{q},0,\Dz)
+=\RFO\bigl(\norm{\mathbf{q}},0,\Dz\bigr);
+\end{equation}
+off axis $\RFOII$ is not the radial 1D kernel evaluated at
+$\bigl(\norm{\mathbf{q}},\norm{\mathbf{q}'}\bigr)$.
+Lean: \texttt{R\_FO2}, \texttt{R\_FO2\_eq\_R\_FO\_axis}.
+
+\begin{theorem}[Pure-defocus cisoid]
+\label{thm:cisoid}
+Under perfect coherence ($q_{\mathrm{ill}}=\Delta E=0$) and
+$C_3=C_5=0$,
+\begin{equation}
+\label{eq:cisoid}
+\RFOII(\mathbf{q},\mathbf{q}',\Dz)
+=A(\mathbf{q})A(\mathbf{q}')\,
+\ee^{\ii\,\omega(\mathbf{q},\mathbf{q}')\,\Dz},
+\end{equation}
+with aperture indicators $A$ and instantaneous frequency
+\begin{equation}
+\label{eq:omega}
+\omega(\mathbf{q},\mathbf{q}')
+=\pi\lambda\bigl(\norm{\mathbf{q}}^2-\norm{\mathbf{q}'}^2\bigr)
+=\pi\lambda\bigl(2\langle\mathbf{q},\mathbf{q}-\mathbf{q}'\rangle
+-\norm{\mathbf{q}-\mathbf{q}'}^2\bigr).
+\end{equation}
+\end{theorem}
+Lean: \texttt{R\_FO2\_pureDefocus\_perfect}, \texttt{defocusOmega},
+\texttt{defocusOmega\_eq\_inner}.
+
+At fixed lag $\boldsymbol{\xi}=\mathbf{q}-\mathbf{q}'$,~\eqref{eq:omega}
+depends on $\mathbf{q}$ only through the projection
+$\langle\mathbf{q},\boldsymbol{\xi}\rangle$.
+Frequencies with the same projection (and matching aperture) are
+indistinguishable.
+
+\begin{definition}[Householder reflection]
+\label{def:refl}
+For $\boldsymbol{\xi}\neq\mathbf{0}$,
+\begin{equation}
+\label{eq:refl}
+\operatorname{refl}_{\boldsymbol{\xi}}(\mathbf{q})
+=\frac{2\langle\mathbf{q},\boldsymbol{\xi}\rangle}{\norm{\boldsymbol{\xi}}^2}\,
+\boldsymbol{\xi}-\mathbf{q}.
+\end{equation}
+\end{definition}
+The reflection preserves $\langle\cdot,\boldsymbol{\xi}\rangle$, Euclidean
+norms, $\norm{\mathbf{a}}$, and $\omega$.
+Lean: \texttt{reflectLine}, \texttt{defocusOmega\_reflect},
+\texttt{R\_FO2\_pureDefocus\_perp}.
+
+Sampling $\RFOII$ on $G$ via $\iota$ yields
+$R^\iota_{\Dz}(q,q')=\RFOII(\iota q,\iota q',\Dz)$.
+Bilinear FO on that group is~\eqref{eq:ihat} with this kernel
+(\texttt{sampledR}, \texttt{ihat\_sampledR}).
+
+\section{Step 6: invert iso-\texorpdfstring{$\omega$}{omega} fibers by a Vandermonde system}
+\label{sec:fiber}
+
+Under the hypotheses of \cref{thm:cisoid}, substitute~\eqref{eq:cisoid}
+into~\eqref{eq:ihatgram} at lag $\xi$.
+Group $q\in G$ by a fiber index $\operatorname{idx}:G\to\{0,\dots,n-1\}$
+constant on level sets of
+$\omega\bigl(\iota q,\iota(q-\xi)\bigr)$.
+The aperture-weighted fiber masses are
+\begin{equation}
+\label{eq:Mj}
+M_j
+=\sum_{\operatorname{idx}(q)=j}
+A(\iota q)\,A\bigl(\iota(q-\xi)\bigr)\,X(q,q-\xi).
+\end{equation}
+The through-focal coefficient is then the cisoid mixture
+\begin{equation}
+\label{eq:mixture}
+\hat I(\xi,\Dz)
+=\sum_{j=0}^{n-1}
+M_j\,\ee^{\ii\omega_j\Dz}.
+\end{equation}
+Lean: \texttt{apertureGram}, \texttt{cisoidMass},
+\texttt{ihat\_eq\_cisoidMass}.
+
+Take $n$ equally spaced defoci $\Dz_k=\delta k$, $k=0,\dots,n-1$,
+and write $z_j=\ee^{\ii\omega_j\delta}$.
+Equation~\eqref{eq:mixture} becomes the Vandermonde system
+\begin{equation}
+\label{eq:vandermonde}
+\hat I(\xi,\delta k)
+=\sum_{j}M_j\,z_j^k.
+\end{equation}
+If $j\mapsto z_j$ is injective, the nodes are distinct, the
+Vandermonde matrix $V_{ij}=z_i^{j}$ is invertible, and
+\begin{equation}
+\label{eq:recM}
+\mathbf{M}
+=\mathbf{y}\,V(z)^{-1}
+\end{equation}
+recovers the masses from the samples
+$y_k=\hat I(\xi,\delta k)$.
+{\raggedright
+Lean: \texttt{cisoidNode}, \texttt{recoveredMasses},
+\texttt{cisoidMasses\_unique}, \texttt{recoveredMasses\_eq},
+\texttt{ihat\_eq\_vandermondeRow},
+\texttt{recoveredMasses\_eq\_cisoidMass}.
+\par}
+
+Householder partners~\eqref{eq:refl} share a node, so they contribute
+to a single $M_j$.
+The inverse of~\eqref{eq:vandermonde} recovers \emph{fiber masses},
+not individual lattice points on an iso-$\omega$ line.
+
+\section{Step 7: transversal support turns masses into Gram entries}
+\label{sec:transversal}
+
+\begin{definition}[Transversal support]
+\label{def:trans}
+The pair $(\Psi,\xi)$ is transversal for $\operatorname{idx}$ if each
+fiber carries at most one occupied pair:
+whenever $\operatorname{idx}(q)=\operatorname{idx}(q')$ and
+$\Psi(q)$, $\Psi(q-\xi)$, $\Psi(q')$, $\Psi(q'-\xi)$ are all nonzero,
+one has $q=q'$.
+\end{definition}
+Lean: \texttt{transversalSupport}.
+
+\begin{theorem}[Mass equals Gram]
+\label{thm:trans}
+Assume \cref{thm:cisoid}, distinct cisoid nodes, transversal support,
+and $A=1$ at every occupied frequency.
+If $\Psi(q)\neq 0$ and $\Psi(q-\xi)\neq 0$, then
+\begin{equation}
+\label{eq:Mgram}
+M_{\operatorname{idx}(q)}
+=X\bigl(q,q-\xi\bigr).
+\end{equation}
+In particular, if $\Psi(\xi)\neq 0$ and $\Psi(0)\neq 0$, the vacuum
+column entry is the mass of the fiber containing $(\xi,0)$:
+\begin{equation}
+\label{eq:Mvac}
+M_{\operatorname{idx}(\xi)}
+=X(\xi,0).
+\end{equation}
+Equal through-focal stacks then imply equal Gram entries at every
+commonly occupied pair.
+\end{theorem}
+{\raggedright
+Lean: \texttt{cisoidMass\_eq\_gram\_of\_transversal},
+\texttt{recoveredMasses\_eq\_gram\_of\_transversal},
+\texttt{recoveredMasses\_eq\_gram\_vacuum},
+\texttt{gram\_eq\_of\_transversal\_ihat}.
+\par}
+
+If both Householder partners are occupied, \cref{def:trans} fails on
+that fiber: the mass is the sum of two Gram entries and cannot be
+split.
+That is the geometric content of \cref{thm:cisoid} for the inverse.
+
+\subsection{Recovering \texorpdfstring{$X(0,0)$}{X(0,0)}}
+\label{sec:dcenergy}
+
+Off-DC fibers never produce the scalar $X(0,0)$.
+If $R(q,q)=1$ for all $q$ and $\hat I(0)\neq 0$, the DC intensity is
+the total energy $T=\sum_q\abs{\Psi(q)}^2$.
+Write $a=X(0,0)=\abs{\Psi(0)}^2$ and
+$S=\sum_{q\neq 0}\abs{X(q,0)}^2$.
+Then $S=a(T-a)$, so $a$ is a root of the same quadratic as in
+\cref{sec:twomode},
+\begin{equation}
+\label{eq:recDC}
+a(T-a)=S,
+\qquad
+a_\pm
+=\frac{T\pm\sqrt{T^2-4S}}{2}.
+\end{equation}
+The specular choice is the larger root when the DC beam dominates.
+The identity
+\begin{equation}
+\label{eq:recDCcheck}
+X(0,0)
+=\frac{\sum_q\norm{X(q,0)}^2}{\hat I(0)}
+\end{equation}
+holds for the \emph{full} true DC column (including $a$ itself); it
+is a consistency check, not an inverse for the missing entry.
+Lean: \texttt{recoveredDC}, \texttt{recoveredDC\_gram},
+\texttt{twoMode\_specular}.
+
+The DC \emph{slice} $q\mapsto X(q,q)$ of a unimodular diagonal kernel
+is not injective: it has rank one.
+Lean: \texttt{dcSlice\_not\_injective}.
+Off-DC slice injectivity recovers lag diagonals with $\xi\neq 0$
+(\texttt{offDiagGram\_eq\_of\_sliceInjective}) but does not invert
+$\xi=0$.
+
+\section{Reconstruction recipe}
+\label{sec:recipe}
+
+The seven identities assemble into the following procedure.
+Input: a through-focal stack on a finite frequency group, an embedding
+$\iota$, and (as appropriate) support or fiber-index data.
+Output: the vacuum-gauged spectrum $\hat\Psi$ when the DC column is
+determined, else the fiber masses (or vacuum pairs) that the data
+identify.
+
+\begin{enumerate}[leftmargin=*,itemsep=0.35em]
+\item \textbf{Form $\hat I(\xi,\Dz_k)$.}
+After alignment, discrete-Fourier transform each plane.
+Work with~\eqref{eq:ihat}; modes $\norm{\iota q}>\qap$ are
+identically invisible.
+
+\item \textbf{Fix the gauge.}
+Seek $\Psi$ with $\Psi(0)$ real and nonnegative
+(\cref{thm:vacuum}).
+A global phase will never be recovered~\eqref{eq:gauge}.
+
+\item \textbf{Choose the lag inverse} according to what is known.
+
+\begin{enumerate}[label=\alph*.,itemsep=0.25em]
+\item \emph{Known remainder or small support.}
+If $\mathcal{B}$ is known, or if $\Psi$ is supported on
+$\{0\}$, $\{0,\xi\}$, $\{-\xi,0,\xi\}$, or $\{0,u,v\}$ as in
+\cref{sec:small}, apply \cref{thm:cramer} or the scalar
+Tikhonov identity~\eqref{eq:twomode}--\eqref{eq:twoaxis} at
+$\alpha=0$, provided the relevant energy $\Delta$ or
+$\sum\abs{h_k}^2$ is nonzero.
+This recovers the vacuum column entries that the support sees.
+
+\item \emph{Pure defocus, perfect coherence, unknown general
+support.}
+Assume $C_3=C_5=0$ and \cref{thm:cisoid}.
+Index $q$ by $\omega(\iota q,\iota(q-\xi))$, sample $n$ equally
+spaced defoci, and right-multiply by the inverse Vandermonde
+matrix~\eqref{eq:recM}.
+This recovers fiber masses $M_j$, not a unique $q$ on each
+iso-$\omega$ line.
+
+\item \emph{Transversal support inside the aperture.}
+If in addition \cref{def:trans} holds and $A=1$ on the occupied
+set, each recovered mass is a Gram entry~\eqref{eq:Mgram}.
+The vacuum column is~\eqref{eq:Mvac} at every occupied $\xi$.
+\end{enumerate}
+
+\item \textbf{Assemble the DC column.}
+Collect every recovered off-DC entry $X(\xi,0)$.
+If $R(q,q)=1$, determine $X(0,0)$ from the quadratic~\eqref{eq:recDC}
+(two-mode: $S=\abs{X(\xi,0)}^2$; many modes: $S$ is the sum of
+squared off-DC column entries).
+Equation~\eqref{eq:recDCcheck} then checks consistency of the
+completed column.
+
+\item \textbf{Factor the Gram.}
+Apply~\eqref{eq:vacuum}.
+By \cref{cor:dccol} the vacuum-gauged object is unique among
+spectra sharing that DC column.
+\end{enumerate}
+
+The linearized Schiske/Wiener map of~\cite{Lau2026inverse} is step~3a
+with $\mathcal{B}:=0$ and without a support hypothesis: it is
+first-order consistent at vacuum and biased for strong phase.
+
+\section{What this does not invert}
+\label{sec:not}
+
+The analytic inverse is closed-form under remainder knowledge,
+vanishing remainder (small-mode or two-axis support), or transversal
+support with distinct cisoid nodes.
+It is \emph{not} an inverse of unrestricted 2D Yu $\RFOII$ on a
+general lattice, for two independent reasons already present in the
+kernel.
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{DC rank one.}
+A unimodular diagonal kernel has a rank-1 DC slice
+(\texttt{dcSlice\_not\_injective}).
+Matching off-DC lag diagonals do not determine $X$ on the
+diagonal $\xi=0$.
+
+\item \textbf{Projection degeneracy.}
+Pure-defocus $\omega$ depends on $q$ only through
+$q\cdot\xi$~\eqref{eq:omega}.
+Householder partners~\eqref{eq:refl} share a cisoid node and
+remain a single fiber mass.
+No choice of equally spaced $\Dz_k$ splits them.
+\end{enumerate}
+
+Statistical noise models, continuum Fourier transforms versus the
+array DFT, wall-clock FFT complexity, and local convergence of
+Gauss--Newton remain informal, as in~\cite{Lau2026inverse}.
+
+\section{Machine-checked fragment}
+\label{sec:lean}
+
+The identities of
+\cref{sec:gram,sec:gauge,sec:split,sec:small,sec:kernel2,sec:fiber,sec:transversal}
+are encoded in Lean~4~\cite{deMoura2021,mathlib2020} against the FO
+kernel of~\cite{Yu2019,Lau2026proofs}.
+The statements are finite-dimensional.
+Sound proofs depend only on
+\texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound};
+there is no \texttt{sorry}.
+Full identifier lists are in the theorem file
+\texttt{docs/LINEAR\_INVERSE.md} (T10--T15).
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Step & Lean modules \\
+\midrule
+1--3 & \texttt{LeemFO/Inverse/Gram.lean}, \texttt{Analytic.lean} \\
+4 & \texttt{LeemFO/Inverse/SmallMode.lean} \\
+5 & \texttt{LeemFO/Forward/Kernel2.lean}, \texttt{Inverse/Degeneracy.lean} \\
+6--7 & \texttt{LeemFO/Inverse/Fiber.lean} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Conclusions}
+\label{sec:end}
+
+Discrete bilinear FO is a linear map on lag diagonals of a rank-1
+Gram, followed by a vacuum-gauge factorization.
+The vacuum $2\times 2$ inverts in closed form once the off-axis
+remainder is known or killed by support; a pure-defocus through-focal
+series inverts iso-$\omega$ fiber masses by a Vandermonde system; and
+transversal support promotes those masses to Gram entries.
+The same kernel that prevents an unrestricted lattice inverse---a
+rank-one DC slice and Householder-glued cisoid nodes---is what the
+identities use.
+The reconstruction of~\cref{sec:recipe} is therefore the analytic 2D
+FO inverse, checked against Yu~\emph{et al.}~\cite{Yu2019}, not a
+claim that every 2D lattice object is identifiable from a radial
+defocus series.
+
+\begin{thebibliography}{99}
+
+\bibitem{Yu2019}
+K.~M. Yu, K.~L.~W. Lau, M.~S. Altman,
+\emph{Fourier optics of image formation in aberration-corrected LEEM},
+Ultramicroscopy \textbf{200} (2019) 160--168.
+
+\bibitem{Yu2017}
+K.~M. Yu, A.~Locatelli, M.~S. Altman,
+\emph{Comparing Fourier optics and contrast transfer function modeling
+of image formation in low energy electron microscopy},
+Ultramicroscopy \textbf{183} (2017) 109--116.
+
+\bibitem{Pang2009}
+A.~B. Pang, Th.~M\"uller, M.~S. Altman, E.~Bauer,
+\emph{Fourier optics of image formation in LEEM},
+J.\ Phys.: Condens.\ Matter \textbf{21} (2009) 314006.
+
+\bibitem{Schramm2012}
+S.~M. Schramm, A.~B. Pang, M.~S. Altman, R.~M. Tromp,
+\emph{A contrast transfer function approach for image calculations
+in standard and aberration-corrected LEEM and PEEM},
+Ultramicroscopy \textbf{115} (2012) 88--108.
+
+\bibitem{Tromp2012}
+R.~M. Tromp, S.~M. Schramm,
+\emph{Optimization and stability of the contrast transfer function
+in aberration-corrected electron microscopy},
+Ultramicroscopy \textbf{125} (2013) 72--80.
+
+\bibitem{Lau2026proofs}
+W.~Lau,
+\emph{Closed-form envelopes of the Fourier-optics kernel in
+aberration-corrected LEEM},
+unpublished (2026).
+
+\bibitem{Lau2026inverse}
+W.~Lau,
+\emph{Through-focal inversion of LEEM intensities with the
+Fourier-optics kernel},
+unpublished (2026).
+
+\bibitem{deMoura2021}
+L.~de~Moura, S.~Ullrich,
+\emph{The Lean 4 theorem prover and programming language},
+in \emph{Automated Deduction -- CADE 28},
+LNCS \textbf{12699} (Springer, Cham, 2021), pp.~625--635.
+
+\bibitem{mathlib2020}
+The mathlib Community,
+\emph{The Lean mathematical library},
+in \emph{Proc.\ 9th ACM SIGPLAN International Conference on
+Certified Programs and Proofs} (ACM, New York, 2020), pp.~367--381.
+
+\end{thebibliography}
+
+\end{document}
