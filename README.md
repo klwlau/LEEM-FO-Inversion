@@ -52,6 +52,11 @@ Inverse note:
 [docs/proofs/leemfo_inverse.pdf](docs/proofs/leemfo_inverse.pdf)
 ([source](docs/proofs/leemfo_inverse.tex)).
 
+Analytic bilinear inverse (Gram lift, small-mode and two-axis
+objects, Vandermonde fiber masses), as a sequence of identities:
+[docs/proofs/leemfo_analytic_inverse.pdf](docs/proofs/leemfo_analytic_inverse.pdf)
+([source](docs/proofs/leemfo_analytic_inverse.tex)).
+
 Theorem list:
 [docs/LINEAR_INVERSE.md](docs/LINEAR_INVERSE.md).
 
@@ -70,6 +75,7 @@ To rebuild the PDFs (TeX Live with `latexmk`):
 cd docs/proofs
 latexmk -pdf leemfo_proofs.tex
 latexmk -pdf leemfo_inverse.tex
+latexmk -pdf leemfo_analytic_inverse.tex
 ```
 
 ## Layout
